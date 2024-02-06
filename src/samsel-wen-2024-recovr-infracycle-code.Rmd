@@ -654,7 +654,7 @@ plot_len_infra <- function(
 Plots an area chart from to show the segment lengths for different years and road types.
 
 ```{r}
-plot_len_road <- function(
+plot_len_roads <- function(
         df,
         title = "",
         xlabel = "",
@@ -677,64 +677,16 @@ plot_len_road <- function(
   ) +
   geom_area(colour = NA, alpha = 0.7) +
   scale_fill_manual(
-      values = c("#DFEBF7", "#A0CAE0", "#3683BB"),
-      labels = c("Cycle Track", "Buffered Lane", "Painted Lane")
+      values = c("#C1DDB3", "#71A966", "#297A22"),
+      labels = c("Arterial", "Collector", "Local")
   ) +
   geom_line(position = "stack", size = 0.2) +
   geom_vline(xintercept = 2019,
              color = "black",
              linetype = "dashed") +
-  geom_segment(
-      aes(
-          x = 2009,
-          y = 0,
-          xend = 2009,
-          yend = 50,
-          color = "#bb0000",
-          hjust = 0.15
-      )
-  ) +
-  geom_segment( # 50km red triangle point down
-      aes(
-          x = 2009,
-          y = 50.01 - (len_max * 0.05),
-          xend = 2009,
-          yend = 50 - (len_max * 0.05),
-          color = "#bb0000",
-          hjust = 0.15
-      ),
-      arrow = arrow(
-          length = unit(0.03, "npc"),
-          ends = "last",
-          type = "closed"
-      )
-  ) +
-  geom_segment( # 50km red triangle point up
-      aes(
-          x = 2009,
-          y = (len_max * 0.05) - 0.01,
-          xend = 2009,
-          yend = (len_max * 0.05),
-          color = "#bb0000",
-          hjust = 0.15
-      ),
-      arrow = arrow(
-          length = unit(0.03, "npc"),
-          ends = "last",
-          type = "closed"
-      )
-  ) +
-  annotate(
-      "text",
-      x = 2009,
-      y = 50,
-      label = "50km",
-      color = "#bb0000",
-      hjust = -0.225
-  ) +
   labs(x = xlabel,
        y = ylabel,
-       fill = "Infrastructure Type"
+       fill = "Roadway Type"
   ) +
   ggtitle(
       bquote(underline(.(title)))
@@ -974,7 +926,7 @@ By (A) roadway classification, and (B) infrastructure distribution within each r
 ```{r}
 
 # Recode segments to one of art, coll, or lane
-vanc_plot_roads <- vanc %>%
+vanc_prep_roads <- vanc %>%
     mutate(ATR_ROAD_TYPE = case_when(
         ATR_SEGMENT_TYPE %in% c( # arterial equiv
         	"Arterial"
@@ -991,6 +943,14 @@ vanc_plot_roads <- vanc %>%
         ) ~ "Local",
         .default = ATR_SEGMENT_TYPE
     ))
+
+# Aggregate by year
+vanc_plot_roads <- vanc_prep_roads %>%
+	filter(ATR_SEGMENT_TYPE == "Arterial") %>%
+	calc_len_infra(2009, 2021) %>%
+    plot_len_infra(title = "Vancouver, Canada") +
+    theme(plot.margin = unit(c(15,5,5,5), "point"))
+vanc_plot_roads
 ```
 
 ## Toronto, CA
