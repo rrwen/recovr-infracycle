@@ -856,13 +856,36 @@ vanc
 ## Calgary Data
 
 ```{r calg-data}
-calg <- read_csv("../data/calgary-bikeways-2009-2022.csv")
-calg %>%
-    select(ID_CITY,
-           INST_YR,
-           INST_TYPE,
-           INST_MIN_HTYPE,
-           ATR_SEGMENT_LENGTH)
+
+# Load raw data
+calg_bikeways <- read_csv("../data/calgary_bikeways_2009_2022_v1.csv")
+calg_roads <- read_csv("../data/calgary_roads_2009_2022_v1.csv")
+
+# Combine raw data
+calg <- calg_bikeways %>%
+    select(
+		SHAPE_ID,
+		INST_YR,
+		INST_TYPE,
+		INST_MIN_HTYPE,
+		UPGR1_YR,
+		UPGR1_MIN_HTYPE,
+		UPGR2_YR,
+		UPGR2_MIN_HTYPE,
+		ATR_SEGMENT_LENGTH
+	) %>%
+	left_join(
+		calg_roads %>% select(
+			shape_id,
+			ctp_class
+		),
+		by = join_by(SHAPE_ID == shape_id)
+	) %>%
+	rename(
+		ID = SHAPE_ID,
+		ATR_SEGMENT_TYPE = ctp_class
+	)
+calg
 ```
 
 ## Toronto Data
@@ -892,7 +915,10 @@ toron <- toron_bikeways %>%
 		),
 		by = join_by(ID_OID == OID_)
 	) %>%
-	rename(ATR_SEGMENT_TYPE = FEATURE36)
+	rename(
+		ID = ID_OID,
+		ATR_SEGMENT_TYPE = FEATURE36
+	)
 toron
 ```
 
@@ -946,25 +972,80 @@ grid.arrange(
 By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
 
 ```{r}
-arterial_group <- c("Arterial")
-collector_group <- c("Collector", "Secondary Arterial")
-local_group <- c("Lane", "Residential", "Leased", "Recreational")
+
+# Recode segments to one of art, coll, or lane
+vanc_plot_roads <- vanc %>%
+    mutate(ATR_ROAD_TYPE = case_when(
+        ATR_SEGMENT_TYPE %in% c( # arterial equiv
+        	"Arterial"
+        ) ~ "Arterial",
+        ATR_SEGMENT_TYPE %in% c( # collector equiv
+        	"Collector",
+        	"Secondary Arterial"
+        ) ~ "Collector",
+        ATR_SEGMENT_TYPE %in% c( # local equiv
+        	"Lane",
+        	"Residential",
+        	"Leased",
+        	"Recreational"
+        ) ~ "Local",
+        .default = ATR_SEGMENT_TYPE
+    ))
 ```
 
 ## Toronto, CA
 
 ```{r}
-arterial_group <- c("Major Arterial", "Major Arterial Ramp", "Minor Arterial")
-collector_group <- c("Collector")
-local_group <- c("Local", "Other")
+
+# Recode segments to one of art, coll, or lane
+toron_plot_roads <- toron %>%
+    mutate(ATR_ROAD_TYPE = case_when(
+        ATR_SEGMENT_TYPE %in% c( # arterial equiv
+        	"Major Arterial",
+        	"Major Arterial Ramp",
+        	"Minor Arterial"
+        ) ~ "Arterial",
+        ATR_SEGMENT_TYPE %in% c( # collector equiv
+        	"Collector"
+        ) ~ "Collector",
+        ATR_SEGMENT_TYPE %in% c(  # local equiv
+        	"Local",
+        	"Other"
+        ) ~ "Local",
+        .default = ATR_SEGMENT_TYPE
+    ))
 ```
 
 ## Calgary, CA
 
 ```{r}
-arterial_group <- c("Arterial Street", "Industrial Arterial", "Local Arterial", "Parkway", "Urban Boulevard")
-collector_group <- c("Neighbourhood Boulevard", "Collector", "Primary Collector", "Skeletal Road")
-local_group <- c("Access Route", "Residential Street", "Activity Center Street", "Historic Road Allowance", "Lanes (Alleys)", "Industrial Street")
+
+# Recode segments to one of art, coll, or lane
+calg_plot_roads <- calg %>%
+    mutate(ATR_ROAD_TYPE = case_when(
+        ATR_SEGMENT_TYPE %in% c( # arterial equiv
+        	"Arterial Street",
+        	"Industrial Arterial",
+        	"Local Arterial",
+        	"Parkway",
+        	"Urban Boulevard"
+        ) ~ "Arterial",
+        ATR_SEGMENT_TYPE %in% c( # collector equiv
+        	"Neighbourhood Boulevard",
+        	"Collector",
+        	"Primary Collector",
+        	"Skeletal Road"
+        ) ~ "Collector",
+        ATR_SEGMENT_TYPE %in% c( # local equiv
+        	"Access Route",
+        	"Residential Street",
+        	"Activity Center Street",
+        	"Historic Road Allowance",
+        	"Lanes (Alleys)",
+        	"Industrial Street"
+        ) ~ "Local",
+        .default = ATR_SEGMENT_TYPE
+    ))
 ```
 
 # Appendix
