@@ -15,11 +15,10 @@ Verified bikeways Excel (`A1_Vancouver Bikeways for Matching Revised.xlsx`) and 
 
 ```mermaid
 graph TD
-style D text-align:left
 
-city["Open Data<br>3667 rows / 24 columns<br>bikeways.xlsx"]
-entry["Eligible<br>780 rows / 60 columns<br>A1_Vancouver Bikeways for Matching Revised.xlsx"]
-processed["Inclusions<br>745 rows / 73 columns<br>van_bike_July24Key.csv"]
+city["Open Data (3667 rows / 24 columns)<br>bikeways.xlsx"]
+entry["Eligible (780 rows / 60 columns)<br>A1_Vancouver Bikeways for Matching Revised.xlsx"]
+processed["Inclusions (745 rows / 73 columns)<br>van_bike_July24Key.csv"]
 
 city --> entry --> processed
 ```
