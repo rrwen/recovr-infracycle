@@ -550,52 +550,83 @@ plot_len_infra <- function(
         endyear = 2022,
         year_col = "YEAR",
         len_col = "Total_Length",
-        cat_col = "Infrastructure_Type"
+        cat_col = "Infrastructure_Type",
+        line_50km = TRUE
 ) {
-  len_max <- max(df[[len_col]], na.rm = TRUE)
-  out <- ggplot(
-    df,
-    aes(
-        x = .data[[year_col]],
-        y = .data[[len_col]],
-        fill = .data[[cat_col]],
-        order = dplyr::desc(.data[[cat_col]])
-    )
-  ) +
-  geom_area(colour = NA, alpha = 0.7) +
-  scale_fill_manual(
-      values = c("#DFEBF7", "#A0CAE0", "#3683BB"),
-      labels = c("Cycle Track", "Buffered Lane", "Painted Lane")
-  ) +
-  geom_line(position = "stack", size = 0.2) +
-  geom_vline(xintercept = 2019,
-             color = "black",
-             linetype = "dashed") +
-  geom_segment(
-      aes(
-          x = 2009,
-          y = 0,
-          xend = 2009,
-          yend = 50,
-          color = "#bb0000",
-          hjust = 0.15
-      )
-  ) +
-  geom_segment( # 50km red triangle point down
-      aes(
-          x = 2009,
-          y = 50.01 - (len_max * 0.05),
-          xend = 2009,
-          yend = 50 - (len_max * 0.05),
-          color = "#bb0000",
-          hjust = 0.15
-      ),
-      arrow = arrow(
-          length = unit(0.03, "npc"),
-          ends = "last",
-          type = "closed"
-      )
-  ) +
+	
+	# Create base plot
+	  len_max <- max(df[[len_col]], na.rm = TRUE)
+	  out <- ggplot(
+	    df,
+	    aes(
+	        x = .data[[year_col]],
+	        y = .data[[len_col]],
+	        fill = .data[[cat_col]],
+	        order = dplyr::desc(.data[[cat_col]])
+	    )
+	  ) +
+	  geom_area(colour = NA, alpha = 0.7) +
+	  scale_fill_manual(
+	      values = c("#DFEBF7", "#A0CAE0", "#3683BB"),
+	      labels = c("Cycle Track", "Buffered Lane", "Painted Lane")
+	  ) +
+	  geom_line(position = "stack", size = 0.2) +
+	  geom_vline(xintercept = 2019,
+	             color = "black",
+	             linetype = "dashed") +
+	  geom_segment(
+	      aes(
+	          x = 2009,
+	          y = 0,
+	          xend = 2009,
+	          yend = 50,
+	          color = "#bb0000",
+	          hjust = 0.15
+	      )
+	  ) +
+	  geom_segment( # 50km red triangle point down
+	      aes(
+	          x = 2009,
+	          y = 50.01 - (len_max * 0.05),
+	          xend = 2009,
+	          yend = 50 - (len_max * 0.05),
+	          color = "#bb0000",
+	          hjust = 0.15
+	      ),
+	      arrow = arrow(
+	          length = unit(0.03, "npc"),
+	          ends = "last",
+	          type = "closed"
+	      )
+	  ) +
+	  labs(x = xlabel,
+	       y = ylabel,
+	       fill = "Infrastructure Type"
+	  ) +
+	  ggtitle(
+	      bquote(underline(.(title)))
+	  ) +
+	  guides(
+	      fill = guide_legend(
+	          reverse = F,
+	          override.aes = list(
+	              alpha = 0.7,
+	              color = NA,
+	              shape = NA
+	          )
+	      ),
+	      color = "none"
+	  ) +
+	  scale_x_continuous(
+	      breaks = seq(startyear, endyear, by = 1),
+	      labels = seq(startyear, endyear, by = 1),
+	      limits = c(startyear, endyear)
+	  ) +
+	  theme_minimal() +
+	  theme(
+	      plot.margin = unit(c(5,5,5,5), "points"))
+	
+	out <-out +
   geom_segment( # 50km red triangle point up
       aes(
           x = 2009,
@@ -618,33 +649,7 @@ plot_len_infra <- function(
       label = "50km",
       color = "#bb0000",
       hjust = -0.225
-  ) +
-  labs(x = xlabel,
-       y = ylabel,
-       fill = "Infrastructure Type"
-  ) +
-  ggtitle(
-      bquote(underline(.(title)))
-  ) +
-  guides(
-      fill = guide_legend(
-          reverse = F,
-          override.aes = list(
-              alpha = 0.7,
-              color = NA,
-              shape = NA
-          )
-      ),
-      color = "none"
-  ) +
-  scale_x_continuous(
-      breaks = seq(startyear, endyear, by = 1),
-      labels = seq(startyear, endyear, by = 1),
-      limits = c(startyear, endyear)
-  ) +
-  theme_minimal() +
-  theme(
-      plot.margin = unit(c(5,5,5,5), "points"))
+  )
   return(out)
 }
 ```
@@ -878,7 +883,7 @@ toron
 
 ## Figure 2: Changes in dedicated cycling infrastructure between 2009 and 2022 for Vancouver, Calgary, and Toronto by infrastructure category.
 
-Assessed using roadway centreline-km, with infrastructure classifications determined by the most protective element present along each road segment. 
+Assessed using roadway centreline-km, with infrastructure classifications determined by the most protective element present along each road segment.
 
 ```{r fig.width=8.5, fig.height=11}
 
