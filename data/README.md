@@ -1,5 +1,4 @@
 
-
 ## Notes
 
 * calgary_bikeways_2009_2022_v1.csv: Originally from `Konrad/2_Calgary Data/Calgary Bikeways/4_Calgary Length Calculations/calgary_bikeways_completed.xlsx` -> `Konrad/updated/Calgary_Bikeways_Complete_RW_v1.xlsx`
