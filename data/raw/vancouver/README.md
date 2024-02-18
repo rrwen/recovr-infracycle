@@ -27,10 +27,10 @@ graph TD
 
 city["Open Data (Raw)<br>File = bikeways.xlsx<br>ID = Object ID<br>Rows = 3668<br>Columns = 24"]
 citygeo["Open GeoData (Raw)<br>File = bikeways.geojson<br>ID = object_id<br>Rows = 3668<br>Columns = 24"]
-entry["Verified Eligible Data (Filtered)<br>File = A1_Vancouver Bikeways for Matching Revised.xlsx<br>ID = Object ID, ENTRY_ID<br>Rows = 780<br>Columns = 60"]
-processed["Verified Inclusion Data (Screened)<br>File = van_bike_July24Key.csv<br>ID = ID_DATAENTRY<br>Rows = 745<br>Columns = 73"]
+entry["Verified Eligible Data (Filtered)<br>File = A1_Vancouver Bikeways for Matching Revised.xlsx<br>ID = ENTRY_ID<br>Rows = 780<br>Columns = 60"]
+processed["Verified Inclusion Data (Screened)<br>File = van_bike_July24Key.csv<br>ID = ID_DATAENTRY, Object ID<br>Rows = 745<br>Columns = 73"]
 
-city --- | Object ID = Object ID | entry --- | ENTRY_ID = ID_DATAENTRY | processed
+city --- | Object ID = Object ID | processed --- | ID_DATAENTRY = ENTRY_ID | processed
 city --- | Object ID = object_id | citygeo
 ```
 
