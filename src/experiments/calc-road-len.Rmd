@@ -1,0 +1,110 @@
+---
+title: "Pedalling Forward: The Evolution of Dedicated Cycling Infrastructure in Canadian Cities from 2010 to 2022"
+subtitle: "Calculating Road Lengths By Infrastructure Type"
+author:
+- "Richard Wen <richard.wen@utoronto.ca>"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+    pdf_document:
+        toc: true
+        toc_depth: 3
+        highlight: zenburn
+---
+
+# Libraries
+
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+# Data
+
+Read road segment data along with install and upgrade variables.
+
+```{r}
+vanc_raw <- read_excel("../../data/raw/vancouver/Vancouver_Bikeways_Complete_AS.xlsm")
+vanc_raw
+```
+
+# Preprocessing
+
+Clean the raw data.
+
+```{r}
+
+# Preprocess
+vanc <- vanc_raw %>%
+	rename(
+		install_year = "INST_YR",
+		install_type = "INST_MIN_TYPE",
+		upgrade1_year = "UPGR1_YR",
+		upgrade1_type = "UPGR1_MIN_TYPE",
+		upgrade2_year = "UPGR2_YR",
+		upgrade2_type = "UPGR2_MIN_TYPE",
+		segment_meters = "segment_l0"
+	) %>%
+	mutate( # data types
+		install_year = as.integer(install_year),
+		install_type = as.character(install_type),
+		upgrade1_year = as.integer(upgrade1_year),
+		upgrade1_type = as.character(upgrade1_type),
+		upgrade2_year = as.integer(upgrade2_year),
+		upgrade2_type = as.character(upgrade2_type),
+		segment_meters = as.numeric(segment_meters)
+	) %>%
+	mutate_at( # Set values to NA for types
+		c("install_type", "upgrade1_type", "upgrade2_type"),
+		~replace(., . %in% c("None", "", "N"), NA)
+	) %>%
+	mutate_at( # Set 0 or invalid years to NA
+		c("install_year", "upgrade1_year", "upgrade2_year"),
+		~replace(., . <= 0, NA)
+	) %>%
+	filter( # Remove invalid install year records
+		!is.na(install_year)
+	)
+
+# Preview
+vanc %>% select(
+	install_year,
+	install_type,
+	upgrade1_year,
+	upgrade1_type,
+	upgrade2_year,
+	upgrade2_type,
+	segment_meters
+)
+```
+
+# Calculations
+
+Calculate road lengths per year, assuming data contains lengths in meters.
+
+## Step 1: Calculate Install Road Lengths By Infrastructure Type
+
+Calculate cumulative sum of road lengths with installations by infrastructure type ordered by year.
+
+```{r}
+# Calc csum in km per type arranged by year
+vanc_install <- vanc %>%
+	filter(!is.na(install_type)) %>%
+	arrange(install_year) %>%
+	group_by(install_type) %>%
+	mutate(segment_kilometers_csum = cumsum(segment_meters / 1000))
+
+# Get the last csum for each year
+vanc_install <- vanc_install %>%
+	group_by(install_year) %>%
+	arrange(desc(row_number())) %>%
+	slice(1)
+
+# Preview
+vanc_install %>% select(
+	install_year,
+	install_type,
+	segment_meters,
+	segment_kilometers_csum
+)
+```
+
