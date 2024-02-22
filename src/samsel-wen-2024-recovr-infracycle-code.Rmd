@@ -626,7 +626,7 @@ plot_len_infra <- function(
 	  theme(
 	      plot.margin = unit(c(5,5,5,5), "points"))
 	
-	out <-out +
+	out <- out +
   geom_segment( # 50km red triangle point up
       aes(
           x = 2009,

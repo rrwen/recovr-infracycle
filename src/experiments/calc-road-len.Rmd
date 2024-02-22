@@ -18,6 +18,73 @@ library(tidyverse)
 library(readxl)
 ```
 
+# Functions
+
+```{r}
+
+#' Calculate Yearly Road Lengths By Infrastructure Type
+#'
+#' @param df A data.frame with three columns containing the year, type, and road lengths.
+#' @param year_col The name (char) or index (int) of the column containing the years.
+#' @param type_col The name (char) or index (int) of the column containing the infrastructure type
+#' @param len_col The name (char) or index (int) of the column containing the road lengths.
+#' @param out_col The name (char) of the column containing the calculated yearly road lengths by type.
+#' @param is_len_meters Set to TRUE or FALSE indicating if the road lengths are in meters.
+#'
+#' @return A data.frame with three columns containing the year, type, and calculated yearly road lengths by type.
+#' @export
+#'
+calc_yearly_len <- function(
+		df,
+		year_col = 1,
+		type_col = 2,
+		len_col = 3,
+		out_col = "len",
+		is_len_meters = TRUE
+	) {
+	
+	# Remove rows with empty type
+	out <- df %>% filter(
+		!is.na(.data[[type_col]])
+	)
+	
+	# Add dummy len for each type and year combo
+	# Covers cases where type and year combo does not exist
+	# E.g. No new PL installs in 2021, hence a record PL in 2021 does not exist
+	type_uniq <- unique(out[[type_col]])
+	type_n <- length(type_uniq)
+	year_uniq <- min(out[[year_col]], na.rm = TRUE):max(out[[year_col]], na.rm = TRUE)
+	year_n <- length(year_uniq)
+	out <- out %>% add_row(
+		!!year_col := rep(year_uniq, each = type_n),
+		!!type_col := rep(type_uniq, year_n),
+		!!len_col := rep(0, type_n * year_n)
+	)
+	
+	# Calc cumsum for each non-empty type ordered by year
+	out <- out %>%
+		arrange(.data[[year_col]]) %>%
+		group_by(.data[[type_col]]) %>%
+		mutate(
+			!!out_col := cumsum(segment_km)
+		)
+
+	# Get the last cumsum for each year and type
+	out <- out %>%
+		group_by(.data[[year_col]], .data[[type_col]]) %>%
+		arrange(desc(row_number())) %>%
+		slice(1) %>%
+		select(c(
+			year_col,
+			type_col,
+			out_col
+		))
+	
+	# Return only the columns
+	return(out)
+}
+```
+
 # Data
 
 Read road segment data along with install and upgrade variables.
@@ -42,7 +109,7 @@ vanc <- vanc_raw %>%
 		upgrade1_type = "UPGR1_MIN_TYPE",
 		upgrade2_year = "UPGR2_YR",
 		upgrade2_type = "UPGR2_MIN_TYPE",
-		segment_meters = "segment_l0"
+		segment_km = "segment_l0"
 	) %>%
 	mutate( # data types
 		install_year = as.integer(install_year),
@@ -51,7 +118,7 @@ vanc <- vanc_raw %>%
 		upgrade1_type = as.character(upgrade1_type),
 		upgrade2_year = as.integer(upgrade2_year),
 		upgrade2_type = as.character(upgrade2_type),
-		segment_meters = as.numeric(segment_meters)
+		segment_km = as.numeric(segment_km)
 	) %>%
 	mutate_at( # Set values to NA for types
 		c("install_type", "upgrade1_type", "upgrade2_type"),
@@ -60,6 +127,9 @@ vanc <- vanc_raw %>%
 	mutate_at( # Set 0 or invalid years to NA
 		c("install_year", "upgrade1_year", "upgrade2_year"),
 		~replace(., . <= 0, NA)
+	) %>%
+	mutate( # convert lens from meters to km
+		segment_km = segment_km / 1000
 	) %>%
 	filter( # Remove invalid install year records
 		!is.na(install_year)
@@ -73,7 +143,7 @@ vanc %>% select(
 	upgrade1_type,
 	upgrade2_year,
 	upgrade2_type,
-	segment_meters
+	segment_km
 )
 ```
 
@@ -86,25 +156,137 @@ Calculate road lengths per year, assuming data contains lengths in meters.
 Calculate cumulative sum of road lengths with installations by infrastructure type ordered by year.
 
 ```{r}
-# Calc csum in km per type arranged by year
-vanc_install <- vanc %>%
-	filter(!is.na(install_type)) %>%
-	arrange(install_year) %>%
-	group_by(install_type) %>%
-	mutate(segment_kilometers_csum = cumsum(segment_meters / 1000))
-
-# Get the last csum for each year
-vanc_install <- vanc_install %>%
-	group_by(install_year) %>%
-	arrange(desc(row_number())) %>%
-	slice(1)
-
-# Preview
-vanc_install %>% select(
-	install_year,
-	install_type,
-	segment_meters,
-	segment_kilometers_csum
+vanc_install <- calc_yearly_len(
+	vanc,
+	year_col = "install_year",
+	type_col = "install_type",
+	len_col = "segment_km",
+	out_col = "install_len"
+) %>% rename(
+	year = "install_year",
+	type = "install_type"
 )
+vanc_install
 ```
 
+## Step 2a: Calculate Yearly Road Lengths By Infrastructure Type for Upgrade 1
+
+These road lengths are to be added for the particular years and infrastructure types.
+
+```{r}
+vanc_upgrade1 <- calc_yearly_len(
+	vanc %>% filter( # existing upgrade 1 with diff type upgrade
+		!is.na(upgrade1_year) & install_type != upgrade1_type
+	),
+	year_col = "upgrade1_year",
+	type_col = "upgrade1_type",
+	len_col = "segment_km",
+	out_col = "upgrade1_len"
+) %>% rename(
+	year = "upgrade1_year",
+	type = "upgrade1_type"
+)
+vanc_upgrade1
+```
+
+## Step 2b: Calculate Yearly Road Lengths for Replaced Infrastructure Types from Upgrade 1
+
+These road lengths are to be subtracted for the particular years and infrastructure types.
+
+```{r}
+vanc_upgrade1_repl <- calc_yearly_len(
+	vanc %>% filter( # existing upgrade 1 with diff type upgrade
+		!is.na(upgrade1_year) & install_type != upgrade1_type
+	),
+	year_col = "upgrade1_year",
+	type_col = "install_type",
+	len_col = "segment_km",
+	out_col = "upgrade1_repl_len"
+) %>% rename(
+	year = "upgrade1_year",
+	type = "install_type"
+)
+vanc_upgrade1_repl
+```
+
+## Step 3a: Calculate Yearly Road Lengths By Infrastructure Type for Upgrade 2
+
+These road lengths are to be added for the particular years and infrastructure types.
+
+```{r}
+vanc_upgrade2 <- calc_yearly_len(
+	vanc %>% filter( # existing upgrade 1 with diff type upgrade
+		!is.na(upgrade2_year) & install_type != upgrade2_type
+	),
+	year_col = "upgrade2_year",
+	type_col = "upgrade2_type",
+	len_col = "segment_km",
+	out_col = "upgrade2_len"
+) %>% rename(
+	year = "upgrade2_year",
+	type = "upgrade2_type"
+)
+vanc_upgrade2
+```
+
+## Step 3b: Calculate Yearly Road Lengths for Replaced Infrastructure Types from Upgrade 2
+
+These road lengths are to be subtracted for the particular years and infrastructure types.
+
+```{r}
+vanc_upgrade2_repl <- calc_yearly_len(
+	vanc %>% filter( # existing upgrade 1 with diff type upgrade
+		!is.na(upgrade2_year) & install_type != upgrade2_type
+	),
+	year_col = "upgrade2_year",
+	type_col = "upgrade1_type",
+	len_col = "segment_km",
+	out_col = "upgrade2_repl_len"
+) %>% rename(
+	year = "upgrade2_year",
+	type = "upgrade1_type"
+)
+vanc_upgrade2_repl
+```
+
+## Step 4: Calculate Final Yearly Road Lengths by Infrastructure Type
+
+Join all year road lengths by year and type across installs and upgrades.
+
+Then add road lengths for install and upgrades, and subtract road lengths for replacements from upgrades.
+
+```{r}
+vanc_yearly_len <- list(
+		vanc_install,
+		vanc_upgrade1, 
+		vanc_upgrade1_repl,
+		vanc_upgrade2,
+		vanc_upgrade2_repl
+	) %>%
+	reduce(
+		left_join, by = c("year", "type")
+	) %>%
+	ungroup() %>%
+	mutate(
+		across(everything(), ~replace_na(., 0))
+	) %>%
+	mutate(
+		len = install_len + upgrade1_len + upgrade2_len - upgrade1_repl_len - upgrade2_repl_len
+	)
+vanc_yearly_len
+```
+
+```{r}
+vanc_yearly_len %>% filter(year >= 2009) %>% mutate(
+	type = factor(type, levels = rev(c("PL", "LSB", "BUF", "PBL")))
+) %>% ggplot(aes(
+	x = year,
+	y = len,
+	fill = type
+)) + geom_area() +
+	scale_x_continuous(
+	      breaks = seq(2009, 2022, by = 1),
+	      labels = seq(2009, 2022, by = 1),
+	      limits = c(2009, 2022)
+	  )
+```
