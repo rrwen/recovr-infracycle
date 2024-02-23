@@ -20,6 +20,22 @@ library(readxl)
 
 # Functions
 
+The following function calculates yearly road lengths by infrastructure type using cumulative sums and filling in missing years and types.
+
+For a given infrastructure type, the total road length for a given year is expressed below:
+
+$$
+length_{year,type} = f(year,type) = \sum_{i=year_{min}}^{year}l_{i, type} \mid l \geq 0
+$$
+
+Where:
+
+* $year$ is the given year
+* $type$ is the infrastructure type
+* $year_{min}$ is the earliest year available in the data
+* $l_{i,type}$ is the road length $l$ for previous years $i$ and infrastructure $j$
+* $l_{i,type}$ is set to 0 if there is no data
+
 ```{r}
 
 #' Calculate Yearly Road Lengths By Infrastructure Type
@@ -147,7 +163,7 @@ vanc %>% select(
 )
 ```
 
-# Calculations
+# Example Calculations with Vancouver Data
 
 Calculate road lengths per year, assuming data contains lengths in meters.
 
@@ -192,6 +208,10 @@ vanc_upgrade1
 ## Step 2b: Calculate Yearly Road Lengths for Replaced Infrastructure Types from Upgrade 1
 
 These road lengths are to be subtracted for the particular years and infrastructure types.
+
+$$
+a = e
+$$
 
 ```{r}
 vanc_upgrade1_repl <- calc_yearly_len(
