@@ -171,6 +171,10 @@ Calculate road lengths per year, assuming data contains lengths in meters.
 
 Calculate cumulative sum of road lengths with installations by infrastructure type ordered by year.
 
+$$
+length_{year,type}^{install}
+$$
+
 ```{r}
 vanc_install <- calc_yearly_len(
 	vanc,
@@ -188,6 +192,10 @@ vanc_install
 ## Step 2a: Calculate Yearly Road Lengths By Infrastructure Type for Upgrade 1
 
 These road lengths are to be added for the particular years and infrastructure types.
+
+$$
+length_{year,type}^{upgrade1}
+$$
 
 ```{r}
 vanc_upgrade1 <- calc_yearly_len(
@@ -210,7 +218,7 @@ vanc_upgrade1
 These road lengths are to be subtracted for the particular years and infrastructure types.
 
 $$
-a = e
+length_{year,type}^{replacement1}
 $$
 
 ```{r}
@@ -233,6 +241,10 @@ vanc_upgrade1_repl
 
 These road lengths are to be added for the particular years and infrastructure types.
 
+$$
+length_{year,type}^{upgrade2}
+$$
+
 ```{r}
 vanc_upgrade2 <- calc_yearly_len(
 	vanc %>% filter( # existing upgrade 1 with diff type upgrade
@@ -252,6 +264,10 @@ vanc_upgrade2
 ## Step 3b: Calculate Yearly Road Lengths for Replaced Infrastructure Types from Upgrade 2
 
 These road lengths are to be subtracted for the particular years and infrastructure types.
+
+$$
+length_{year,type}^{replacement2}
+$$
 
 ```{r}
 vanc_upgrade2_repl <- calc_yearly_len(
@@ -274,6 +290,10 @@ vanc_upgrade2_repl
 Join all year road lengths by year and type across installs and upgrades.
 
 Then add road lengths for install and upgrades, and subtract road lengths for replacements from upgrades.
+
+$$
+length_{year,type}^{install} + length_{year,type}^{upgrade1} + length_{year,type}^{upgrade2} - length_{year,type}^{replacement1} - length_{year,type}^{replacement2}
+$$
 
 ```{r}
 vanc_yearly_len <- list(
