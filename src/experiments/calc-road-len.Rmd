@@ -323,8 +323,13 @@ vanc_yearly_len
 # Final Function
 
 $$
-length_{year,type}^{install} + length_{year,type}^{upgrade1} + length_{year,type}^{upgrade2} - length_{year,type}^{replacement1} - length_{year,type}^{replacement2}
+length_{year,type}^{install} + length_{year,type}^{change_i} - length_{year,type}^{replacement_i}
 $$
+Where:
+
+* $length_{year,type}^{install}$ are the yearly road lengths for an infrastructure $type$ installation
+* $length_{year,type}^{change_i}$ are the yearly road lengths for an infrastructure $type$ change in order $i$
+* $length_{year,type}^{replacement_i}$ are the yearly road lengths for an infrastructure $type$ replaced by change in order $i$
 
 ```{r}
 calc_yearly_adj_len <- function(
