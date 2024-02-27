@@ -15,10 +15,11 @@ output:
 
 ```{r}
 library(tidyverse)
+library(glue)
 library(readxl)
 ```
 
-# Functions
+# Helper Function
 
 The following function calculates yearly road lengths by infrastructure type using cumulative sums and filling in missing years and types.
 
@@ -45,7 +46,6 @@ Where:
 #' @param type_col The name (char) or index (int) of the column containing the infrastructure type
 #' @param len_col The name (char) or index (int) of the column containing the road lengths.
 #' @param out_col The name (char) of the column containing the calculated yearly road lengths by type.
-#' @param is_len_meters Set to TRUE or FALSE indicating if the road lengths are in meters.
 #'
 #' @return A data.frame with three columns containing the year, type, and calculated yearly road lengths by type.
 #' @export
@@ -55,9 +55,13 @@ calc_yearly_len <- function(
 		year_col = 1,
 		type_col = 2,
 		len_col = 3,
-		out_col = "len",
-		is_len_meters = TRUE
+		out_col = "len"
 	) {
+	
+	# Convert data types
+	df[[year_col]] <- as.integer(df[[year_col]])
+	df[[type_col]] <- as.character(df[[type_col]])
+	df[[len_col]] <- as.numeric(df[[len_col]])
 	
 	# Remove rows with empty type
 	out <- df %>% filter(
@@ -89,19 +93,23 @@ calc_yearly_len <- function(
 	out <- out %>%
 		group_by(.data[[year_col]], .data[[type_col]]) %>%
 		arrange(desc(row_number())) %>%
-		slice(1) %>%
-		select(c(
+		slice(1)
+	
+	# Return only the columns spec
+	out <- out %>% select(c(
 			year_col,
 			type_col,
 			out_col
 		))
-	
-	# Return only the columns
 	return(out)
 }
 ```
 
-# Data
+# Example Calculations with Vancouver Data
+
+Calculate road lengths per year adjusted for up to 2 changes, assuming data contains lengths in meters.
+
+## Data
 
 Read road segment data along with install and upgrade variables.
 
@@ -110,7 +118,7 @@ vanc_raw <- read_excel("../../data/raw/vancouver/Vancouver_Bikeways_Complete_AS.
 vanc_raw
 ```
 
-# Preprocessing
+## Preprocessing
 
 Clean the raw data.
 
@@ -163,10 +171,6 @@ vanc %>% select(
 )
 ```
 
-# Example Calculations with Vancouver Data
-
-Calculate road lengths per year, assuming data contains lengths in meters.
-
 ## Step 1: Calculate Install Road Lengths By Infrastructure Type
 
 Calculate cumulative sum of road lengths with installations by infrastructure type ordered by year.
@@ -189,7 +193,7 @@ vanc_install <- calc_yearly_len(
 vanc_install
 ```
 
-## Step 2a: Calculate Yearly Road Lengths By Infrastructure Type for Upgrade 1
+## Step 2a: Calculate Yearly Road Lengths By Infrastructure Type for Change 1
 
 These road lengths are to be added for the particular years and infrastructure types.
 
@@ -199,7 +203,7 @@ $$
 
 ```{r}
 vanc_upgrade1 <- calc_yearly_len(
-	vanc %>% filter( # existing upgrade 1 with diff type upgrade
+	vanc %>% filter( # existing Change 1 with diff type upgrade
 		!is.na(upgrade1_year) & install_type != upgrade1_type
 	),
 	year_col = "upgrade1_year",
@@ -213,7 +217,7 @@ vanc_upgrade1 <- calc_yearly_len(
 vanc_upgrade1
 ```
 
-## Step 2b: Calculate Yearly Road Lengths for Replaced Infrastructure Types from Upgrade 1
+## Step 2b: Calculate Yearly Road Lengths for Replaced Infrastructure Types from Change 1
 
 These road lengths are to be subtracted for the particular years and infrastructure types.
 
@@ -237,7 +241,7 @@ vanc_upgrade1_repl <- calc_yearly_len(
 vanc_upgrade1_repl
 ```
 
-## Step 3a: Calculate Yearly Road Lengths By Infrastructure Type for Upgrade 2
+## Step 3a: Calculate Yearly Road Lengths By Infrastructure Type for Change 2
 
 These road lengths are to be added for the particular years and infrastructure types.
 
@@ -261,7 +265,7 @@ vanc_upgrade2 <- calc_yearly_len(
 vanc_upgrade2
 ```
 
-## Step 3b: Calculate Yearly Road Lengths for Replaced Infrastructure Types from Upgrade 2
+## Step 3b: Calculate Yearly Road Lengths for Replaced Infrastructure Types from Change 2
 
 These road lengths are to be subtracted for the particular years and infrastructure types.
 
@@ -316,17 +320,105 @@ vanc_yearly_len <- list(
 vanc_yearly_len
 ```
 
+# Final Function
+
+$$
+length_{year,type}^{install} + length_{year,type}^{upgrade1} + length_{year,type}^{upgrade2} - length_{year,type}^{replacement1} - length_{year,type}^{replacement2}
+$$
+
 ```{r}
-vanc_yearly_len %>% filter(year >= 2009) %>% mutate(
-	type = factor(type, levels = rev(c("PL", "LSB", "BUF", "PBL")))
-) %>% ggplot(aes(
-	x = year,
-	y = len,
-	fill = type
-)) + geom_area() +
-	scale_x_continuous(
-	      breaks = seq(2009, 2022, by = 1),
-	      labels = seq(2009, 2022, by = 1),
-	      limits = c(2009, 2022)
-	  )
+calc_yearly_adj_len <- function(
+		df,
+		year_cols = c("install_year", "upgrade1_year", "upgrade2_year"),
+		type_cols = c("install_type", "upgrade1_type", "upgrade2_type"),
+		len_cols = "segment_km",
+		out_cols = c("install_len", "upgrade1_len", "upgrade2_len"),
+		out_col = "adj_len",
+		repl_suffix = "_replaced"
+	) {
+	
+	# Convert len_col if char
+	len_cols <- rep(len_cols, length(year_cols))
+	
+	# Check cols same size
+	year_cols_n <- length(year_cols)
+	type_cols_n <- length(type_cols)
+	len_cols_n <- length(len_cols)
+	out_cols_n <- length(out_cols)
+	if (length(unique(c(year_cols_n, type_cols_n, len_cols_n, out_cols_n))) != 1) {
+		stop(glue(
+			"The arguments 'year_cols' ({year_cols_n}), 'type_cols' ({type_cols_n}), 'len_cols' ({len_cols_n}), and 'out_cols' ({out_cols_n}) must be the same length."
+		))
+	}
+	
+	# Calc yearly lens by infra type per install or change
+	out <- list()
+	for (i in 1:length(year_cols)) {
+		
+		# Get year, type, and len cols
+		ycol <- year_cols[[i]]
+		tcol <- type_cols[[i]]
+		lcol <- len_cols[[i]]
+		ocol <- out_cols[[i]]
+		
+		# Calc yearly len for install or change
+		out <- append(
+			out,
+			calc_yearly_len(
+				df,
+				year_col = ycol,
+				type_col = tcol,
+				len_col = lcol,
+				out_col = ocol
+			) %>%
+				rename(
+					"year" := !!ycol,
+					"type" := !!tcol
+				) %>% list
+		)
+		
+		# Calc yearly len for replacement
+		if (i > 1) {
+			tcol_repl <- type_cols[[i - 1]]
+			lcol_repl <- len_cols[[i - 1]]
+			out <- append(
+				out,
+				calc_yearly_len(
+					df %>% filter(.data[[tcol]] != .data[[tcol_repl]]),
+					year_col = ycol,
+					type_col = tcol_repl,
+					len_col = lcol_repl,
+					out_col = glue("{ocol}{repl_suffix}")
+				) %>%
+				rename(
+					"year" := !!ycol,
+					"type" := !!tcol_repl
+				) %>% list
+			)
+		}
+	}
+	
+	# Calc yearly adj lens by infra type
+	out <- out %>%
+		reduce(
+			left_join, by = c("year", "type")
+		) %>%
+		ungroup() %>%
+		mutate( # set unjoined na values to 0
+			across(everything(), ~replace_na(., 0))
+		) %>%
+		mutate( # added len by infra types due to install or changes
+			!!out_col := reduce(across(all_of(out_cols)), `+`)
+		) %>%
+		mutate( # removed len by infra types due to replacements
+			!!out_col := .data[[out_col]] - reduce(across(all_of(paste0(out_cols[2:out_cols_n], repl_suffix))), `-`)
+		)
+	return(out)
+}
+```
+
+## Test Final Function
+
+```{r}
+calc_yearly_adj_len(vanc)
 ```
