@@ -327,9 +327,9 @@ length_{year,type}^{install} + length_{year,type}^{change_i} - length_{year,type
 $$
 Where:
 
-* $length_{year,type}^{install}$ are the yearly road lengths for an infrastructure $type$ installation
-* $length_{year,type}^{change_i}$ are the yearly road lengths for an infrastructure $type$ change in order $i$
-* $length_{year,type}^{replacement_i}$ are the yearly road lengths for an infrastructure $type$ replaced by change in order $i$
+* $length_{year,type}^{install}$ are the yearly cumulative road lengths for an infrastructure $type$ installation
+* $length_{year,type}^{change_i}$ are the yearly cumulative road lengths for an infrastructure $type$ change in order $i$
+* $length_{year,type}^{replacement_i}$ are the yearly cumulative road lengths for an infrastructure $type$ replaced by change in order $i$
 
 ```{r}
 calc_yearly_adj_len <- function(
