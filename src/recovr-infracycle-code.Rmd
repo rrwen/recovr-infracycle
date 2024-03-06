@@ -1,0 +1,769 @@
+---
+title: "Pedalling Forward: The Evolution of Dedicated Cycling Infrastructure in Canadian Cities from 2010 to 2022"
+subtitle: "R Code for Figures and Tables"
+author:
+- "Richard Wen <richard.wen@utoronto.ca>"
+- "Konrad Samsel <konrad.samsel@mail.utoronto.ca>"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+    pdf_document:
+        toc: true
+        toc_depth: 3
+        highlight: zenburn
+---
+
+```{r metadata, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+\newpage
+
+# Libraries
+
+Install R libraries if needed.
+
+```{r lib-install, eval=FALSE}
+install.packages("rmarkdown")
+install.packages("bookdown")
+install.packages("knitr")
+install.packages("tidyverse")
+install.packages("glue")
+install.packages("readxl")
+install.packages("ggtext")
+install.packages("grid")
+install.packages("gridExtra")
+install.packages("scales")
+install.packages("ggrepel")
+```
+
+Load R libraries.
+
+```{r lib, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(ggtext)
+library(ggrepel)
+library(glue)
+library(grid)
+library(gridExtra)
+library(readxl)
+```
+
+# Functions
+
+## Calculate Yearly Road Length
+
+The following function calculates yearly road lengths by infrastructure type using cumulative sums and filling in missing years and types.
+
+For a given infrastructure type, the total road length for a given year is expressed below:
+
+$$
+length_{year,type} = f(year,type) = \sum_{i=year_{min}}^{year}l_{i, type}
+$$
+
+Where:
+
+* $year$ is the given year
+* $type$ is the infrastructure type
+* $year_{min}$ is the earliest year available in the data
+* $l_{i,type}$ is the road length $l$ for previous years $i$ and infrastructure $j$
+* $l_{i,type}$ is set to 0 if there is no data
+
+```{r}
+
+#' Calculate Yearly Road Lengths By Infrastructure Type
+#'
+#' @param df A data.frame with three columns containing the year, type, and road lengths.
+#' @param year_col The name (char) or index (int) of the column containing the years.
+#' @param type_col The name (char) or index (int) of the column containing the infrastructure type
+#' @param len_col The name (char) or index (int) of the column containing the road lengths.
+#' @param out_col The name (char) of the column containing the calculated yearly road lengths by type.
+#'
+#' @return A data.frame with three columns containing the year, type, and calculated yearly road lengths by type.
+#' @export
+#'
+calc_yearly_len <- function(
+		df,
+		year_col = "install_year",
+		type_col = "install_type",
+		len_col = "segment_len",
+		out_col = "len"
+	) {
+	
+	# Convert data types
+	df[[year_col]] <- as.integer(df[[year_col]])
+	df[[type_col]] <- as.character(df[[type_col]])
+	df[[len_col]] <- as.numeric(df[[len_col]])
+	
+	# Remove rows with empty type
+	out <- df %>% filter(
+		!is.na(.data[[type_col]])
+	)
+	
+	# Add dummy len for each type and year combo
+	# Covers cases where type and year combo does not exist
+	# E.g. No new PL installs in 2021, hence a record PL in 2021 does not exist
+	type_uniq <- unique(out[[type_col]])
+	type_n <- length(type_uniq)
+	year_uniq <- min(out[[year_col]], na.rm = TRUE):max(out[[year_col]], na.rm = TRUE)
+	year_n <- length(year_uniq)
+	out <- out %>% add_row(
+		!!year_col := rep(year_uniq, each = type_n),
+		!!type_col := rep(type_uniq, year_n),
+		!!len_col := rep(0, type_n * year_n)
+	)
+	
+	# Calc cumsum for each non-empty type ordered by year
+	out <- out %>%
+		arrange(.data[[year_col]]) %>%
+		group_by(.data[[type_col]]) %>%
+		mutate(
+			!!out_col := cumsum(.data[[len_col]])
+		)
+
+	# Get the last cumsum for each year and type
+	out <- out %>%
+		group_by(.data[[year_col]], .data[[type_col]]) %>%
+		arrange(desc(row_number())) %>%
+		slice(1)
+	
+	# Return only the columns spec
+	out <- out %>% select(c(
+			year_col,
+			type_col,
+			out_col
+		))
+	return(out)
+}
+```
+
+## Calculate Yearly Adjusted Road Length
+
+The following function calculates yearly adjusted road lengths by infrastructure type using cumulative sums and filling in missing years and types.
+
+For a given infrastructure type, the total adjusted road length for a given year is expressed below:
+
+$$
+length_{year,type}^{install} + length_{year,type}^{change_i} - length_{year,type}^{replacement_i}
+$$
+Where:
+
+* $length_{year,type}^{install}$ are the yearly cumulative road lengths for an infrastructure $type$ installation
+* $length_{year,type}^{change_i}$ are the yearly cumulative road lengths for an infrastructure $type$ change in order $i$
+* $length_{year,type}^{replacement_i}$ are the yearly cumulative road lengths for an infrastructure $type$ replaced by change in order $i$
+
+```{r}
+
+#' Calculate Yearly Adjusted Road Lengths By Infrastructure Type
+#'
+#' @param df A data.frame with three columns containing the year, type, and road lengths.
+#' @param year_cols A vector of the names (char) or indices (int) of the columns containing the years of installations followed by infrastructure changes in order.
+#' @param type_cols A vector of the names (char) or indices (int) of the columns containing the infrastructure types of installations followed by infrastructure changes in order.
+#' @param len_cols A vector of the names (char) or indices (int) of the columns containing the road lengths of installations followed by infrastructure changes in order.
+#' @param out_cols The name (char) of the column containing the calculated yearly road lengths by type.
+#' @param out_col The name (char) of the column containing the calculated yearly adjusted road lengths by type.
+#' @param repl_suffix A suffix (char) to append to the columns representing the road lengths of replaced infrastructure types from changes.
+#' 
+#' @return A data.frame with columns containing the year, type, cumulative road lengths of installations, changes, and replacements, and calculated yearly adjusted road lengths by type.
+#' @export
+#'
+calc_yearly_adj_len <- function(
+		df,
+		year_cols = c("install_year", "upgrade1_year", "upgrade2_year"),
+		type_cols = c("install_type", "upgrade1_type", "upgrade2_type"),
+		len_cols = "segment_len",
+		out_cols = c("install_len", "upgrade1_len", "upgrade2_len"),
+		out_col = "adj_len",
+		repl_suffix = "_replaced"
+	) {
+	
+	# Convert len_col if char
+	len_cols <- rep(len_cols, length(year_cols))
+	
+	# Check cols same size
+	year_cols_n <- length(year_cols)
+	type_cols_n <- length(type_cols)
+	len_cols_n <- length(len_cols)
+	out_cols_n <- length(out_cols)
+	if (length(unique(c(year_cols_n, type_cols_n, len_cols_n, out_cols_n))) != 1) {
+		stop(glue(
+			"The arguments 'year_cols' ({year_cols_n}), 'type_cols' ({type_cols_n}), 'len_cols' ({len_cols_n}), and 'out_cols' ({out_cols_n}) must be the same length."
+		))
+	}
+	
+	# Calc yearly lens by infra type per install or change
+	out <- list()
+	for (i in 1:length(year_cols)) {
+		
+		# Get year, type, and len cols
+		ycol <- year_cols[[i]]
+		tcol <- type_cols[[i]]
+		lcol <- len_cols[[i]]
+		ocol <- out_cols[[i]]
+		
+		# Calc yearly len for install or change
+		out <- append(
+			out,
+			calc_yearly_len(
+				df,
+				year_col = ycol,
+				type_col = tcol,
+				len_col = lcol,
+				out_col = ocol
+			) %>%
+				rename(
+					"year" := !!ycol,
+					"type" := !!tcol
+				) %>% list
+		)
+		
+		# Calc yearly len for replacement
+		if (i > 1) {
+			tcol_repl <- type_cols[[i - 1]]
+			lcol_repl <- len_cols[[i - 1]]
+			out <- append(
+				out,
+				calc_yearly_len(
+					df %>% filter(.data[[tcol]] != .data[[tcol_repl]]),
+					year_col = ycol,
+					type_col = tcol_repl,
+					len_col = lcol_repl,
+					out_col = glue("{ocol}{repl_suffix}")
+				) %>%
+				rename(
+					"year" := !!ycol,
+					"type" := !!tcol_repl
+				) %>% list
+			)
+		}
+	}
+	
+	# Calc yearly adj lens by infra type
+	out <- out %>%
+		reduce(
+			left_join, by = c("year", "type")
+		) %>%
+		ungroup() %>%
+		mutate( # set unjoined na values to 0
+			across(everything(), ~replace_na(., 0))
+		) %>%
+		mutate( # added len by infra types due to install or changes
+			!!out_col := reduce(across(all_of(out_cols)), `+`)
+		) %>%
+		mutate( # removed len by infra types due to replacements
+			!!out_col := .data[[out_col]] - reduce(across(all_of(paste0(out_cols[2:out_cols_n], repl_suffix))), `-`)
+		)
+	return(out)
+}
+```
+
+## Plot Lengths by Year and Infrastructure
+
+Plots an area chart showing the cumulative road lengths by infrastructure type for each year.
+
+```{r}
+plot_yearly_len <- function(
+        df,
+        title = "",
+        x_label = "",
+        y_label = "",
+        fill_label = "Infrastructure Type",
+        year_col = "year",
+        year_start = 2009,
+        year_end = 2022,
+        len_col = "adj_len",
+        cat_col = "type",
+        cat_filter = c("N", "None"),
+        cat_recode = c(
+        	PL = "Painted Lane",
+        	PBL = "Cycle Track",
+        	BUF = "Buffered Lane",
+        	LSB = "Local Street Bikeway"
+        ),
+        line_50km = TRUE,
+        line_year = 2019,
+        color_low = "#DFEBF7",
+        color_high = "#3683BB"
+) {
+	
+	# Filter to start and end years
+	df <- df %>% filter(
+		.data[[year_col]] >= year_start & .data[[year_col]] <= year_end
+	)
+	
+	# Filter out particular infrastructure types
+	df <- df %>% filter(
+		!.data[[cat_col]] %in% cat_filter
+	)
+	
+	# Recode category types
+	df <- df %>% mutate(
+		!!cat_col := recode(.data[[cat_col]], !!!cat_recode)
+	)
+	
+	# Create fill colors
+	cat_n <- length(unique(df[[cat_col]]))
+	cat_colors <- scales::seq_gradient_pal(
+		color_low,
+		color_high
+	)(seq(0, 1, length.out = cat_n))
+	
+	# Create base plot
+	len_max <- max(df[[len_col]], na.rm = TRUE)
+	out <- ggplot(
+		df,
+		aes(
+			x = .data[[year_col]],
+			y = .data[[len_col]],
+			fill = .data[[cat_col]],
+			order = desc(.data[[cat_col]])
+		)
+	) +
+	geom_area(colour = NA, alpha = 0.7) +
+	scale_fill_manual(values = cat_colors) +
+	geom_line(
+		position = "stack",
+		size = 0.2
+	) +
+	labs(
+		x = x_label,
+		y = y_label,
+		fill = fill_label
+	) +
+	ggtitle(
+		bquote(underline(.(title)))
+	) +
+	guides(
+		fill = guide_legend(
+			reverse = F,
+			override.aes = list(
+				alpha = 0.7,
+				color = NA,
+				shape = NA
+			)
+		),
+		color = "none"
+	) +
+	scale_x_continuous(
+		breaks = seq(year_start, year_end, by = 1),
+		labels = seq(year_start, year_end, by = 1),
+		limits = c(year_start, year_end)
+	) +
+	theme_minimal() +
+	theme(
+		plot.margin = unit(c(5,5,5,5), "points")
+	)
+	
+	# Add year ref line
+	if (line_year) {
+		out <- out + geom_vline(
+			xintercept = line_year,
+			color = "black",
+			linetype = "dashed"
+		)
+	}
+	
+	# Add 50km ref line
+	if (line_50km) {
+		out <- out + geom_segment( # 50km red line
+			aes(
+				x = 2009,
+				y = 0,
+				xend = 2009,
+				yend = 50,
+				color = "#bb0000",
+				hjust = 0.15
+			)
+		) +
+		geom_segment( # 50km red triangle point down
+			aes(
+				x = 2009,
+				y = 50.01 - (len_max * 0.05),
+				xend = 2009,
+				yend = 50 - (len_max * 0.05),
+				color = "#bb0000",
+				hjust = 0.15
+			),
+			arrow = arrow(
+				length = unit(0.03, "npc"),
+				ends = "last",
+				type = "closed"
+			)
+		) +
+		geom_segment( # 50km red triangle point up
+			aes(
+				x = 2009,
+				y = (len_max * 0.05) - 0.01,
+				xend = 2009,
+				yend = (len_max * 0.05),
+				color = "#bb0000",
+				hjust = 0.15
+			),
+			arrow = arrow(
+				length = unit(0.03, "npc"),
+				ends = "last",
+				type = "closed"
+			)
+		) +
+		annotate(
+			"text",
+			x = 2009,
+			y = 50,
+			label = "50km",
+			color = "#bb0000",
+			hjust = -0.225
+		)
+	}
+	return(out)
+}
+```
+
+## Plot Lengths by Year and Road Type
+
+Plots an area chart from to show the segment lengths for different years and road types.
+
+```{r}
+plot_len_roads <- function(
+        df,
+        title = "",
+        x_label = "",
+        y_label = "",
+        year_start = 2009,
+        year_end = 2022,
+        year_col = "YEAR",
+        len_col = "Total_Length",
+        cat_col = "Infrastructure_Type"
+) {
+  len_max <- max(df[[len_col]], na.rm = TRUE)
+  out <- ggplot(
+    df,
+    aes(
+        x = .data[[year_col]],
+        y = .data[[len_col]],
+        fill = .data[[cat_col]],
+        order = dplyr::desc(.data[[cat_col]])
+    )
+  ) +
+  geom_area(colour = NA, alpha = 0.7) +
+  scale_fill_manual(
+      values = c("#C1DDB3", "#71A966", "#297A22"),
+      labels = c("Arterial", "Collector", "Local")
+  ) +
+  geom_line(position = "stack", size = 0.2) +
+  geom_vline(xintercept = 2019,
+             color = "black",
+             linetype = "dashed") +
+  labs(x = x_label,
+       y = y_label,
+       fill = "Roadway Type"
+  ) +
+  ggtitle(
+      bquote(underline(.(title)))
+  ) +
+  guides(
+      fill = guide_legend(
+          reverse = F,
+          override.aes = list(
+              alpha = 0.7,
+              color = NA,
+              shape = NA
+          )
+      ),
+      color = "none"
+  ) +
+  scale_x_continuous(
+      breaks = seq(year_start, year_end, by = 1),
+      labels = seq(year_start, year_end, by = 1),
+      limits = c(year_start, year_end)
+  ) +
+  theme_minimal() +
+  theme(
+      plot.margin = unit(c(5,5,5,5), "points"))
+  return(out)
+}
+```
+
+# Data
+
+## Vancouver Data
+
+```{r vanc-data}
+
+# Load raw data
+vanc_bikeways <- read_csv("../data/vancouver_bikeways_2009_2022_v1.csv")
+vanc_roads <- read_csv("../data/vancouver_roads_2009_2022_v1.csv")
+
+# Combine raw data
+vanc <- vanc_bikeways %>%
+	select(
+		ID_DATAENTRY,
+		INST_YR,
+		INST_MIN_HTYPE,
+		UPGR1_YR,
+		UPGR1_MIN_HTYPE,
+		UPGR2_YR,
+		UPGR2_MIN_TYPE,
+		ATR_SEGMENT_LENGTH
+	) %>%
+	left_join(
+		vanc_roads %>% select(
+			ID_DATAENTRY,
+			ATR_SEGMENT_TYPE
+		),
+		by = "ID_DATAENTRY"
+	) %>%
+	rename(
+		id = ID_DATAENTRY,
+		install_year = INST_YR,
+		install_type = INST_MIN_HTYPE,
+		upgrade1_year = UPGR1_YR,
+		upgrade1_type = UPGR1_MIN_HTYPE,
+		upgrade2_year = UPGR2_YR,
+		upgrade2_type = UPGR2_MIN_TYPE,
+		segment_len = ATR_SEGMENT_LENGTH
+	) %>%
+	mutate(
+		segment_len = segment_len / 1000
+	)
+vanc
+```
+## Calgary Data
+
+```{r calg-data}
+
+# Load raw data
+calg_bikeways <- read_csv("../data/calgary_bikeways_2009_2022_v1.csv")
+calg_roads <- read_csv("../data/calgary_roads_2009_2022_v1.csv")
+
+# Combine raw data
+calg <- calg_bikeways %>%
+    select(
+		SHAPE_ID,
+		INST_YR,
+		INST_MIN_HTYPE,
+		UPGR1_YR,
+		UPGR1_MIN_HTYPE,
+		UPGR2_YR,
+		UPGR2_MIN_HTYPE,
+		ATR_SEGMENT_LENGTH
+	) %>%
+	left_join(
+		calg_roads %>% select(
+			shape_id,
+			ctp_class
+		),
+		by = join_by(SHAPE_ID == shape_id)
+	) %>%
+	rename(
+		id = SHAPE_ID,
+		install_year = INST_YR,
+		install_type = INST_MIN_HTYPE,
+		upgrade1_year = UPGR1_YR,
+		upgrade1_type = UPGR1_MIN_HTYPE,
+		upgrade2_year = UPGR2_YR,
+		upgrade2_type = UPGR2_MIN_HTYPE,
+		segment_len = ATR_SEGMENT_LENGTH
+	) %>%
+	mutate(
+		segment_len = segment_len / 1000
+	)
+calg
+```
+
+## Toronto Data
+
+```{r toron-data}
+
+# Load raw data
+toron_bikeways <- read_csv("../data/toronto_bikeways_2009_2022_v1.csv")
+toron_roads <- read_csv("../data/toronto_roads_2009_2022_v1.csv")
+
+# Combine raw data
+toron <- toron_bikeways %>%
+    select(ID_OID,
+           INST_YR,
+           INST_MIN_HTYPE,
+    	   UPGR1_YR,
+    	   UPGR1_MIN_HTYPE,
+    	   UPGR2_YR,
+    	   UPGR2_MIN_HTYPE,
+           ATR_SEGMENT_LENGTH
+    ) %>%
+	left_join(
+		toron_roads %>% select(
+			OID_,
+			FEATURE36
+		),
+		by = join_by(ID_OID == OID_)
+	) %>%
+	rename(
+		id = ID_OID,
+		install_year = INST_YR,
+		install_type = INST_MIN_HTYPE,
+		upgrade1_year = UPGR1_YR,
+		upgrade1_type = UPGR1_MIN_HTYPE,
+		upgrade2_year = UPGR2_YR,
+		upgrade2_type = UPGR2_MIN_HTYPE,
+		segment_len = ATR_SEGMENT_LENGTH
+	) %>%
+	mutate(
+		segment_len = segment_len / 1000
+	)
+toron
+```
+
+# Test
+
+```{r}
+calc_yearly_adj_len(vanc) %>% plot_yearly_len
+```
+
+# Figures
+
+## Figure 2: Changes in dedicated cycling infrastructure between 2009 and 2022 for Vancouver, Calgary, and Toronto by infrastructure category.
+
+Assessed using roadway centreline-km, with infrastructure classifications determined by the most protective element present along each road segment.
+
+```{r fig.width=8.5, fig.height=11}
+
+# Combine all cities for plotting
+vanc_plot_infra <- calc_len_infra(vanc, 2009, 2021) %>%
+    plot_len_infra(title = "Vancouver, Canada") +
+    theme(plot.margin = unit(c(15, 5, 5, 5), "point"))
+calg_plot_infra <- calc_len_infra(calg, 2009, 2022) %>%
+    plot_len_infra(title = "Calgary, Canada")
+toron_plot_infra <- calc_len_infra(toron, 2009, 2022) %>%
+    plot_len_infra(title = "Toronto, Canada")
+
+# Plot per city
+grid.arrange(
+    vanc_plot_infra,
+    calg_plot_infra,
+    toron_plot_infra,
+    ncol = 1,
+    top = textGrob(
+        "Roadways with Dedicated Cycling Infrastructure",
+        gp = gpar(fontsize=18)
+    ),
+    bottom = textGrob(
+        "Years (2009-2022)",
+        gp = gpar(fontsize=14)
+    ),
+    left = textGrob(
+        "Total Length (Centreline km)",
+        gp = gpar(fontsize=14),
+        rot = 90
+    ),
+    vp = viewport(
+        width = 0.95,
+        height = 0.95
+    )
+)
+```
+
+# Supplementary Figures
+
+## Supplementary Figure 4: Changes in dedicated cycling infrastructure between 2009 and 2021 for the Municipality of Vancouver, CA
+
+By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
+
+```{r}
+
+# Recode segments to one of art, coll, or lane
+vanc_prep_roads <- vanc %>%
+    mutate(ATR_ROAD_TYPE = case_when(
+        ATR_SEGMENT_TYPE %in% c( # arterial equiv
+        	"Arterial"
+        ) ~ "Arterial",
+        ATR_SEGMENT_TYPE %in% c( # collector equiv
+        	"Collector",
+        	"Secondary Arterial"
+        ) ~ "Collector",
+        ATR_SEGMENT_TYPE %in% c( # local equiv
+        	"Lane",
+        	"Residential",
+        	"Leased",
+        	"Recreational"
+        ) ~ "Local",
+        .default = ATR_SEGMENT_TYPE
+    ))
+
+# Aggregate by year
+vanc_plot_roads <- vanc_prep_roads %>%
+	filter(ATR_SEGMENT_TYPE == "Arterial") %>%
+	calc_len_infra(2009, 2021) %>%
+    plot_len_infra(title = "Vancouver, Canada") +
+    theme(plot.margin = unit(c(15,5,5,5), "point"))
+vanc_plot_roads
+```
+
+## Toronto, CA
+
+```{r}
+
+# Recode segments to one of art, coll, or lane
+toron_plot_roads <- toron %>%
+    mutate(ATR_ROAD_TYPE = case_when(
+        ATR_SEGMENT_TYPE %in% c( # arterial equiv
+        	"Major Arterial",
+        	"Major Arterial Ramp",
+        	"Minor Arterial"
+        ) ~ "Arterial",
+        ATR_SEGMENT_TYPE %in% c( # collector equiv
+        	"Collector"
+        ) ~ "Collector",
+        ATR_SEGMENT_TYPE %in% c(  # local equiv
+        	"Local",
+        	"Other"
+        ) ~ "Local",
+        .default = ATR_SEGMENT_TYPE
+    ))
+```
+
+## Calgary, CA
+
+```{r}
+
+# Recode segments to one of art, coll, or lane
+calg_plot_roads <- calg %>%
+    mutate(ATR_ROAD_TYPE = case_when(
+        ATR_SEGMENT_TYPE %in% c( # arterial equiv
+        	"Arterial Street",
+        	"Industrial Arterial",
+        	"Local Arterial",
+        	"Parkway",
+        	"Urban Boulevard"
+        ) ~ "Arterial",
+        ATR_SEGMENT_TYPE %in% c( # collector equiv
+        	"Neighbourhood Boulevard",
+        	"Collector",
+        	"Primary Collector",
+        	"Skeletal Road"
+        ) ~ "Collector",
+        ATR_SEGMENT_TYPE %in% c( # local equiv
+        	"Access Route",
+        	"Residential Street",
+        	"Activity Center Street",
+        	"Historic Road Allowance",
+        	"Lanes (Alleys)",
+        	"Industrial Street"
+        ) ~ "Local",
+        .default = ATR_SEGMENT_TYPE
+    ))
+```
+
+# Appendix
+
+## R Version
+
+R and RMarkdown in RStudio was used to generate this document.
+
+```{r echo=FALSE}
+version
+```
+
+## R Code
+
+The R script below runs all the code in this document.
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```

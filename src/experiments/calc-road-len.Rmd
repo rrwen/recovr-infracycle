@@ -86,7 +86,7 @@ calc_yearly_len <- function(
 		arrange(.data[[year_col]]) %>%
 		group_by(.data[[type_col]]) %>%
 		mutate(
-			!!out_col := cumsum(segment_km)
+			!!out_col := cumsum(.data[[len_col]])
 		)
 
 	# Get the last cumsum for each year and type
@@ -322,6 +322,10 @@ vanc_yearly_len
 
 # Final Function
 
+The following function calculates yearly adjusted road lengths by infrastructure type using cumulative sums and filling in missing years and types.
+
+For a given infrastructure type, the total adjusted road length for a given year is expressed below:
+
 $$
 length_{year,type}^{install} + length_{year,type}^{change_i} - length_{year,type}^{replacement_i}
 $$
@@ -332,6 +336,20 @@ Where:
 * $length_{year,type}^{replacement_i}$ are the yearly cumulative road lengths for an infrastructure $type$ replaced by change in order $i$
 
 ```{r}
+
+#' Calculate Yearly Adjusted Road Lengths By Infrastructure Type
+#'
+#' @param df A data.frame with three columns containing the year, type, and road lengths.
+#' @param year_cols A vector of the names (char) or indices (int) of the columns containing the years of installations followed by infrastructure changes in order.
+#' @param type_cols A vector of the names (char) or indices (int) of the columns containing the infrastructure types of installations followed by infrastructure changes in order.
+#' @param len_cols A vector of the names (char) or indices (int) of the columns containing the road lengths of installations followed by infrastructure changes in order.
+#' @param out_cols The name (char) of the column containing the calculated yearly road lengths by type.
+#' @param out_col The name (char) of the column containing the calculated yearly adjusted road lengths by type.
+#' @param repl_suffix A suffix (char) to append to the columns representing the road lengths of replaced infrastructure types from changes.
+#' 
+#' @return A data.frame with columns containing the year, type, cumulative road lengths of installations, changes, and replacements, and calculated yearly adjusted road lengths by type.
+#' @export
+#'
 calc_yearly_adj_len <- function(
 		df,
 		year_cols = c("install_year", "upgrade1_year", "upgrade2_year"),
