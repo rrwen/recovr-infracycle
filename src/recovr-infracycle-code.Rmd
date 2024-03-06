@@ -261,6 +261,18 @@ calc_yearly_adj_len <- function(
 Plots an area chart showing the cumulative road lengths by infrastructure type for each year.
 
 ```{r}
+
+#' Plot Yearly Road Lengths By Infrastructure Type
+#'
+#' @param df A data.frame with three columns containing the year, type, and road lengths.
+#' @param year_col The name (char) or index (int) of the column containing the years.
+#' @param type_col The name (char) or index (int) of the column containing the infrastructure type
+#' @param len_col The name (char) or index (int) of the column containing the road lengths.
+#' @param out_col The name (char) of the column containing the calculated yearly road lengths by type.
+#' 
+#' @return A data.frame with columns containing the year, type, cumulative road lengths of installations, changes, and replacements, and calculated yearly adjusted road lengths by type.
+#' @export
+#'
 plot_yearly_len <- function(
         df,
         title = "",
@@ -271,12 +283,12 @@ plot_yearly_len <- function(
         year_start = 2009,
         year_end = 2022,
         len_col = "adj_len",
-        cat_col = "type",
-        cat_filter = c("N", "None"),
-        cat_recode = c(
-        	PL = "Painted Lane",
+        type_col = "type",
+        type_filter = c("N", "None"),
+        type_recode = c(
         	PBL = "Cycle Track",
         	BUF = "Buffered Lane",
+        	PL = "Painted Lane",
         	LSB = "Local Street Bikeway"
         ),
         line_50km = TRUE,
@@ -292,20 +304,24 @@ plot_yearly_len <- function(
 	
 	# Filter out particular infrastructure types
 	df <- df %>% filter(
-		!.data[[cat_col]] %in% cat_filter
+		!.data[[type_col]] %in% type_filter
 	)
+	
+	# Reorder category types
+	type_uniq <- unique(df[[type_col]])
+	type_reorder <- names(type_recode)
+	type_reorder <- c(type_reorder, type_uniq[!type_uniq %in% type_reorder])
+	df[[type_col]] <- factor(df[[type_col]], levels = type_reorder)
 	
 	# Recode category types
-	df <- df %>% mutate(
-		!!cat_col := recode(.data[[cat_col]], !!!cat_recode)
-	)
+	df[[type_col]] <- recode(df[[type_col]], !!!type_recode)
 	
 	# Create fill colors
-	cat_n <- length(unique(df[[cat_col]]))
-	cat_colors <- scales::seq_gradient_pal(
+	type_n <- length(type_uniq)
+	type_colors <- scales::seq_gradient_pal(
 		color_low,
 		color_high
-	)(seq(0, 1, length.out = cat_n))
+	)(seq(0, 1, length.out = type_n))
 	
 	# Create base plot
 	len_max <- max(df[[len_col]], na.rm = TRUE)
@@ -314,12 +330,12 @@ plot_yearly_len <- function(
 		aes(
 			x = .data[[year_col]],
 			y = .data[[len_col]],
-			fill = .data[[cat_col]],
-			order = desc(.data[[cat_col]])
+			fill = .data[[type_col]],
+			order = desc(.data[[type_col]])
 		)
 	) +
 	geom_area(colour = NA, alpha = 0.7) +
-	scale_fill_manual(values = cat_colors) +
+	scale_fill_manual(values = type_colors) +
 	geom_line(
 		position = "stack",
 		size = 0.2
@@ -431,7 +447,7 @@ plot_len_roads <- function(
         year_end = 2022,
         year_col = "YEAR",
         len_col = "Total_Length",
-        cat_col = "Infrastructure_Type"
+        type_col = "Infrastructure_Type"
 ) {
   len_max <- max(df[[len_col]], na.rm = TRUE)
   out <- ggplot(
@@ -439,8 +455,8 @@ plot_len_roads <- function(
     aes(
         x = .data[[year_col]],
         y = .data[[len_col]],
-        fill = .data[[cat_col]],
-        order = dplyr::desc(.data[[cat_col]])
+        fill = .data[[type_col]],
+        order = dplyr::desc(.data[[type_col]])
     )
   ) +
   geom_area(colour = NA, alpha = 0.7) +
