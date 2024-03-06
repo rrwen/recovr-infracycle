@@ -265,12 +265,23 @@ Plots an area chart showing the cumulative road lengths by infrastructure type f
 #' Plot Yearly Road Lengths By Infrastructure Type
 #'
 #' @param df A data.frame with three columns containing the year, type, and road lengths.
+#' @param title
+#' @param x_label
+#' @param y_label
+#' @param fill_label
 #' @param year_col The name (char) or index (int) of the column containing the years.
-#' @param type_col The name (char) or index (int) of the column containing the infrastructure type
+#' @param year_start
+#' @param year_end
 #' @param len_col The name (char) or index (int) of the column containing the road lengths.
-#' @param out_col The name (char) of the column containing the calculated yearly road lengths by type.
+#' @param type_col The name (char) or index (int) of the column containing the infrastructure type
+#' @param type_filter
+#' @param type_recode
+#' @param line_50km
+#' @param line_year
+#' @param color_low
+#' @param color_high
 #' 
-#' @return A data.frame with columns containing the year, type, cumulative road lengths of installations, changes, and replacements, and calculated yearly adjusted road lengths by type.
+#' @return An area ggplot of the cumulative yearly road lengths by infrastructure type.
 #' @export
 #'
 plot_yearly_len <- function(
@@ -323,7 +334,7 @@ plot_yearly_len <- function(
 		color_high
 	)(seq(0, 1, length.out = type_n))
 	
-	# Create base plot
+	# Create base area plot with legend and labels
 	len_max <- max(df[[len_col]], na.rm = TRUE)
 	out <- ggplot(
 		df,
@@ -369,7 +380,7 @@ plot_yearly_len <- function(
 		plot.margin = unit(c(5,5,5,5), "points")
 	)
 	
-	# Add year ref line
+	# Add dotted year ref line
 	if (line_year) {
 		out <- out + geom_vline(
 			xintercept = line_year,
@@ -378,7 +389,7 @@ plot_yearly_len <- function(
 		)
 	}
 	
-	# Add 50km ref line
+	# Add red 50km ref line
 	if (line_50km) {
 		out <- out + geom_segment( # 50km red line
 			aes(
