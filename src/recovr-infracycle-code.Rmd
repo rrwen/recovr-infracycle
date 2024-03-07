@@ -218,39 +218,70 @@ calc_yearly_adj_len <- function(
 		
 		# Calc yearly len for replacement
 		if (i > 1) {
+			
+			# Get repl cols
 			tcol_repl <- type_cols[[i - 1]]
 			lcol_repl <- len_cols[[i - 1]]
-			out <- append(
-				out,
-				calc_yearly_len(
-					df %>% filter(.data[[tcol]] != .data[[tcol_repl]]),
-					year_col = ycol,
-					type_col = tcol_repl,
-					len_col = lcol_repl,
-					out_col = glue("{ocol}{repl_suffix}")
-				) %>%
-				rename(
-					"year" := !!ycol,
-					"type" := !!tcol_repl
-				) %>% list
-			)
+			
+			# Filter for repl records only where type is not eq to change type
+			df_repl <- df %>% filter(.data[[tcol]] != .data[[tcol_repl]])
+			
+			# Calc repl len if there are any changes
+			has_change <- !is.na(df_repl[[tcol]]) %>% all 
+			if (has_change) {
+				out <- append(
+					out,
+					calc_yearly_len(
+						df_repl,
+						year_col = ycol,
+						type_col = tcol_repl,
+						len_col = lcol_repl,
+						out_col = glue("{ocol}{repl_suffix}")
+					) %>%
+					rename(
+						"year" := !!ycol,
+						"type" := !!tcol_repl
+					) %>% list
+				)
+			}
 		}
 	}
 	
-	# Calc yearly adj lens by infra type
+	# Combine all lens in list to single df
 	out <- out %>%
 		reduce(
 			left_join, by = c("year", "type")
 		) %>%
-		ungroup() %>%
-		mutate( # set unjoined na values to 0
-			across(everything(), ~replace_na(., 0))
-		) %>%
+		ungroup()
+	
+	# Create template for change and repl cols
+	change_cols <- paste0(out_cols[2:out_cols_n])# change cols
+	change_cols <- c(change_cols, paste0(out_cols[2:out_cols_n], repl_suffix)) # repl cols
+	change_cols_add <- rep(0, length(change_cols)) # set default vals
+	names(change_cols_add) <- change_cols
+	
+	# Add change and repl cols set to 0 if not present
+	out <- out %>% add_column(
+		!!!change_cols_add[setdiff(names(change_cols_add), names(.))]
+	)
+	
+	# Set NA to 0
+	out <- out %>% mutate(
+		across(everything(), ~replace_na(., 0))
+	)
+	
+	# Calc yearly adj lens by infra type
+	out <- out %>%
 		mutate( # added len by infra types due to install or changes
 			!!out_col := reduce(across(all_of(out_cols)), `+`)
 		) %>%
 		mutate( # removed len by infra types due to replacements
-			!!out_col := .data[[out_col]] - reduce(across(all_of(paste0(out_cols[2:out_cols_n], repl_suffix))), `-`)
+			!!out_col := .data[[out_col]] - reduce(
+				across(all_of(
+					paste0(out_cols[2:out_cols_n], repl_suffix)
+				)),
+				`-`
+			)
 		)
 	return(out)
 }
@@ -295,7 +326,7 @@ plot_yearly_len <- function(
         year_end = 2022,
         len_col = "adj_len",
         type_col = "type",
-        type_filter = c("N", "None"),
+        type_filter = c("N", "None", "SR"),
         type_recode = c(
         	PBL = "Cycle Track",
         	BUF = "Buffered Lane",
@@ -444,71 +475,6 @@ plot_yearly_len <- function(
 }
 ```
 
-## Plot Lengths by Year and Road Type
-
-Plots an area chart from to show the segment lengths for different years and road types.
-
-```{r}
-plot_len_roads <- function(
-        df,
-        title = "",
-        x_label = "",
-        y_label = "",
-        year_start = 2009,
-        year_end = 2022,
-        year_col = "YEAR",
-        len_col = "Total_Length",
-        type_col = "Infrastructure_Type"
-) {
-  len_max <- max(df[[len_col]], na.rm = TRUE)
-  out <- ggplot(
-    df,
-    aes(
-        x = .data[[year_col]],
-        y = .data[[len_col]],
-        fill = .data[[type_col]],
-        order = dplyr::desc(.data[[type_col]])
-    )
-  ) +
-  geom_area(colour = NA, alpha = 0.7) +
-  scale_fill_manual(
-      values = c("#C1DDB3", "#71A966", "#297A22"),
-      labels = c("Arterial", "Collector", "Local")
-  ) +
-  geom_line(position = "stack", size = 0.2) +
-  geom_vline(xintercept = 2019,
-             color = "black",
-             linetype = "dashed") +
-  labs(x = x_label,
-       y = y_label,
-       fill = "Roadway Type"
-  ) +
-  ggtitle(
-      bquote(underline(.(title)))
-  ) +
-  guides(
-      fill = guide_legend(
-          reverse = F,
-          override.aes = list(
-              alpha = 0.7,
-              color = NA,
-              shape = NA
-          )
-      ),
-      color = "none"
-  ) +
-  scale_x_continuous(
-      breaks = seq(year_start, year_end, by = 1),
-      labels = seq(year_start, year_end, by = 1),
-      limits = c(year_start, year_end)
-  ) +
-  theme_minimal() +
-  theme(
-      plot.margin = unit(c(5,5,5,5), "points"))
-  return(out)
-}
-```
-
 # Data
 
 ## Vancouver Data
@@ -546,7 +512,8 @@ vanc <- vanc_bikeways %>%
 		upgrade1_type = UPGR1_MIN_HTYPE,
 		upgrade2_year = UPGR2_YR,
 		upgrade2_type = UPGR2_MIN_TYPE,
-		segment_len = ATR_SEGMENT_LENGTH
+		segment_len = ATR_SEGMENT_LENGTH,
+		segment_type = ATR_SEGMENT_TYPE
 	) %>%
 	mutate(
 		segment_len = segment_len / 1000
@@ -588,7 +555,8 @@ calg <- calg_bikeways %>%
 		upgrade1_type = UPGR1_MIN_HTYPE,
 		upgrade2_year = UPGR2_YR,
 		upgrade2_type = UPGR2_MIN_HTYPE,
-		segment_len = ATR_SEGMENT_LENGTH
+		segment_len = ATR_SEGMENT_LENGTH,
+		segment_type = ctp_class
 	) %>%
 	mutate(
 		segment_len = segment_len / 1000
@@ -606,14 +574,15 @@ toron_roads <- read_csv("../data/toronto_roads_2009_2022_v1.csv")
 
 # Combine raw data
 toron <- toron_bikeways %>%
-    select(ID_OID,
-           INST_YR,
-           INST_MIN_HTYPE,
-    	   UPGR1_YR,
-    	   UPGR1_MIN_HTYPE,
-    	   UPGR2_YR,
-    	   UPGR2_MIN_HTYPE,
-           ATR_SEGMENT_LENGTH
+    select(
+		ID_OID,
+		INST_YR,
+		INST_MIN_HTYPE,
+		UPGR1_YR,
+		UPGR1_MIN_HTYPE,
+		UPGR2_YR,
+		UPGR2_MIN_HTYPE,
+		ATR_SEGMENT_LENGTH
     ) %>%
 	left_join(
 		toron_roads %>% select(
@@ -630,18 +599,13 @@ toron <- toron_bikeways %>%
 		upgrade1_type = UPGR1_MIN_HTYPE,
 		upgrade2_year = UPGR2_YR,
 		upgrade2_type = UPGR2_MIN_HTYPE,
-		segment_len = ATR_SEGMENT_LENGTH
+		segment_len = ATR_SEGMENT_LENGTH,
+		segment_type = FEATURE36
 	) %>%
 	mutate(
 		segment_len = segment_len / 1000
 	)
 toron
-```
-
-# Test
-
-```{r}
-calc_yearly_adj_len(vanc) %>% plot_yearly_len
 ```
 
 # Figures
@@ -653,13 +617,13 @@ Assessed using roadway centreline-km, with infrastructure classifications determ
 ```{r fig.width=8.5, fig.height=11}
 
 # Combine all cities for plotting
-vanc_plot_infra <- calc_len_infra(vanc, 2009, 2021) %>%
-    plot_len_infra(title = "Vancouver, Canada") +
+vanc_plot_infra <- calc_yearly_adj_len(vanc) %>%
+    plot_yearly_len(title = "Vancouver, Canada") +
     theme(plot.margin = unit(c(15, 5, 5, 5), "point"))
-calg_plot_infra <- calc_len_infra(calg, 2009, 2022) %>%
-    plot_len_infra(title = "Calgary, Canada")
-toron_plot_infra <- calc_len_infra(toron, 2009, 2022) %>%
-    plot_len_infra(title = "Toronto, Canada")
+calg_plot_infra <-  calc_yearly_adj_len(calg) %>%
+    plot_yearly_len(title = "Calgary, Canada")
+toron_plot_infra <-  calc_yearly_adj_len(toron) %>%
+    plot_yearly_len(title = "Toronto, Canada")
 
 # Plot per city
 grid.arrange(
@@ -697,28 +661,28 @@ By (A) roadway classification, and (B) infrastructure distribution within each r
 
 # Recode segments to one of art, coll, or lane
 vanc_prep_roads <- vanc %>%
-    mutate(ATR_ROAD_TYPE = case_when(
-        ATR_SEGMENT_TYPE %in% c( # arterial equiv
+    mutate(road_type = case_when(
+        segment_type %in% c( # arterial equiv
         	"Arterial"
         ) ~ "Arterial",
-        ATR_SEGMENT_TYPE %in% c( # collector equiv
+        segment_type %in% c( # collector equiv
         	"Collector",
         	"Secondary Arterial"
         ) ~ "Collector",
-        ATR_SEGMENT_TYPE %in% c( # local equiv
+        segment_type %in% c( # local equiv
         	"Lane",
         	"Residential",
         	"Leased",
         	"Recreational"
         ) ~ "Local",
-        .default = ATR_SEGMENT_TYPE
+        .default = segment_type
     ))
 
 # Aggregate by year
 vanc_plot_roads <- vanc_prep_roads %>%
-	filter(ATR_SEGMENT_TYPE == "Arterial") %>%
-	calc_len_infra(2009, 2021) %>%
-    plot_len_infra(title = "Vancouver, Canada") +
+	filter(road_type == "Arterial") %>%
+	calc_yearly_adj_len %>%
+    plot_yearly_len(title = "Vancouver, Canada") +
     theme(plot.margin = unit(c(15,5,5,5), "point"))
 vanc_plot_roads
 ```
@@ -729,20 +693,20 @@ vanc_plot_roads
 
 # Recode segments to one of art, coll, or lane
 toron_plot_roads <- toron %>%
-    mutate(ATR_ROAD_TYPE = case_when(
-        ATR_SEGMENT_TYPE %in% c( # arterial equiv
+    mutate(road_type = case_when(
+        segment_type %in% c( # arterial equiv
         	"Major Arterial",
         	"Major Arterial Ramp",
         	"Minor Arterial"
         ) ~ "Arterial",
-        ATR_SEGMENT_TYPE %in% c( # collector equiv
+        segment_type %in% c( # collector equiv
         	"Collector"
         ) ~ "Collector",
-        ATR_SEGMENT_TYPE %in% c(  # local equiv
+        segment_type %in% c(  # local equiv
         	"Local",
         	"Other"
         ) ~ "Local",
-        .default = ATR_SEGMENT_TYPE
+        .default = segment_type
     ))
 ```
 
@@ -752,21 +716,21 @@ toron_plot_roads <- toron %>%
 
 # Recode segments to one of art, coll, or lane
 calg_plot_roads <- calg %>%
-    mutate(ATR_ROAD_TYPE = case_when(
-        ATR_SEGMENT_TYPE %in% c( # arterial equiv
+    mutate(road_type = case_when(
+        segment_type %in% c( # arterial equiv
         	"Arterial Street",
         	"Industrial Arterial",
         	"Local Arterial",
         	"Parkway",
         	"Urban Boulevard"
         ) ~ "Arterial",
-        ATR_SEGMENT_TYPE %in% c( # collector equiv
+        segment_type %in% c( # collector equiv
         	"Neighbourhood Boulevard",
         	"Collector",
         	"Primary Collector",
         	"Skeletal Road"
         ) ~ "Collector",
-        ATR_SEGMENT_TYPE %in% c( # local equiv
+        segment_type %in% c( # local equiv
         	"Access Route",
         	"Residential Street",
         	"Activity Center Street",
@@ -774,7 +738,7 @@ calg_plot_roads <- calg %>%
         	"Lanes (Alleys)",
         	"Industrial Street"
         ) ~ "Local",
-        .default = ATR_SEGMENT_TYPE
+        .default = segment_type
     ))
 ```
 
