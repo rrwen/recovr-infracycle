@@ -158,6 +158,7 @@ Where:
 #' @param df A data.frame with three columns containing the year, type, and road lengths.
 #' @param year_cols A vector of the names (char) or indices (int) of the columns containing the years of installations followed by infrastructure changes in order.
 #' @param type_cols A vector of the names (char) or indices (int) of the columns containing the infrastructure types of installations followed by infrastructure changes in order.
+#' @param type_col The name (char) of the column containing the type.
 #' @param len_cols A vector of the names (char) or indices (int) of the columns containing the road lengths of installations followed by infrastructure changes in order.
 #' @param out_cols The name (char) of the column containing the calculated yearly road lengths by type.
 #' @param out_col The name (char) of the column containing the calculated yearly adjusted road lengths by type.
@@ -170,6 +171,7 @@ calc_yearly_adj_len <- function(
 		df,
 		year_cols = c("install_year", "upgrade1_year", "upgrade2_year"),
 		type_cols = c("install_type", "upgrade1_type", "upgrade2_type"),
+		type_col = "type",
 		len_cols = "segment_len",
 		out_cols = c("install_len", "upgrade1_len", "upgrade2_len"),
 		out_col = "adj_len",
@@ -283,80 +285,92 @@ calc_yearly_adj_len <- function(
 				`-`
 			)
 		)
+	
+	# Rename type col
+	out <- out %>% rename(!!type_col := type)
 	return(out)
 }
 ```
 
-## Plot Lengths by Year and Infrastructure
+## Plot Lengths by Year for Generic Types
 
-Plots an area chart showing the cumulative road lengths by infrastructure type for each year.
+Plots an area chart showing the cumulative road lengths by a user-defined type for each year.
+
+This is a generic function for user-defined types such as infrastructure or road types.
 
 ```{r}
 
-#' Plot Yearly Road Lengths By Infrastructure Type
+#' Plot Yearly Road Lengths By Type
 #'
 #' @param df A data.frame with three columns containing the year, type, and road lengths.
-#' @param title
-#' @param x_label
-#' @param y_label
-#' @param fill_label
+#' @param title The title (char) of the plot.
+#' @param x_title The title (char) of the x-axis.
+#' @param y_title The title (char) of the y-axis.
+#' @param legend_title The title (char) of the legend.
 #' @param year_col The name (char) or index (int) of the column containing the years.
-#' @param year_start
-#' @param year_end
+#' @param year_start The minimum year (int) to display.
+#' @param year_end The maximum year (int) to display.
 #' @param len_col The name (char) or index (int) of the column containing the road lengths.
-#' @param type_col The name (char) or index (int) of the column containing the infrastructure type
-#' @param type_filter
-#' @param type_recode
-#' @param line_50km
-#' @param line_year
-#' @param color_low
-#' @param color_high
-#' 
-#' @return An area ggplot of the cumulative yearly road lengths by infrastructure type.
+#' @param type_col The name (char) or index (int) of the column containing the type.
+#' @param type_filter A vector (char) of types to remove fomr the plot.
+#' @param type_recode A named vector (char) of names representing types and values representing the values to replace each type with.
+#' @param line_50km Set to TRUE to draw the 50 km red reference line.
+#' @param line_year Set to a year (int) to draw a reference line for a year. If FALSE, a line will not be drawn.
+#' @param color_low The bottom color (char) of the type.
+#' @param color_high The top color (char) of the type.
+#' @return An area ggplot of the cumulative yearly road lengths by type.
 #' @export
 #'
 plot_yearly_len <- function(
         df,
         title = "",
-        x_label = "",
-        y_label = "",
-        fill_label = "Infrastructure Type",
+        x_title = "",
+        y_title = "",
+        legend_title = "Type",
         year_col = "year",
-        year_start = 2009,
-        year_end = 2022,
+        year_start = FALSE,
+        year_end = FALSE,
         len_col = "adj_len",
         type_col = "type",
-        type_filter = c("N", "None", "SR"),
-        type_recode = c(
-        	PBL = "Cycle Track",
-        	BUF = "Buffered Lane",
-        	PL = "Painted Lane",
-        	LSB = "Local Street Bikeway"
-        ),
-        line_50km = TRUE,
-        line_year = 2019,
+        type_filter = c(),
+        type_recode = c(),
+        line_50km = FALSE,
+        line_year = FALSE,
         color_low = "#DFEBF7",
         color_high = "#3683BB"
 ) {
 	
 	# Filter to start and end years
-	df <- df %>% filter(
-		.data[[year_col]] >= year_start & .data[[year_col]] <= year_end
-	)
+	if (year_start > 0) {
+		df <- df %>% filter(
+			.data[[year_col]] >= year_start
+		)
+	}
+	if (year_end > 0) {
+		df <- df %>% filter(
+			.data[[year_col]] <= year_end
+		)
+	}
 	
 	# Filter out particular infrastructure types
-	df <- df %>% filter(
-		!.data[[type_col]] %in% type_filter
-	)
+	if (length(type_filter) > 0) {
+		df <- df %>% filter(
+			!.data[[type_col]] %in% type_filter
+		)
+	}
 	
-	# Reorder category types
-	type_uniq <- unique(df[[type_col]])
-	type_reorder <- names(type_recode)
-	type_reorder <- c(type_reorder, type_uniq[!type_uniq %in% type_reorder])
-	df[[type_col]] <- factor(df[[type_col]], levels = type_reorder)
-	
-	# Recode category types
-	df[[type_col]] <- recode(df[[type_col]], !!!type_recode)
+	# Recode and reorder category types
+	if (length(type_recode) > 0) {
+		
+		# Reorder category types
+		type_uniq <- unique(df[[type_col]])
+		type_reorder <- names(type_recode)
+		type_reorder <- c(type_reorder, type_uniq[!type_uniq %in% type_reorder])
+		df[[type_col]] <- factor(df[[type_col]], levels = type_reorder)
+		
+		# Recode category types
+		df[[type_col]] <- recode(df[[type_col]], !!!type_recode)
+	}
 	
 	# Create fill colors
 	type_n <- length(type_uniq)
@@ -367,6 +381,7 @@ plot_yearly_len <- function(
 	
 	# Create base area plot with legend and labels
 	len_max <- max(df[[len_col]], na.rm = TRUE)
+	year_max <- max(df[[year_col]], na.rm = TRUE)
 	out <- ggplot(
 		df,
 		aes(
@@ -383,28 +398,31 @@ plot_yearly_len <- function(
 		size = 0.2
 	) +
 	labs(
-		x = x_label,
-		y = y_label,
-		fill = fill_label
+		x = x_title,
+		y = y_title,
+		fill = legend_title
 	) +
 	ggtitle(
 		bquote(underline(.(title)))
 	) +
 	guides(
 		fill = guide_legend(
-			reverse = F,
+			reverse = FALSE,
 			override.aes = list(
 				alpha = 0.7,
 				color = NA,
 				shape = NA
 			)
 		),
-		color = "none"
+		color = FALSE
 	) +
 	scale_x_continuous(
 		breaks = seq(year_start, year_end, by = 1),
 		labels = seq(year_start, year_end, by = 1),
 		limits = c(year_start, year_end)
+	) +
+	scale_y_continuous(
+		label = scales::label_number(suffix = " km")
 	) +
 	theme_minimal() +
 	theme(
@@ -471,6 +489,105 @@ plot_yearly_len <- function(
 			hjust = -0.225
 		)
 	}
+	return(out)
+}
+```
+
+### Plot Lengths by Year for Infrastructure Types
+
+Plots an area chart showing the cumulative road lengths by infrastructure type for each year.
+
+This uses and wraps around the `plot_yearly_len` function.
+
+```{r}
+
+#' Plot Yearly Road Lengths By Infrastructure Type
+#'
+#' @param ... Arguments passed to plot_yearly_len.
+#' @return An area ggplot of the cumulative yearly road lengths by road type.
+#' @export
+#'
+plot_yearly_len_infra <- function(
+		...,
+		year_start = 2009,
+        year_end = 2022,
+		type_col = "infra_type",
+		type_filter = c("N", "None", "SR"),
+        type_recode = c(
+        	PBL = "Cycle Track",
+        	BUF = "Buffered Lane",
+        	PL = "Painted Lane",
+        	LSB = "Local Street\nBikeway"
+        ),
+		legend_title = "Infrastructure Type",
+		line_50km = TRUE,
+        line_year = 2019
+	) {
+	out <- plot_yearly_len(
+		...,
+		year_start = year_start,
+		year_end = year_end,
+		type_filter = type_filter,
+		type_col = type_col,
+		type_recode = type_recode,
+		legend_title = legend_title,
+		line_50km = line_50km,
+		line_year = line_year
+	)
+	return(out)
+}
+```
+
+### Plot Lengths by Year for Road Types
+
+Plots an area chart showing the cumulative road lengths by road type for each year.
+
+This uses and wraps around the `plot_yearly_len` function.
+
+```{r}
+
+#' Plot Yearly Road Lengths By Road Type
+#'
+#' @param ... Arguments passed to plot_yearly_len.
+#' @return An area ggplot of the cumulative yearly road lengths by road type.
+#' @export
+#'
+plot_yearly_len_road <- function(
+		...,
+		year_col = "install_year",
+		year_start = 2009,
+        year_end = 2022,
+		x_title = sprintf("Years (%s-%s)", year_start, year_end),
+		y_title = "Total Length (Centreline km)",
+		legend_title = "Roadway Type",
+		type_col = "road_type",
+		type_recode = c(
+        	Arterial = "Arterial",
+        	Collector = "Collector",
+        	Local = "Local"
+        ),
+		len_col = "len",
+		line_50km = FALSE,
+		line_year = 2019,
+        color_low = "#C1DDB3",
+        color_high = "#297A22"
+	) {
+	out <- plot_yearly_len(
+		...,
+		year_col = year_col,
+		year_start = year_start,
+		year_end = year_end,
+		x_title = x_title,
+		y_title = y_title,
+		legend_title = legend_title,
+		type_col = type_col,
+		type_recode = type_recode,
+		len_col = len_col,
+		line_50km = line_50km,
+		line_year = line_year,
+        color_low = color_low,
+        color_high = color_high
+	)
 	return(out)
 }
 ```
@@ -616,16 +733,20 @@ Assessed using roadway centreline-km, with infrastructure classifications determ
 
 ```{r fig.width=8.5, fig.height=11}
 
-# Combine all cities for plotting
-vanc_plot_infra <- calc_yearly_adj_len(vanc) %>%
-    plot_yearly_len(title = "Vancouver, Canada") +
+# Vanc plot
+vanc_plot_infra <- calc_yearly_adj_len(vanc, type_col = "infra_type") %>%
+    plot_yearly_len_infra(title = "Vancouver, Canada") +
     theme(plot.margin = unit(c(15, 5, 5, 5), "point"))
-calg_plot_infra <-  calc_yearly_adj_len(calg) %>%
-    plot_yearly_len(title = "Calgary, Canada")
-toron_plot_infra <-  calc_yearly_adj_len(toron) %>%
-    plot_yearly_len(title = "Toronto, Canada")
 
-# Plot per city
+# Calg plot
+calg_plot_infra <- calc_yearly_adj_len(calg, type_col = "infra_type") %>%
+    plot_yearly_len_infra(title = "Calgary, Canada")
+
+# Toron plot
+toron_plot_infra <-  calc_yearly_adj_len(toron, type_col = "infra_type") %>%
+    plot_yearly_len_infra(title = "Toronto, Canada")
+
+# Plot for all cities
 grid.arrange(
     vanc_plot_infra,
     calg_plot_infra,
@@ -667,7 +788,8 @@ vanc_prep_roads <- vanc %>%
         ) ~ "Arterial",
         segment_type %in% c( # collector equiv
         	"Collector",
-        	"Secondary Arterial"
+        	"Secondary Arterial",
+        	"Sec Arterial"
         ) ~ "Collector",
         segment_type %in% c( # local equiv
         	"Lane",
@@ -679,11 +801,12 @@ vanc_prep_roads <- vanc %>%
     ))
 
 # Aggregate by year
-vanc_plot_roads <- vanc_prep_roads %>%
-	filter(road_type == "Arterial") %>%
-	calc_yearly_adj_len %>%
-    plot_yearly_len(title = "Vancouver, Canada") +
-    theme(plot.margin = unit(c(15,5,5,5), "point"))
+vanc_plot_roads <- calc_yearly_len(
+	vanc_prep_roads,
+	year_col = "install_year",
+	type_col = "road_type"
+) %>%
+    plot_yearly_len_road
 vanc_plot_roads
 ```
 
