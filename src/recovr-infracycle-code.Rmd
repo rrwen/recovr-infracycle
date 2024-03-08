@@ -3,7 +3,6 @@ title: "Pedalling Forward: The Evolution of Dedicated Cycling Infrastructure in 
 subtitle: "R Code for Figures and Tables"
 author:
 - "Richard Wen <richard.wen@utoronto.ca>"
-- "Konrad Samsel <konrad.samsel@mail.utoronto.ca>"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
     pdf_document:
@@ -304,6 +303,7 @@ This is a generic function for user-defined types such as infrastructure or road
 #'
 #' @param df A data.frame with three columns containing the year, type, and road lengths.
 #' @param title The title (char) of the plot.
+#' @param title_underline Set to TRUE to underline the title.
 #' @param x_title The title (char) of the x-axis.
 #' @param y_title The title (char) of the y-axis.
 #' @param legend_title The title (char) of the legend.
@@ -324,6 +324,7 @@ This is a generic function for user-defined types such as infrastructure or road
 plot_yearly_len <- function(
         df,
         title = "",
+        title_underline = TRUE,
         x_title = "",
         y_title = "",
         legend_title = "Type",
@@ -402,9 +403,6 @@ plot_yearly_len <- function(
 		y = y_title,
 		fill = legend_title
 	) +
-	ggtitle(
-		bquote(underline(.(title)))
-	) +
 	guides(
 		fill = guide_legend(
 			reverse = FALSE,
@@ -428,6 +426,15 @@ plot_yearly_len <- function(
 	theme(
 		plot.margin = unit(c(5,5,5,5), "points")
 	)
+	
+	# Add title
+	if (title_underline) {
+		out <- out + ggtitle(
+			bquote(underline(.(title)))
+		)
+	} else {
+		out <- out + ggtitle(title)
+	}
 	
 	# Add dotted year ref line
 	if (line_year) {
@@ -806,7 +813,10 @@ vanc_plot_roads <- calc_yearly_len(
 	year_col = "install_year",
 	type_col = "road_type"
 ) %>%
-    plot_yearly_len_road
+    plot_yearly_len_road(
+    	title = "Roadways with Dedicated Cycling Infrastructure (Vancouver, CA)",
+    	title_underline = FALSE
+    )
 vanc_plot_roads
 ```
 
