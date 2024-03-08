@@ -800,7 +800,7 @@ vanc_prep_roads <- vanc %>%
         .default = segment_type
     ))
 
-# Aggregate by year
+# Plot
 vanc_plot_roads <- calc_yearly_len(
 	vanc_prep_roads,
 	year_col = "install_year",
@@ -810,35 +810,12 @@ vanc_plot_roads <- calc_yearly_len(
 vanc_plot_roads
 ```
 
-## Toronto, CA
-
-```{r}
-
-# Recode segments to one of art, coll, or lane
-toron_plot_roads <- toron %>%
-    mutate(road_type = case_when(
-        segment_type %in% c( # arterial equiv
-        	"Major Arterial",
-        	"Major Arterial Ramp",
-        	"Minor Arterial"
-        ) ~ "Arterial",
-        segment_type %in% c( # collector equiv
-        	"Collector"
-        ) ~ "Collector",
-        segment_type %in% c(  # local equiv
-        	"Local",
-        	"Other"
-        ) ~ "Local",
-        .default = segment_type
-    ))
-```
-
 ## Calgary, CA
 
 ```{r}
 
 # Recode segments to one of art, coll, or lane
-calg_plot_roads <- calg %>%
+calg_prep_roads <- calg %>%
     mutate(road_type = case_when(
         segment_type %in% c( # arterial equiv
         	"Arterial Street",
@@ -863,6 +840,47 @@ calg_plot_roads <- calg %>%
         ) ~ "Local",
         .default = segment_type
     ))
+
+# Aggregate by year
+calg_plot_roads <- calc_yearly_len(
+	calg_prep_roads,
+	year_col = "install_year",
+	type_col = "road_type"
+) %>%
+    plot_yearly_len_road
+calg_plot_roads
+```
+
+## Toronto, CA
+
+```{r}
+
+# Recode segments to one of art, coll, or lane
+toron_prep_roads <- toron %>%
+    mutate(road_type = case_when(
+        segment_type %in% c( # arterial equiv
+        	"Major Arterial",
+        	"Major Arterial Ramp",
+        	"Minor Arterial"
+        ) ~ "Arterial",
+        segment_type %in% c( # collector equiv
+        	"Collector"
+        ) ~ "Collector",
+        segment_type %in% c(  # local equiv
+        	"Local",
+        	"Other"
+        ) ~ "Local",
+        .default = segment_type
+    ))
+
+# Aggregate by year
+toron_plot_roads <- calc_yearly_len(
+	toron_prep_roads,
+	year_col = "install_year",
+	type_col = "road_type"
+) %>%
+    plot_yearly_len_road
+toron_plot_roads
 ```
 
 # Appendix
