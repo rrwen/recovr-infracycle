@@ -29,10 +29,8 @@ install.packages("tidyverse")
 install.packages("glue")
 install.packages("readxl")
 install.packages("ggtext")
-install.packages("grid")
-install.packages("gridExtra")
 install.packages("scales")
-install.packages("ggrepel")
+install.packages("patchwork")
 ```
 
 Load R libraries.
@@ -40,10 +38,8 @@ Load R libraries.
 ```{r lib, warning=FALSE, message=FALSE}
 library(tidyverse)
 library(ggtext)
-library(ggrepel)
 library(glue)
-library(grid)
-library(gridExtra)
+library(patchwork)
 library(readxl)
 ```
 
@@ -85,7 +81,9 @@ calc_yearly_len <- function(
 		year_col = "install_year",
 		type_col = "install_type",
 		len_col = "segment_len",
-		out_col = "len"
+		out_col = "len",
+		year_min = 2009,
+		year_max = 2022
 	) {
 	
 	# Convert data types
@@ -98,12 +96,28 @@ calc_yearly_len <- function(
 		!is.na(.data[[type_col]])
 	)
 	
+	# Filter to min and max years
+	if (year_min > 0) {
+		df <- df %>% filter(
+			.data[[year_col]] >= year_min
+		)
+	} else {
+		year_min <- min(out[[year_col]], na.rm = TRUE)
+	}
+	if (year_max > 0) {
+		df <- df %>% filter(
+			.data[[year_col]] <= year_max
+		)
+	} else {
+		year_max <- max(out[[year_col]], na.rm = TRUE)
+	}
+	
 	# Add dummy len for each type and year combo
 	# Covers cases where type and year combo does not exist
 	# E.g. No new PL installs in 2021, hence a record PL in 2021 does not exist
 	type_uniq <- unique(out[[type_col]])
 	type_n <- length(type_uniq)
-	year_uniq <- min(out[[year_col]], na.rm = TRUE):max(out[[year_col]], na.rm = TRUE)
+	year_uniq <- year_min:year_max
 	year_n <- length(year_uniq)
 	out <- out %>% add_row(
 		!!year_col := rep(year_uniq, each = type_n),
@@ -307,9 +321,11 @@ This is a generic function for user-defined types such as infrastructure or road
 #' @param x_title The title (char) of the x-axis.
 #' @param y_title The title (char) of the y-axis.
 #' @param legend_title The title (char) of the legend.
+#' @param legend Set to TRUE to include a legend.
 #' @param year_col The name (char) or index (int) of the column containing the years.
 #' @param year_start The minimum year (int) to display.
 #' @param year_end The maximum year (int) to display.
+#' @param year_int The year intervals (int) to display. For example, 1 displays every year, and 2 displays every two years.
 #' @param len_col The name (char) or index (int) of the column containing the road lengths.
 #' @param type_col The name (char) or index (int) of the column containing the type.
 #' @param type_filter A vector (char) of types to remove fomr the plot.
@@ -328,9 +344,11 @@ plot_yearly_len <- function(
         x_title = "",
         y_title = "",
         legend_title = "Type",
+        legend = TRUE,
         year_col = "year",
         year_start = FALSE,
         year_end = FALSE,
+        year_int = 1,
         len_col = "adj_len",
         type_col = "type",
         type_filter = c(),
@@ -404,19 +422,12 @@ plot_yearly_len <- function(
 		fill = legend_title
 	) +
 	guides(
-		fill = guide_legend(
-			reverse = FALSE,
-			override.aes = list(
-				alpha = 0.7,
-				color = NA,
-				shape = NA
-			)
-		),
+		fill = FALSE,
 		color = FALSE
 	) +
 	scale_x_continuous(
-		breaks = seq(year_start, year_end, by = 1),
-		labels = seq(year_start, year_end, by = 1),
+		breaks = seq(year_start, year_end, by = year_int),
+		labels = seq(year_start, year_end, by = year_int),
 		limits = c(year_start, year_end)
 	) +
 	scale_y_continuous(
@@ -434,6 +445,18 @@ plot_yearly_len <- function(
 		)
 	} else {
 		out <- out + ggtitle(title)
+	}
+	
+	# Add legend
+	if (legend) {
+		out <- out + guides(fill = guide_legend(
+			reverse = FALSE,
+			override.aes = list(
+				alpha = 0.7,
+				color = NA,
+				shape = NA
+			)
+		))
 	}
 	
 	# Add dotted year ref line
@@ -564,7 +587,6 @@ plot_yearly_len_road <- function(
 		year_col = "install_year",
 		year_start = 2009,
         year_end = 2022,
-		x_title = sprintf("Years (%s-%s)", year_start, year_end),
 		y_title = "Total Length (Centreline km)",
 		legend_title = "Roadway Type",
 		type_col = "road_type",
@@ -584,7 +606,6 @@ plot_yearly_len_road <- function(
 		year_col = year_col,
 		year_start = year_start,
 		year_end = year_end,
-		x_title = x_title,
 		y_title = y_title,
 		legend_title = legend_title,
 		type_col = type_col,
@@ -640,7 +661,24 @@ vanc <- vanc_bikeways %>%
 		segment_type = ATR_SEGMENT_TYPE
 	) %>%
 	mutate(
-		segment_len = segment_len / 1000
+		segment_len = segment_len / 1000,
+		road_type = case_when( # create road types
+	        segment_type %in% c( # arterial equiv
+	        	"Arterial"
+	        ) ~ "Arterial",
+	        segment_type %in% c( # collector equiv
+	        	"Collector",
+	        	"Secondary Arterial",
+	        	"Sec Arterial"
+	        ) ~ "Collector",
+	        segment_type %in% c( # local equiv
+	        	"Lane",
+	        	"Residential",
+	        	"Leased",
+	        	"Recreational"
+	        ) ~ "Local",
+	        .default = segment_type
+	    )
 	)
 vanc
 ```
@@ -683,7 +721,31 @@ calg <- calg_bikeways %>%
 		segment_type = ctp_class
 	) %>%
 	mutate(
-		segment_len = segment_len / 1000
+		segment_len = segment_len / 1000,
+		road_type = case_when( # create road types
+	        segment_type %in% c( # arterial equiv
+	        	"Arterial Street",
+	        	"Industrial Arterial",
+	        	"Local Arterial",
+	        	"Parkway",
+	        	"Urban Boulevard"
+	        ) ~ "Arterial",
+	        segment_type %in% c( # collector equiv
+	        	"Neighbourhood Boulevard",
+	        	"Collector",
+	        	"Primary Collector",
+	        	"Skeletal Road"
+	        ) ~ "Collector",
+	        segment_type %in% c( # local equiv
+	        	"Access Route",
+	        	"Residential Street",
+	        	"Activity Center Street",
+	        	"Historic Road Allowance",
+	        	"Lanes (Alleys)",
+	        	"Industrial Street"
+	        ) ~ "Local",
+	        .default = segment_type
+	    )
 	)
 calg
 ```
@@ -727,7 +789,22 @@ toron <- toron_bikeways %>%
 		segment_type = FEATURE36
 	) %>%
 	mutate(
-		segment_len = segment_len / 1000
+		segment_len = segment_len / 1000,
+		road_type = case_when( # create road types
+	        segment_type %in% c( # arterial equiv
+	        	"Major Arterial",
+	        	"Major Arterial Ramp",
+	        	"Minor Arterial"
+	        ) ~ "Arterial",
+	        segment_type %in% c( # collector equiv
+	        	"Collector"
+	        ) ~ "Collector",
+	        segment_type %in% c(  # local equiv
+	        	"Local",
+	        	"Other"
+	        ) ~ "Local",
+	        .default = segment_type
+	    )
 	)
 toron
 ```
@@ -742,41 +819,40 @@ Assessed using roadway centreline-km, with infrastructure classifications determ
 
 # Vanc plot
 vanc_plot_infra <- calc_yearly_adj_len(vanc, type_col = "infra_type") %>%
-    plot_yearly_len_infra(title = "Vancouver, Canada") +
-    theme(plot.margin = unit(c(15, 5, 5, 5), "point"))
+    plot_yearly_len_infra(title = "Vancouver, Canada")
 
 # Calg plot
 calg_plot_infra <- calc_yearly_adj_len(calg, type_col = "infra_type") %>%
     plot_yearly_len_infra(title = "Calgary, Canada")
+	
+# Y-axis title
+y_title <- ggplot() +
+	annotate(
+		geom = "text",
+		x = 1,
+		y = 1,
+		label = "Total Length (Centreline km)",
+		angle = 90,
+		size = 5
+	) +
+	coord_cartesian(clip = "off")+
+	theme_void()
 
 # Toron plot
 toron_plot_infra <-  calc_yearly_adj_len(toron, type_col = "infra_type") %>%
     plot_yearly_len_infra(title = "Toronto, Canada")
 
-# Plot for all cities
-grid.arrange(
-    vanc_plot_infra,
-    calg_plot_infra,
-    toron_plot_infra,
-    ncol = 1,
-    top = textGrob(
-        "Roadways with Dedicated Cycling Infrastructure",
-        gp = gpar(fontsize=18)
-    ),
-    bottom = textGrob(
-        "Years (2009-2022)",
-        gp = gpar(fontsize=14)
-    ),
-    left = textGrob(
-        "Total Length (Centreline km)",
-        gp = gpar(fontsize=14),
-        rot = 90
-    ),
-    vp = viewport(
-        width = 0.95,
-        height = 0.95
-    )
-)
+# All plots together
+(y_title | wrap_plots(list(vanc_plot_infra, calg_plot_infra, toron_plot_infra), nrow = 3)) +
+	plot_annotation(
+		title = "Roadways with Dedicated Cycling Infrastructure",
+		caption = "Years (2009-2022)",
+		theme = theme(
+			plot.title = element_text(hjust = 0.5, size = 16),
+			plot.caption = element_text(hjust = 0.5, size = 14)
+		)
+	) +
+	plot_layout(widths = c(0.05, 1))
 ```
 
 # Supplementary Figures
@@ -785,75 +861,72 @@ grid.arrange(
 
 By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
 
-```{r}
+```{r fig.width=17.5, fig.height=9.5}
+vanc_plot_roads <- list()
 
-# Recode segments to one of art, coll, or lane
-vanc_prep_roads <- vanc %>%
-    mutate(road_type = case_when(
-        segment_type %in% c( # arterial equiv
-        	"Arterial"
-        ) ~ "Arterial",
-        segment_type %in% c( # collector equiv
-        	"Collector",
-        	"Secondary Arterial",
-        	"Sec Arterial"
-        ) ~ "Collector",
-        segment_type %in% c( # local equiv
-        	"Lane",
-        	"Residential",
-        	"Leased",
-        	"Recreational"
-        ) ~ "Local",
-        .default = segment_type
-    ))
-
-# Plot
-vanc_plot_roads <- calc_yearly_len(
-	vanc_prep_roads,
+# Plot overall road types
+vanc_plot_roads[[1]] <- calc_yearly_len(
+	vanc,
 	year_col = "install_year",
 	type_col = "road_type"
 ) %>%
-    plot_yearly_len_road(
-    	title = "Roadways with Dedicated Cycling Infrastructure (Vancouver, CA)",
-    	title_underline = FALSE
-    )
-vanc_plot_roads
+    plot_yearly_len_road
+
+# Plot arterial, collector, and local road by infra
+rtypes <- c("Arterial", "Collector", "Local")
+for (i in 1:length(rtypes)) {
+	
+	# Get road type
+	r <- rtypes[i]
+	
+	# Create infra plot for road type
+	vanc_plot_roads[[i + 1]] <- calc_yearly_adj_len(
+		vanc %>% filter(road_type == r),
+		type_col = "infra_type"
+	) %>%
+		plot_yearly_len_infra(
+		    title = sprintf("%s Roadways", r),
+		    title_underline = FALSE,
+		    line_50km = FALSE,
+		    year_int = 2,
+		    y_title = "Total Length (Centreline km)"
+		)
+}
+
+# All plots together
+(
+	plot_spacer() +
+	vanc_plot_roads[[1]] +
+	plot_spacer() +
+	plot_layout(
+		widths = c(0.25, 0.3, 0.2)
+	) +
+	theme(plot.margin = margin(0.15, 0, 0.15, 0, "in"))
+) / (
+	vanc_plot_roads[[2]] +
+	vanc_plot_roads[[3]] +
+	vanc_plot_roads[[4]] +
+	theme(plot.margin = margin(0, 0, 0.15, 0, "in"))
+) + plot_annotation(
+	title = "Roadways with Dedicated Cycling Infrastructure (Vancouver, CA)",
+	caption = "Years (2009-2022)",
+	tag_levels = list(c("A", "B", "", "")),
+	theme = theme(
+		plot.title = element_text(hjust = 0.5, size = 26),
+		plot.caption = element_text(hjust = 0.5, size = 22),
+	)
+) & theme(
+		plot.tag = element_text(face = "bold", size = 22)
+	)
 ```
 
 ## Calgary, CA
 
 ```{r}
 
-# Recode segments to one of art, coll, or lane
-calg_prep_roads <- calg %>%
-    mutate(road_type = case_when(
-        segment_type %in% c( # arterial equiv
-        	"Arterial Street",
-        	"Industrial Arterial",
-        	"Local Arterial",
-        	"Parkway",
-        	"Urban Boulevard"
-        ) ~ "Arterial",
-        segment_type %in% c( # collector equiv
-        	"Neighbourhood Boulevard",
-        	"Collector",
-        	"Primary Collector",
-        	"Skeletal Road"
-        ) ~ "Collector",
-        segment_type %in% c( # local equiv
-        	"Access Route",
-        	"Residential Street",
-        	"Activity Center Street",
-        	"Historic Road Allowance",
-        	"Lanes (Alleys)",
-        	"Industrial Street"
-        ) ~ "Local",
-        .default = segment_type
-    ))
-
 # Aggregate by year
 calg_plot_roads <- calc_yearly_len(
-	calg_prep_roads,
+	calg,
 	year_col = "install_year",
 	type_col = "road_type"
 ) %>%
@@ -865,27 +938,9 @@ calg_plot_roads
 
 ```{r}
 
-# Recode segments to one of art, coll, or lane
-toron_prep_roads <- toron %>%
-    mutate(road_type = case_when(
-        segment_type %in% c( # arterial equiv
-        	"Major Arterial",
-        	"Major Arterial Ramp",
-        	"Minor Arterial"
-        ) ~ "Arterial",
-        segment_type %in% c( # collector equiv
-        	"Collector"
-        ) ~ "Collector",
-        segment_type %in% c(  # local equiv
-        	"Local",
-        	"Other"
-        ) ~ "Local",
-        .default = segment_type
-    ))
-
 # Aggregate by year
 toron_plot_roads <- calc_yearly_len(
-	toron_prep_roads,
+	toron,
 	year_col = "install_year",
 	type_col = "road_type"
 ) %>%
