@@ -668,7 +668,8 @@ plot_yearly_len_road <- function(df, title = "Roadways with Dedicated Cycling In
 			line_year = settings$line_year,
 	        color_low = "#C1DDB3",
 	        color_high = "#297A22"
-	    )
+	    ) +
+		theme(plot.margin = margin(0, 0, 0, 0, "pt"))
 	
 	# Plot arterial, collector, and local road by infra
 	rtypes <- c("Arterial", "Collector", "Local")
@@ -695,31 +696,42 @@ plot_yearly_len_road <- function(df, title = "Roadways with Dedicated Cycling In
 				type_filter = settings$type_filter_infra,
 		        type_recode = settings$type_recode_infra,
 				legend_title = "Infrastructure Type"
-			)
+			) +
+			theme(plot.margin = margin(0, 12, 0, 0, "pt"))
 	}
 	
+	# Plot horizontal gradient bar
+	grad_bar <-  ggplot(data.frame(x = 1:4), aes(x = x, y = 1, color = x)) +
+		geom_line(size = 5) +
+		scale_color_gradient(low = "#C1DDB3", high = "#297A22") +
+		theme_void() +
+		guides(color = FALSE) +
+		theme(plot.margin = margin(0, 0, 0, 0, "pt"))
+	
 	# Plot overall and road type plots together
-	out <- (
+	out <- ( # overall plot
 		plot_spacer() +
 		p[[1]] +
 		plot_spacer() +
 		plot_layout(
 			widths = c(0.25, 0.3, 0.2)
-		) +
-		theme(plot.margin = margin(0.15, 0, 0.15, 0, "in"))
-	) / (
+		)
+	) / ( # gradient bar
+		grad_bar
+	) / ( # infra plots
 		p[[2]] +
 		p[[3]] +
-		p[[4]] +
-		theme(plot.margin = margin(0, 0, 0.15, 0, "in"))
-	) + plot_annotation(
+		p[[4]]
+	) + plot_annotation( # years axis title
 		title = title,
-		caption = sprintf("Years (%s-%s)", settings$year_min, settings$year_max),
-		tag_levels = list(c("A", "B", "", "")),
+		#caption = sprintf("Years (%s-%s)", settings$year_min, settings$year_max),
+		tag_levels = list(c("A", "", "B", "", "")),
 		theme = theme(
 			plot.title = element_text(hjust = 0.5, size = 26),
 			plot.caption = element_text(hjust = 0.5, size = 22),
 		)
+	) + plot_layout(
+		heights = c(15, 1, 15, 15, 15)
 	) & theme(
 		plot.tag = element_text(face = "bold", size = 22)
 	)
@@ -936,7 +948,7 @@ plot_yearly_len_infra(list(
 
 By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
 
-```{r fig.width=17.5, fig.height=9.5}
+```{r fig.width=16, fig.height=10}
 plot_yearly_len_road(
 	vanc,
 	title = "Roadways with Dedicated Cycling Infrastructure (Vancouver, CA)"
