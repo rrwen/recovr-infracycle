@@ -102,6 +102,8 @@ Where:
 ```{r}
 
 #' Calculate Yearly Road Lengths By Infrastructure Type
+#' 
+#' Calculates the cumulative yearly road lengths by infrastructure type without considering infrastructure changes.
 #'
 #' @param df A data.frame with three columns containing the year, type, and road lengths.
 #' @param year_col The name (char) or index (int) of the column containing the years.
@@ -203,6 +205,8 @@ Where:
 ```{r}
 
 #' Calculate Yearly Adjusted Road Lengths By Infrastructure Type
+#' 
+#' Calculates the cumulative yearly adjusted road lengths by infrastructure type accounting for installations and subsequent changes.
 #'
 #' @param df A data.frame with three columns containing the year, type, and road lengths.
 #' @param year_cols A vector of the names (char) or indices (int) of the columns containing the years of installations followed by infrastructure changes in order.
@@ -354,12 +358,15 @@ This is a generic function for user-defined types such as infrastructure or road
 ```{r}
 
 #' Plot Yearly Road Lengths By Type
+#' 
+#' Creates an area plot of road lengths by category types.
 #'
 #' @param df A data.frame with three columns containing the year, type, and road lengths.
 #' @param title The title (char) of the plot.
 #' @param title_underline Set to TRUE to underline the title.
 #' @param x_title The title (char) of the x-axis.
 #' @param y_title The title (char) of the y-axis.
+#' @param y_suffix The suffix (char) to add to the end of y axis values.
 #' @param legend_title The title (char) of the legend.
 #' @param legend Set to TRUE to include a legend.
 #' @param year_col The name (char) or index (int) of the column containing the years.
@@ -383,6 +390,7 @@ plot_yearly_len <- function(
         title_underline = TRUE,
         x_title = "",
         y_title = "",
+        y_suffix = " km",
         legend_title = "Type",
         legend = TRUE,
         year_col = "year",
@@ -471,7 +479,7 @@ plot_yearly_len <- function(
 		limits = c(year_min, year_max)
 	) +
 	scale_y_continuous(
-		label = scales::label_number(suffix = " km")
+		label = scales::label_number(suffix = y_suffix)
 	) +
 	theme_minimal() +
 	theme(
@@ -572,9 +580,11 @@ This uses the `plot_yearly_len` function.
 ```{r}
 
 #' Plot Yearly Road Lengths By Infrastructure Type
+#' 
+#' Creates area plots of road lengths by infrastructure type.
 #'
 #' @param df_list A list of data.frame containing the install and change years, type, and road segment lengths.
-#' @return An area ggplot of the cumulative yearly road lengths by infrastructure type.
+#' @return Multiple area ggplots of the cumulative yearly road lengths by infrastructure type combined with patchwork.
 #' @export
 #'
 plot_yearly_len_infra <- function(df_list) {
@@ -640,8 +650,10 @@ This uses the `plot_yearly_len` function.
 
 #' Plot Yearly Road Lengths By Road Type
 #'
+#' Creates area plots of road lengths by overall road type, and by infrastructure per road type.
+#'
 #' @param df The data.frame containing the install and change years, type, and road segment types and lengths. 
-#' @return An area ggplot of the cumulative yearly road lengths by road type.
+#' @return Multiple area ggplots of the cumulative yearly road lengths by road type combined with patchwork.
 #' @export
 #'
 plot_yearly_len_road <- function(df, title = "Roadways with Dedicated Cycling Infrastructure") {
@@ -752,6 +764,115 @@ plot_yearly_len_road <- function(df, title = "Roadways with Dedicated Cycling In
 }
 ```
 
+## Plot Yearly Differences
+
+Plots a bar chart of differences between two columns containing years.
+
+This function is used to check the differences in installation years between the city's data and the verified data.
+
+```{r}
+#' Plot Yearly Differences
+#'
+#' Creates a bar plot of the differences between two years.
+#'
+#' @param df The data.frame containing the two columns with the years.
+#' @param year_col1 The name (char) or index (int) of the first year column.
+#' @param year_col2 The name (char) or index (int) of the second year column to be subtracted from.
+#' @param year_col1_name The name alias (char) of the first year column year_col1.
+#' @param year_col2_name The name alias (char) of the second year column year_col2.
+#' @param year_min The minimum year (int) to calculate differences for.
+#' @param year_max The maximum year (int) to calculate differences for.
+#' @param title The title (char) of the plot.
+#' @param title_n Set to TRUE to add the number of total segments considered.
+#' @param x_title The title (char) of the x-axis.
+#' @param y_title The title (char) of the y-axis.
+#' @param x_breaks The number (int) of breaks to show on the x-axis. Set to FALSE to let ggplot automatically decide.
+#' @return A ggplot of yearly differences (year_col2 - year_col1), displaying the proportion of rows for each difference in years.
+#' @export
+#'
+plot_yearly_diff <- function(
+		df,
+		year_col1 = "install_year_orig",
+		year_col2 = "install_year",
+		year_col1_name = "City Year",
+		year_col2_name = "Verified Year",
+		year_min = settings$year_min,
+		year_max = settings$year_max,
+		title = sprintf(
+			"Difference in Years, Comparing %s and %s",
+			year_col1_name,
+			year_col2_name
+		),
+		title_n = TRUE,
+		x_title = sprintf(
+			"Difference in Years (%s - %s)",
+			year_col2_name,
+			year_col1_name
+		),
+		y_title = "Proportion of Total Segments",
+		x_breaks = 15
+) {
+	ydiff <- df
+	
+	# Filter within min year
+	if (year_min) {
+		ydiff <- ydiff %>% filter(
+			.data[[year_col1]] >= year_min | .data[[year_col2]] >= year_min
+		)
+	}
+	
+	# Filter within max year
+	if (year_max) {
+		ydiff <- ydiff %>% filter(
+			.data[[year_col1]] <= year_max | .data[[year_col2]] <= year_max
+		)
+	}
+	
+	# Add n to title
+	if (title_n) {
+		title <- sprintf("%s (n=%s)", title, nrow(ydiff))
+	}
+	
+	# Calc yearly diff
+	ydiff <- ydiff %>%
+		mutate(year_diff = install_year - install_year_orig) %>%
+		count(year_diff)
+	
+	# Plot yealy diffs
+	out <- ydiff %>% 
+		ggplot(aes(
+			x = year_diff,
+			y = (n / sum(n)) * 100
+		)) +
+		geom_bar(
+			stat = "identity",
+			color = "#332a94",
+			fill = "#c3d5e4",
+			width = 1
+		) +
+		labs(
+			title = title,
+			x = x_title,
+			y = y_title
+		) +
+		scale_y_continuous(
+			label = scales::label_number(suffix = "%")
+		) +
+		theme(
+			plot.title = element_text(size = 12)
+		)
+	
+	# Set x interval breaks
+	if (x_breaks) {
+		out <- out + scale_x_continuous(
+			breaks = scales::breaks_pretty(x_breaks)
+		)
+	}
+	return(out)
+}
+
+```
+
 # Data
 
 ## Vancouver Data
@@ -766,6 +887,7 @@ vanc_roads <- read_csv("../data/vancouver_roads_2009_2022_v1.csv")
 vanc <- vanc_bikeways %>%
 	select(
 		ID_DATAENTRY,
+		INST_YR_ORIG,
 		INST_YR,
 		INST_MIN_HTYPE,
 		UPGR1_YR,
@@ -783,6 +905,7 @@ vanc <- vanc_bikeways %>%
 	) %>%
 	rename(
 		id = ID_DATAENTRY,
+		install_year_orig = INST_YR_ORIG,
 		install_year = INST_YR,
 		install_type = INST_MIN_HTYPE,
 		upgrade1_year = UPGR1_YR,
@@ -826,6 +949,7 @@ calg_roads <- read_csv("../data/calgary_roads_2009_2022_v1.csv")
 calg <- calg_bikeways %>%
     select(
 		SHAPE_ID,
+		YEAR_ORIG,
 		INST_YR,
 		INST_MIN_HTYPE,
 		UPGR1_YR,
@@ -843,6 +967,7 @@ calg <- calg_bikeways %>%
 	) %>%
 	rename(
 		id = SHAPE_ID,
+		install_year_orig = YEAR_ORIG,
 		install_year = INST_YR,
 		install_type = INST_MIN_HTYPE,
 		upgrade1_year = UPGR1_YR,
@@ -894,6 +1019,7 @@ toron_roads <- read_csv("../data/toronto_roads_2009_2022_v1.csv")
 toron <- toron_bikeways %>%
     select(
 		ID_OID,
+		INSTALLED_ORIG,
 		INST_YR,
 		INST_MIN_HTYPE,
 		UPGR1_YR,
@@ -911,6 +1037,7 @@ toron <- toron_bikeways %>%
 	) %>%
 	rename(
 		id = ID_OID,
+		install_year_orig = INSTALLED_ORIG,
 		install_year = INST_YR,
 		install_type = INST_MIN_HTYPE,
 		upgrade1_year = UPGR1_YR,
@@ -955,9 +1082,9 @@ plot_yearly_len_infra(list(
 ))
 ```
 
-# Supplementary Figures
+# Appendix 1 - Supplementary Results
 
-## Supplementary Figure 4: Changes in dedicated cycling infrastructure between 2009 and 2021 for the Municipality of Vancouver, CA
+## Supplementary Figure 4: Changes in dedicated cycling infrastructure between 2009 and 2021 for the Municipality of Vancouver, CA.
 
 By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
 
@@ -968,7 +1095,7 @@ plot_yearly_len_road(
 )
 ```
 
-## Supplementary Figure 5: Changes in dedicated cycling infrastructure between 2009 and 2022 for the Municipality of Calgary, CA
+## Supplementary Figure 5: Changes in dedicated cycling infrastructure between 2009 and 2022 for the Municipality of Calgary, CA.
 
 By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment. 
 
@@ -979,7 +1106,7 @@ plot_yearly_len_road(
 )
 ```
 
-## Supplementary Figure 6: Changes in dedicated cycling infrastructure between 2009 and 2022 for the Municipality of Toronto, CA
+## Supplementary Figure 6: Changes in dedicated cycling infrastructure between 2009 and 2022 for the Municipality of Toronto, CA.
 
 By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment. 
 
@@ -987,6 +1114,39 @@ By (A) roadway classification, and (B) infrastructure distribution within each r
 plot_yearly_len_road(
 	toron,
 	title = "Roadways with Dedicated Cycling Infrastructure (Toronto, CA)"
+)
+```
+
+## Supplementary Figure 7: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Vancouver, CA.
+
+Any data where a city provided installation year was missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n = 252 segments. The graph shows that 83.3% of the included segments had the correct installation year as per the city's data, and 97.6% were accurate within a range of ±1 year.
+
+```{r fig.width = 8, fig.height = 5}
+plot_yearly_diff(
+	vanc,
+	title = "Difference in Installation Years, Comparing City Data and Verified Data: Vancouver, CA"
+)
+```
+
+## Supplementary Figure 8: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Calgary, CA.
+
+Any data where a city provided installation year was missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=670 segments. The graph shows that 42.1% of the included segments had the correct installation year as per the city's data, and 62.8% were accurate within a range of ±1 year.
+
+```{r fig.width = 8, fig.height = 5}
+plot_yearly_diff(
+	calg,
+	title = "Difference in Installation Years, Comparing City Data and Verified Data: Calgary, CA"
+)
+```
+
+## Supplementary Figure 9: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Toronto, CA.
+
+Any data where a city provided installation year was missing or the verified year occurred than the start of the study period (2009) has been excluded from analysis, yielding n=192 segments. The graph shows that 75.5% of the included segments had the correct installation year as per the city's data, and 78.1% were accurate within a range of ±1 year.
+
+```{r fig.width = 8, fig.height = 5}
+plot_yearly_diff(
+	toron,
+	title = "Difference in Installation Years, Comparing City Data and Verified Data: Toronto, CA"
 )
 ```
 
