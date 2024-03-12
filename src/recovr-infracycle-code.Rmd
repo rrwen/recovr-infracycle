@@ -32,18 +32,22 @@ install.packages("ggtext")
 install.packages("scales")
 install.packages("patchwork")
 install.packages("DiagrammeR")
+install.packages("DiagrammeRsvg")
 install.packages("webshot2")
 install.packages("magick")
+install.packages("rsvg")
 ```
 
 Load R libraries.
 
 ```{r lib, warning=FALSE, message=FALSE}
 library(DiagrammeR)
+library(DiagrammeRsvg)
 library(ggtext)
 library(glue)
 library(patchwork)
 library(readxl)
+library(rsvg)
 library(tidyverse)
 ```
 
@@ -1202,6 +1206,13 @@ digraph {
 [11]: c('<br/>Duplicates: n=1', '', '') # inclusion duplicates
 [12]: '*Denotes segments misclassified as an ineligible type (off-street path, shared road, or inactive temporary infrastructure)'
 ", width = 800)
+```
+
+```
+%>%
+	export_svg %>%
+	charToRaw %>%
+	rsvg_png("test.png")
 ```
 
 ## Figure 2: Changes in dedicated cycling infrastructure between 2009 and 2022 for Vancouver, Calgary, and Toronto by infrastructure category.
