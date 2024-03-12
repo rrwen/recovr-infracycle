@@ -31,16 +31,18 @@ install.packages("readxl")
 install.packages("ggtext")
 install.packages("scales")
 install.packages("patchwork")
+install.packages("DiagrammeR")
 ```
 
 Load R libraries.
 
 ```{r lib, warning=FALSE, message=FALSE}
-library(tidyverse)
+library(DiagrammeR)
 library(ggtext)
 library(glue)
 library(patchwork)
 library(readxl)
+library(tidyverse)
 ```
 
 # Settings
@@ -1070,6 +1072,93 @@ toron
 
 # Figures
 
+## Figure 1
+
+```{r fig.width = 7, fig.height = 5}
+grViz("
+digraph {
+	rankdir = LR
+	node[
+		shape = box,
+		width = 2.5,
+		height = 1.5,
+		style = filled,
+		fillcolor = white,
+		penwidth = 1.5
+	]
+	layout = neato
+	
+	filter1[
+		label = 'Filtering',
+		height = 0.25,
+		shape = plaintext,
+		style='', pos='1.5,1.425!'
+	]
+	filter2[
+		style = invis,
+		pos='1.5,-4.45!'
+	]
+	filter1 -> filter2 [style = dashed, dir = none, color = '#b0b0b0']
+	
+	screen1[
+		label = 'Screening',
+		height = 0.25,
+		shape = plaintext,
+		style='', pos='4.5,1.425!'
+	]
+	screen2[
+		style = invis,
+		pos='4.5,-4.45!'
+	]
+	screen1 -> screen2 [style = dashed, dir = none, color = '#b0b0b0']
+	
+	open_data[
+		label = 'Open Data',
+		height = 0.5,
+		fillcolor = '#d7e9fe',
+		pos='0,1!'
+	]
+	elig_data[
+		label = 'Eligible Segments',
+		height = 0.5,
+		fillcolor = '#d7e9fe',
+		pos='3,1!'
+	]
+	incl_data[
+		label = 'Inclusions',
+		height = 0.5,
+		fillcolor = '#d7e9fe',
+		pos='6,1!'
+	]
+	
+	open_vanc[
+		label = < <b>Vancouve</b><br/>N = 3664 Segments<br/>(342.1 km)<br/><i>Downloaded: January 2023</i>>,
+		pos='0,-3.75!'
+	]
+	open_calg[
+		label = < <b>Calgary</b><br/>N = 4166 Segments<br/>(569.7 km)<br/><i>Downloaded: January 2023</i>>,
+		pos='0,-2!'
+	]
+	open_toron[
+		label = < <b>Toronto</b><br/>N = 1323 Segments<br/>(755.8 km)<br/><i>Downloaded: January 2023</i>>, 
+		pos='0,-0.25!'
+	]
+	
+	elig_vanc[label = 'n = 780 Segments\n(71.2 km)', pos='3,-3.75!']
+	elig_calg[label = 'n = 782 Segments\n(88.7 km)', pos='3,-2!']
+	elig_toron[label = 'n = 331 Segments\n(205.4 km)', pos='3,-0.25!']
+	
+	incl_vanc[label = 'n = 745 Segments\n(69.9 km)', pos='6,-3.75!']
+	incl_calg[label = 'n = 750 Segments\n(85 km)', pos='6,-2!']
+	incl_toron[label = 'n = 326 Segments\n(203.5 km)', pos='6,-0.25!']
+	
+	open_vanc -> elig_vanc -> incl_vanc
+	open_calg -> elig_calg -> incl_calg
+	open_toron -> elig_toron -> incl_toron
+}
+")
+```
+
 ## Figure 2: Changes in dedicated cycling infrastructure between 2009 and 2022 for Vancouver, Calgary, and Toronto by infrastructure category.
 
 Assessed using roadway centreline-km, with infrastructure classifications determined by the most protective element present along each road segment.
@@ -1150,7 +1239,7 @@ plot_yearly_diff(
 )
 ```
 
-# Appendix
+# Miscellaneous Details
 
 ## R Version
 
