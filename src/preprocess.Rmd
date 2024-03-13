@@ -56,7 +56,7 @@ Read in the raw data for each city.
 ## Toronto Raw Data
 
 ```{r}
-toron_raw <- st_read("../data/raw/toronto/Toronto AS Export/Toronto_AS_1323.shp")
+toron_raw <- st_read("../data/raw/Toronto AS Export/Toronto_AS_1323.shp")
 toron_raw
 ```
 
