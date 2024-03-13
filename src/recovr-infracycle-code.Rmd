@@ -36,6 +36,7 @@ install.packages("DiagrammeRsvg")
 install.packages("webshot2")
 install.packages("magick")
 install.packages("rsvg")
+install.packages("sf")
 ```
 
 Load R libraries.
@@ -48,6 +49,7 @@ library(glue)
 library(patchwork)
 library(readxl)
 library(rsvg)
+library(sf)
 library(tidyverse)
 ```
 
@@ -1227,6 +1229,13 @@ plot_yearly_len_infra(list(
 ))
 ```
 
+## Figure 4: Changes in Dedicated On-Street Infrastructure Since January 2020 for Vancouver, Calgary, and Toronto.
+
+New installations of dedicated infrastructure are denoted in green, upgrades from a previous dedicated infrastructure type are denoted in orange. Mapped in ArcGIS Pro 3.0.1.
+
+```{r}
+```
+
 # Appendix 1 - Supplementary Results
 
 ## Supplementary Figure 4: Changes in dedicated cycling infrastructure between 2009 and 2021 for the Municipality of Vancouver, CA.
@@ -1295,9 +1304,7 @@ plot_yearly_diff(
 )
 ```
 
-# Miscellaneous Details
-
-## R Version
+# R Version
 
 R and RMarkdown in RStudio was used to generate this document.
 
@@ -1305,9 +1312,9 @@ R and RMarkdown in RStudio was used to generate this document.
 version
 ```
 
-## R Code
+# R Code
 
-The R script below runs all the code in this document.
+The full R code is provided below.
 
 ```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
 ```

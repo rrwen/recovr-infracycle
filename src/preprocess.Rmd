@@ -1,0 +1,179 @@
+---
+title: "Pedalling Forward: The Evolution of Dedicated Cycling Infrastructure in Canadian Cities from 2010 to 2022"
+subtitle: "R Code for Preprocessing Raw Data prepared by Konrad Samsel"
+author:
+- "Richard Wen <richard.wen@utoronto.ca>"
+- "Konrad Samsel <konrad.samsel@mail.utoronto.ca"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+    pdf_document:
+        toc: true
+        toc_depth: 3
+        highlight: zenburn
+---
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Libraries
+
+Install R libraries if needed.
+
+```{r lib-install, eval=FALSE}
+install.packages("rmarkdown")
+install.packages("bookdown")
+install.packages("knitr")
+install.packages("tidyverse")
+install.packages("readxl")
+install.packages("sf")
+install.packages("lwgeom")
+```
+
+Load R libraries.
+
+```{r lib, warning=FALSE, message=FALSE}
+library(readxl)
+library(sf)
+library(tidyverse)
+```
+
+# Data
+
+Read in the raw data for each city.
+
+## Vancouver Raw Data
+
+```{r}
+```
+
+## Calgary Raw Data
+
+```{r}
+```
+
+## Toronto Raw Data
+
+```{r}
+toron_raw <- st_read("../data/raw/toronto/Toronto AS Export/Toronto_AS_1323.shp")
+toron_raw
+```
+
+# Preprocess
+
+Preprocess raw data for each city.
+
+## Vancouver Preprocessed Data
+
+```{r}
+```
+
+## Calgary Preprocessed Data
+
+```{r}
+```
+
+## Toronto Preprocessed Data
+
+```{r}
+
+# Preprocess data
+toron_prep <- toron_raw %>%
+	select( # select and rename
+		id = OBJECTI2,
+		street = STREET_7,
+		street_from = FROM_ST8,
+		street_to = TO_STRE9,
+		install_year = INSTALL4,
+		install_type = INFRA_H20, # similar to C_INFRA_H
+		verify_install_year = INST_YR,
+		verify_install_date = INST_DATE,
+		verify_install_type = INST_TMIN,
+		verify_install_comment = INST_COMM,
+		verify_upgrade1_year = UPGR1_YR,
+		verify_upgrade1_date = UPGR1_DATE,
+		verify_upgrade1_type = UPGR1_TMIN,
+		verify_upgrade1_comment = UPGR1_COMM,
+		verify_upgrade2_year = UPGR2_YR,
+		verify_upgrade2_date = UPGR2_DATE,
+		verify_upgrade2_type = UPGR2_TMIN,
+		verify_upgrade2_comment = UPGR2_COMM,
+		verify_excl_flag = EXCL_FLAG
+	) %>%
+	mutate( # data types
+		id = as.character(id),
+		street = as.character(street),
+		street_from = as.character(street_from),
+		street_to = as.character(street_to),
+		install_year = as.numeric(install_year),
+		install_type = as.character(install_type),
+		verify_install_year = as.numeric(verify_install_year),
+		verify_install_date = as.character(verify_install_date),
+		verify_install_type = as.character(verify_install_type),
+		verify_install_comment = as.character(verify_install_comment),
+		verify_upgrade1_year = as.numeric(verify_upgrade1_year),
+		verify_upgrade1_date = as.character(verify_upgrade1_date),
+		verify_upgrade1_type = as.character(verify_upgrade1_type),
+		verify_upgrade1_comment = as.character(verify_upgrade1_comment),
+		verify_upgrade2_year = as.numeric(verify_upgrade2_year),
+		verify_upgrade2_date = as.character(verify_upgrade2_date),
+		verify_upgrade2_type = as.character(verify_upgrade2_type),
+		verify_upgrade2_comment = as.character(verify_upgrade2_comment),
+		verify_excl_flag = as.character(verify_excl_flag)
+	) %>%
+	mutate( # clean values
+		install_year = na_if(install_year, 0),
+		verify_install_year = na_if(verify_install_year, 0),
+		verify_install_date = na_if(verify_install_date, "NA"),
+		verify_install_type = na_if(verify_install_type, "NA") %>%
+			str_replace_all("[^[:alpha:]]|\\s", ""),
+		verify_install_comment = na_if(verify_install_comment, "NA"),
+		verify_upgrade1_year = na_if(verify_upgrade1_year, 0),
+		verify_upgrade1_date = na_if(verify_upgrade1_date, "NA"),
+		verify_upgrade1_type = na_if(verify_upgrade1_type, "NA") %>%
+			str_replace_all("[^[:alpha:]]|\\s", ""),
+		verify_upgrade1_comment = na_if(verify_upgrade1_comment, "NA"),
+		verify_upgrade2_year = na_if(verify_upgrade2_year, 0),
+		verify_upgrade2_date = na_if(verify_upgrade2_date, "NA"),
+		verify_upgrade2_type = na_if(verify_upgrade2_type, "NA") %>%
+			str_replace_all("[^[:alpha:]]|\\s", ""),
+		verify_upgrade2_comment = na_if(verify_upgrade2_comment, "NA"),
+		verify_excl_flag =  na_if(verify_excl_flag, "NA") %>%
+			str_replace_all("\\s", "")
+	) %>%
+	mutate( # create columns
+		len_km = as.numeric(st_length(geometry)) / 1000,
+		.before = geometry
+	)
+
+# Save geojson
+toron_prep %>%
+	st_write("../data/toronto_bikeways_v1.geojson", delete_dsn = TRUE)
+
+# Save csv
+# st_read("../data/toronto_bikeways_v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
+toron_prep %>%
+	mutate(
+		geometry = st_as_text(geometry),
+		geometry_crs = "urn:ogc:def:crs:OGC:1.3:CRS84",
+		.before = geometry
+	) %>%
+	write_csv("../data/toronto_bikeways_v1.csv", na = "")
+toron_prep
+```
+
+# R Version
+
+R and RMarkdown in RStudio was used to generate this document.
+
+```{r echo=FALSE}
+version
+```
+
+# R Code
+
+The full R code is provided below.
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
