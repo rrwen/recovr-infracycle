@@ -1052,24 +1052,28 @@ calg
 
 ## Toronto Raw Data {.tabset}
 
-### Data
-
 ```{r}
-toron_raw <- st_read("../data/raw/Toronto AS Export/Toronto_AS_1323.shp")
+toron_raw <- read_sf("../data/raw/Toronto AS Export/Toronto_AS_1323.shp")
 ```
 
 ### Table
 
 ```{r}
-toron_raw
+toron_raw %>% as_tibble
 ```
 
 ### Map
 
-```{r}
+```{r out.width = "100%"}
 tmap_mode("view")
 tm_shape(toron_raw) +
 	tm_lines(col = "INFRA_H20", popup.vars = TRUE)
+```
+
+### Details
+
+```{r}
+print(toron_raw)
 ```
 
 # Preprocessing
@@ -1157,7 +1161,7 @@ toron_prep %>%
 toron_prep %>%
 	mutate(
 		geometry = st_as_text(geometry),
-		geometry_crs = "urn:ogc:def:crs:OGC:1.3:CRS84",
+		geometry_crs = st_crs(toron_prep)$proj4string,
 		.before = geometry
 	) %>%
 	write_csv("../data/toronto_bikeways_v1.csv", na = "")
