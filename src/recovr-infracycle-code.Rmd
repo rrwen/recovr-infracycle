@@ -2,26 +2,47 @@
 title: "Pedalling Forward: The Evolution of Dedicated Cycling Infrastructure in Canadian Cities from 2010 to 2022"
 subtitle: "R Code for Figures and Tables"
 author:
-- "Richard Wen <richard.wen@utoronto.ca>"
+- "Richard Wen richard.wen@utoronto.ca"
+- "Konrad Samsel konrad.samsel@mail.utoronto.ca"
+- "Brice Batomen brice.kuimi@utoronto.ca"
+- "Linda Rothman linda.rothman@torontomu.ca"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
-output:
-    pdf_document:
-        toc: true
-        toc_depth: 3
-        highlight: zenburn
+knit: |
+    (function(input_rmd, ...) {
+    rmarkdown::render(
+        input_rmd,
+        rmarkdown::html_notebook(
+            toc = TRUE,
+            toc_float = TRUE,
+            highlight = "zenburn"
+        ),
+        output_dir = "../docs",
+        output_file = "index", ...)
+    renamed <- file.rename("../docs/index.nb.html", "../docs/index.html")
+    })
 ---
 
-```{r metadata, include=FALSE, echo=FALSE}
+```{r include=FALSE, echo=FALSE}
 knitr::opts_chunk$set(warning = FALSE)
 ```
 
-\newpage
+# Installation
+
+1. Install [R](https://www.r-project.org/)
+2. Install [RTools](https://cran.r-project.org/) if you are on Windows
+3. Install [RStudio](https://posit.co/download/rstudio-desktop/)
+
+R and RMarkdown in RStudio (version 2023.06.1+524) was used to generate this document:
+
+```{r echo=FALSE}
+sessionInfo()
+```
 
 # Libraries
 
 Install R libraries if needed.
 
-```{r lib-install, eval=FALSE}
+```{r eval=FALSE}
 install.packages("rmarkdown")
 install.packages("bookdown")
 install.packages("knitr")
@@ -41,7 +62,7 @@ install.packages("sf")
 
 Load R libraries.
 
-```{r lib, warning=FALSE, message=FALSE}
+```{r warning=FALSE, message=FALSE}
 library(DiagrammeR)
 library(DiagrammeRsvg)
 library(ggtext)
@@ -91,7 +112,7 @@ settings$line_year <- 2019
 
 # Functions
 
-## Calculate Yearly Road Length
+## Function 1: Calculate Yearly Road Length
 
 The following function calculates yearly road lengths by infrastructure type using cumulative sums and filling in missing years and types.
 
@@ -103,11 +124,11 @@ $$
 
 Where:
 
-* $year$ is the given year
-* $type$ is the infrastructure type
-* $year_{min}$ is the earliest year available in the data
-* $l_{i,type}$ is the road length $l$ for previous years $i$ and infrastructure $j$
-* $l_{i,type}$ is set to 0 if there is no data
+-   $year$ is the given year
+-   $type$ is the infrastructure type
+-   $year_{min}$ is the earliest year available in the data
+-   $l_{i,type}$ is the road length $l$ for previous years $i$ and infrastructure $j$
+-   $l_{i,type}$ is set to 0 if there is no data
 
 ```{r}
 
@@ -197,7 +218,7 @@ calc_yearly_len <- function(
 }
 ```
 
-## Calculate Yearly Adjusted Road Length
+## Function 2: Calculate Yearly Adjusted Road Length
 
 The following function calculates yearly adjusted road lengths by infrastructure type using cumulative sums and filling in missing years and types.
 
@@ -205,12 +226,11 @@ For a given infrastructure type, the total adjusted road length for a given year
 
 $$
 length_{year,type}^{install} + length_{year,type}^{change_i} - length_{year,type}^{replacement_i}
-$$
-Where:
+$$ Where:
 
-* $length_{year,type}^{install}$ are the yearly cumulative road lengths for an infrastructure $type$ installation
-* $length_{year,type}^{change_i}$ are the yearly cumulative road lengths for an infrastructure $type$ change in order $i$
-* $length_{year,type}^{replacement_i}$ are the yearly cumulative road lengths for an infrastructure $type$ replaced by change in order $i$
+-   $length_{year,type}^{install}$ are the yearly cumulative road lengths for an infrastructure $type$ installation
+-   $length_{year,type}^{change_i}$ are the yearly cumulative road lengths for an infrastructure $type$ change in order $i$
+-   $length_{year,type}^{replacement_i}$ are the yearly cumulative road lengths for an infrastructure $type$ replaced by change in order $i$
 
 ```{r}
 
@@ -359,7 +379,7 @@ calc_yearly_adj_len <- function(
 }
 ```
 
-## Plot Lengths by Year for Generic Types
+## Function 3: Plot Lengths by Year for Generic Types
 
 Plots an area chart showing the cumulative road lengths by a user-defined type for each year.
 
@@ -581,7 +601,7 @@ plot_yearly_len <- function(
 }
 ```
 
-## Plot Lengths by Year for Infrastructure Types
+### Function 3.1: Plot Lengths by Year for Infrastructure Types
 
 Plots area charts of yearly road lengths by infrastructure types for a list of data.
 
@@ -650,7 +670,7 @@ plot_yearly_len_infra <- function(df_list) {
 }
 ```
 
-## Plot Lengths by Year for Road Types
+### Function 3.2: Plot Lengths by Year for Road Types
 
 Plots area charts of yearly road lengths by overall road type and by infrastructure separated by each road type.
 
@@ -774,7 +794,7 @@ plot_yearly_len_road <- function(df, title = "Roadways with Dedicated Cycling In
 }
 ```
 
-## Plot Yearly Differences
+## Function 4: Plot Yearly Differences
 
 Plots a bar chart of differences between two columns containing years.
 
@@ -885,9 +905,11 @@ plot_yearly_diff <- function(
 
 # Data
 
-## Vancouver Data
+Load raw data provided by Konrad Samsel.
 
-```{r vanc-data}
+## Vancouver Raw Data
+
+```{r}
 
 # Load raw data
 vanc_bikeways <- read_csv("../data/vancouver_bikeways_2009_2022_v1.csv")
@@ -947,9 +969,10 @@ vanc <- vanc_bikeways %>%
 	)
 vanc
 ```
-## Calgary Data
 
-```{r calg-data}
+## Calgary Raw Data
+
+```{r}
 
 # Load raw data
 calg_bikeways <- read_csv("../data/calgary_bikeways_2009_2022_v1.csv")
@@ -1017,9 +1040,25 @@ calg <- calg_bikeways %>%
 calg
 ```
 
-## Toronto Data
+## Toronto Raw Data
 
-```{r toron-data}
+```{r}
+toron_raw <- st_read("../data/raw/Toronto AS Export/Toronto_AS_1323.shp")
+toron_raw
+```
+
+# Preprocessing
+
+## Toronto Preprocessed Data
+
+Note 1: Working on getting complete data.
+
+```{r}
+```
+
+Note 2: Using this one for now.
+
+```{r}
 
 # Load raw data
 toron_bikeways <- read_csv("../data/toronto_bikeways_2009_2022_v1.csv")
@@ -1084,7 +1123,7 @@ toron
 
 This flowchart provides a high-level overview of the segment inclusions and exclusions for each municipality. Data from Calgary were specific to on-street routes only. For detailed flow diagrams specific to each municipality, please refer to the Appendix.
 
-```{r fig.width=12, fig.height=8, dev='png'}
+```{r}
 grViz("
 digraph {
 	rankdir = LR
@@ -1207,14 +1246,14 @@ digraph {
 [10]: c('<br/>*Misclassifications: n=34', '<br/>*Misclassifications: n=32', '<br/>*Misclassifications: n=5') # inclusion misclassifications
 [11]: c('<br/>Duplicates: n=1', '', '') # inclusion duplicates
 [12]: '*Denotes segments misclassified as an ineligible type (off-street path, shared road, or inactive temporary infrastructure)'
-", width = 800)
+")
 ```
 
-```
+```         
 %>%
-	export_svg %>%
-	charToRaw %>%
-	rsvg_png("test.png")
+    export_svg %>%
+    charToRaw %>%
+    rsvg_png("test.png")
 ```
 
 ## Figure 2: Changes in dedicated cycling infrastructure between 2009 and 2022 for Vancouver, Calgary, and Toronto by infrastructure category.
@@ -1251,7 +1290,7 @@ plot_yearly_len_road(
 
 ## Supplementary Figure 5: Changes in dedicated cycling infrastructure between 2009 and 2022 for the Municipality of Calgary, CA.
 
-By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment. 
+By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
 
 ```{r fig.width=18, fig.height=10}
 plot_yearly_len_road(
@@ -1262,7 +1301,7 @@ plot_yearly_len_road(
 
 ## Supplementary Figure 6: Changes in dedicated cycling infrastructure between 2009 and 2022 for the Municipality of Toronto, CA.
 
-By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment. 
+By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
 
 ```{r fig.width=18, fig.height=10}
 plot_yearly_len_road(
@@ -1304,17 +1343,10 @@ plot_yearly_diff(
 )
 ```
 
-# R Version
+# Contributions
 
-R and RMarkdown in RStudio was used to generate this document.
+Richard Wen developed reproducible R code and organized the data based on Konrad Samsel's draft manuscript and previous R code. Konrad Samsel prepared draft manuscript, raw data, and provided consultation on data and methods.
 
-```{r echo=FALSE}
-version
-```
+# Acknowledgements
 
-# R Code
-
-The full R code is provided below.
-
-```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
-```
+Linda Rothman and Brice Batomen provided supervision, project administration, resources, funding, and review/editing for the draft manuscript.
