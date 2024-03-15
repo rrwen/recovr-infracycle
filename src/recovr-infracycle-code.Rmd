@@ -955,14 +955,24 @@ plot_yearly_diff <- function(
 
 ```
 
-## Function 7: draw_methods_diag
+## Function 7: calc_criteria_stats
+
+Calculates segment inclusion criteria statistics.
+
+This function creates a data.frame of counts, segment lengths, and other exclusions (duplicates, misclassifications) per inclusion criteria step along with a list of the data.frames after applying the inclusion criteria.
+
+```{r}
+calc_criteria_stats <- function(df_list) {}
+```
+
+## Function 8: draw_methods_diag
 
 Draws a method diagram.
 
 This function draws a flow diagram of overall methods for the paper.
 
 ```{r}
-draw_methods_diag <- function(df_list) {
+draw_methods_diag <- function(df) {
 	
 	# Diag settings
 	diag_settings <- "
@@ -1023,27 +1033,29 @@ draw_methods_diag <- function(df_list) {
 	y <- -0.06
 	y_gap <- -1.59
 	row_adds <- ""
-	for (i in 1:length(df_list)) {
-		df <- df_list[[i]]
+	for (i in 1:length(df)) {
+		
+		# Get data
+		df_row <- df[i, ]
 		
 		# Generate single row addition
 		row_adds <- paste0(row_adds, glue(
 			row_temp,
 			i = i,
 			y = y,
-			city = city,
-			open_n = open_n,
-			open_len = open_len,
-			open_date = open_date,
-			elig_n = elig_n,
-			elig_len = elig_len,
-			elig_inelig = elig_inelig,
-			elig_dup = elig_dup,
-			elig_poly = elig_poly,
-			incl_n = incl_n,
-			incl_len = incl_len,
-			incl_miss = incl_miss,
-			incl_dup = incl_dup
+			city = df_row[["city"]],
+			open_n = df_row[["open_n"]],
+			open_len = df_row[["open_len"]],
+			open_date = df_row[["open_date"]],
+			elig_n = df_row[["elig_n"]],
+			elig_len = df_row[["elig_len"]],
+			elig_inelig = df_row[["elig_inelig"]],
+			elig_dup = df_row[["elig_dup"]],
+			elig_poly = df_row[["elig_poly"]],
+			incl_n = df_row[["incl_n"]],
+			incl_len = df_row[["incl_len"]],
+			incl_miss = df_row[["incl_miss"]],
+			incl_dup = df_row[["incl_dup"]]
 		))
 		
 		# Move row below
