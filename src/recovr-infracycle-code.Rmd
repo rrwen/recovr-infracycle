@@ -1286,7 +1286,7 @@ diag_criteria <- function(
 		# Generate inelig info
 		elig_inelig <- glue(
 			"<br/>Ineligible: n = {n}",
-			n = criteria[["infra_filter_nx"]] + criteria[["status_filter_nx"]]
+			n = criteria[["infra_filter_nx"]] + criteria[["status_filter_nx"]] + criteria[["road_filter_nx"]]
 		)
 		
 		# Generate incl info
