@@ -977,6 +977,7 @@ This function applies segment inclusion critieria to a list of data.frames. Opti
 #'	\item \code{status_col}: the column name (char) of the column containing the active road status types to filter.
 #'	\item \code{status_filter}: the vector of characters of active road status types to include.
 #'	\item \code{geom_col}: the column name (char) of the column containing geometries.
+#'  \item \code{geom_unit}: the unit measure (char) of the geometry 
 #'	\item \code{geom_filter}: Set to TRUE to filter for null and duplicate geometries.
 #'	\item \code{misclass_col}: the column name (char) of the column containing misclassification types to filter.
 #'	\item \code{misclass_filter}: the vector of characters indicating non-misclassified rows of data to include. Usually set to c("NA", NA) to indicate that the row is not misclassified.
@@ -1161,14 +1162,17 @@ filter_criteria <- function(criteria_list) {
 }
 ```
 
-## Function 5a: draw_criteria_diagram
+## Function 5a: diag_criteria
 
-Draws a method diagram.
+Diagram the segment inclusion criteria results.
 
-This function draws a flow diagram of overall methods for the paper using the output from `filter_criteria`.
+This function draws a flow diagram of overall methods for segment inclusion criteria using output from `filter_criteria`.
 
 ```{r}
-draw_methods_diagram <- function(criteria_list) {
+diag_criteria <- function(
+		criteria_list,
+		note = "*Denotes segments misclassified as an ineligible type (off-street path, shared road, or inactive temporary infrastructure)"
+) {
 	
 	# Diag settings
 	diag_settings <- "
@@ -1215,7 +1219,7 @@ draw_methods_diagram <- function(criteria_list) {
 		]
 		
 		elig{i}[
-			label = <n = {elig_n}<br/>({elig_len})<br/><i><b>Exclusions</b>{elig_inelig}{elig_dup}{elig_poly}</i>>,
+			label = <n = {elig_n} Segments<br/>({elig_len})<br/><i><b>Exclusions</b>{elig_inelig}{elig_dup}{elig_poly}</i>>,
 			pos = '3.25,{y}!'
 		]
 		
@@ -1223,38 +1227,65 @@ draw_methods_diagram <- function(criteria_list) {
 			label = <n = {incl_n} Segments<br/><i>({incl_len})<br/><b>Exclusions</b>{incl_miss}{incl_dup}</i>>,
 			pos = '6.5,{y}!'
 		]
+		
+		open{i} -> elig{i} -> incl{i}
 	"
 	
 	# Generate row additions per city
 	y <- -0.06
-	y_gap <- -1.59
+	y_gap <- 1.59
 	row_adds <- ""
-	for (criteria in criteria_list) {
+	for (i in 1:length(criteria_list)) {
+		criteria <- criteria_list[[i]]
 		
-		# Calculate inelig
-		elig_inelig <- criteria$data_n - criteria$elig_n
-		elig_poly <- elig_inelig - criteria$geom_filter_null_n
-		elig_dup <- elig_poly - criteria$geom_filter_dup_n
-		incl_dup <- ""
+		# Generate geom filter info
+		if (criteria$geom_filter_dup_nx > 0) {
+			elig_dup <- glue(
+				"<br/>Duplicates: n = {n}",
+				n = criteria$geom_filter_dup_nx
+			)
+		} else {
+			elig_dup <- ""
+		}
+		if (criteria$geom_filter_null_nx > 0) {
+			elig_poly <- glue(
+				"<br/>No Polyline Data: n = {n}",
+				n = criteria$geom_filter_null_nx
+			)
+		} else {
+			elig_poly <- ""
+		}
+		
+		# Generate inelig info
+		elig_inelig <- glue(
+			"<br/>Ineligible: n = {n}",
+			n = criteria[["infra_filter_nx"]] + criteria[["status_filter_nx"]]
+		)
+		
+		# Generate incl info
+		incl_miss <- glue(
+			"<br/>*Misclassifications: n = {n}",
+			n = criteria[["misclass_filter_nx"]]
+		)
 		
 		# Generate single row addition
 		row_adds <- paste0(row_adds, glue(
 			row_temp,
 			i = i,
 			y = y,
-			city = criteria[["city"]],
+			city = str_to_title(criteria[["city"]]),
 			open_n = criteria[["data_n"]],
-			open_len = criteria[["data_len"]],
+			open_len = round(criteria[["data_len"]], 1),
 			open_date = criteria[["data_date"]],
 			elig_n = criteria[["elig_n"]],
-			elig_len = criteria[["elig_len"]],
+			elig_len = round(criteria[["elig_len"]], 1),
 			elig_inelig = elig_inelig,
 			elig_dup = elig_dup,
 			elig_poly = elig_poly,
 			incl_n = criteria[["incl_n"]],
-			incl_len = criteria[["incl_len"]],
-			incl_miss = criteria[["misclass_filter_n"]],
-			incl_dup = incl_dup
+			incl_len = round(criteria[["incl_len"]], 1),
+			incl_miss = incl_miss,
+			incl_dup = ""
 		))
 		
 		# Move row below
@@ -1271,10 +1302,10 @@ draw_methods_diagram <- function(criteria_list) {
 		]
 		filter2[
 			style = invis,
-			pos = '1.6,{y - 0.66}!'
+			pos = '1.6,{y}!'
 		]
 		filter1 -> filter2 [style = dashed, dir = none, color = '#b0b0b0']
-	", y = y)
+	", y = y - -0.96)
 	line_screen <- glue("
 		screen1[
 			label = 'Screening',
@@ -1284,21 +1315,21 @@ draw_methods_diagram <- function(criteria_list) {
 		]
 		screen2[
 			style = invis,
-			pos = '4.85,{y - 0.66}!'
+			pos = '4.85,{y}!'
 		]
 		screen1 -> screen2 [style = dashed, dir = none, color = '#b0b0b0']
-	", y = y)
+	", y = y - -0.96)
 	
 	# Bottom note
 	note_bottom <- glue("
 		note[
-			label=<<i>text</i>>,
+			label=<<i>{text}</i>>,
 			style = '',
 			shape = plaintext,
 			fontsize = 12,
-			pos = '3.25,{y - 0.91}!'
+			pos = '3.25,{y}!'
 		]
-	", text = note, y = y)
+	", text = note, y = y - -0.69)
 	
 	# Generate graphviz diag
 	out <- paste0(
