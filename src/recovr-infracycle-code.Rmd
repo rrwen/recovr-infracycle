@@ -974,8 +974,10 @@ This function applies segment inclusion critieria to a list of data.frames. Opti
 #'	\item \code{data_date}: the date (char) that the data was acquired.
 #'	\item \code{infra_col}: the column name (char) of the column containing the dedicated cycling infrastructure types to filter.
 #'	\item \code{infra_filter}: the vector of characters of dedicated cycling infrastructure types to include.
-#'	\item \code{status_col}: the column name (char) of the column containing the active road status types to filter.
-#'	\item \code{status_filter}: the vector of characters of active road status types to include.
+#'	\item \code{road_col}: the column name (char) of the column containing the road location types to filter.
+#'	\item \code{road_filter}: the vector of characters of road location types to exclude.
+#'	\item \code{status_col}: the column name (char) of the column containing the inactive road status types to filter.
+#'	\item \code{status_filter}: the vector of characters of inactive road status types to include.
 #'	\item \code{geom_col}: the column name (char) of the column containing geometries.
 #'  \item \code{geom_unit}: the unit measure (char) of the geometry 
 #'	\item \code{geom_filter}: Set to TRUE to filter for null and duplicate geometries.
@@ -991,11 +993,16 @@ This function applies segment inclusion critieria to a list of data.frames. Opti
 #'	\item \code{infra_filter_len}: total road length (numeric) after filtering for dedicated cycling infrastructure using \code{infra_filter} (required).
 #'	\item \code{infra_filter_nx}: total rows (numeric) affected by filtering for dedicated cycling infrastructure using \code{infra_filter} (required).
 #'	\item \code{infra_filter_lenx}: total road length (numeric) affected by filtering for dedicated cycling infrastructure using \code{infra_filter} (required).
-#'	\item \code{status_filter_applied}: TRUE if active road status filter was applied and FALSE otherwise (required).
-#'	\item \code{status_filter_n}: total rows (numeric) after filtering for active road status using \code{status_filter} (required).
-#'	\item \code{status_filter_len}: total road length (numeric) after filtering for active road status using \code{status_filter} (required).
-#'	\item \code{status_filter_nx}: total rows (numeric) affected by filtering for active road status using \code{status_filter} (required).
-#'	\item \code{status_filter_lenx}: total road length (numeric) affected by filtering for active road status using \code{status_filter} (required).
+#'	\item \code{road_filter_applied}: TRUE if road location filter was applied and FALSE otherwise (required).
+#'	\item \code{road_filter_n}: total rows (numeric) after filtering for road location using \code{infra_filter} (required).
+#'	\item \code{road_filter_len}: total road length (numeric) after filtering for road location using \code{infra_filter} (required).
+#'	\item \code{road_filter_nx}: total rows (numeric) affected by filtering for road location using \code{infra_filter} (required).
+#'	\item \code{road_filter_lenx}: total road length (numeric) affected by filtering for road location using \code{infra_filter} (required).
+#'	\item \code{status_filter_applied}: TRUE if inactive road status filter was applied and FALSE otherwise (required).
+#'	\item \code{status_filter_n}: total rows (numeric) after filtering for inactive road status using \code{status_filter} (required).
+#'	\item \code{status_filter_len}: total road length (numeric) after filtering for inactive road status using \code{status_filter} (required).
+#'	\item \code{status_filter_nx}: total rows (numeric) affected by filtering for inactive road status using \code{status_filter} (required).
+#'	\item \code{status_filter_lenx}: total road length (numeric) affected by filtering for inactive road status using \code{status_filter} (required).
 #'	\item \code{geom_filter_null_applied}: TRUE if null geometries filter was applied and FALSE otherwise (required).
 #'	\item \code{geom_filter_null_n}: total rows (numeric) after filtering for null geometries (required).
 #'	\item \code{geom_filter_null_len}: total road length (numeric) after filtering for null geometries (required).
@@ -1032,6 +1039,7 @@ filter_criteria <- function(criteria_list) {
 		
 		# Set initial apply status for filters
 		out[[i]]$infra_filter_applied <- FALSE
+		out[[i]]$road_filter_applied <- FALSE
 		out[[i]]$status_filter_applied <- FALSE
 		out[[i]]$geom_filter_null_applied <- FALSE
 		out[[i]]$geom_filter_dup_applied <- FALSE
@@ -1060,12 +1068,31 @@ filter_criteria <- function(criteria_list) {
 		out[[i]]$infra_filter_nx <- out[[i]]$data_n - out[[i]]$infra_filter_n
 		out[[i]]$infra_filter_lenx <- out[[i]]$data_len - out[[i]]$infra_filter_len
 		
+		# Filter for road location
+		if (all("road_col", "road_filter") %in% names(x)) {
+			
+			# Apply road filter
+			df <- df %>%
+				filter(!.data[[x$status_col]] %in% x$road_filter)
+			
+			# Set road filter status
+			out[[i]]$road_filter_applied <- TRUE
+		}
+		
+		# Count/len road filter
+		out[[i]]$road_filter_n <- nrow(df)
+		out[[i]]$road_filter_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		
+		# Count/len affected by road filter
+		out[[i]]$road_filter_nx <- out[[i]]$infra_filter_n - out[[i]]$road_filter_n
+		out[[i]]$road_filter_lenx <- out[[i]]$infra_filter_len - out[[i]]$road_filter_len
+		
 		# Filter for status
 		if (all(c("status_col", "status_filter") %in% names(x))) {
 			
 			# Apply status filter
 			df <- df %>%
-				filter(.data[[x$status_col]] %in% x$status_filter)
+				filter(!.data[[x$status_col]] %in% x$status_filter)
 			
 			# Set status filter status
 			out[[i]]$status_filter_applied <- TRUE
@@ -1076,8 +1103,8 @@ filter_criteria <- function(criteria_list) {
 		out[[i]]$status_filter_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
 		
 		# Count/len affected by status filter
-		out[[i]]$status_filter_nx <- out[[i]]$infra_filter_n - out[[i]]$status_filter_n
-		out[[i]]$status_filter_lenx <- out[[i]]$infra_filter_len - out[[i]]$status_filter_len
+		out[[i]]$status_filter_nx <- out[[i]]$road_filter_n - out[[i]]$status_filter_n
+		out[[i]]$status_filter_lenx <- out[[i]]$road_filter_len - out[[i]]$status_filter_len
 		
 		# Filter for null geoms
 		if (all(c("geom_col", "geom_filter") %in% names(x))) {
@@ -1676,11 +1703,48 @@ toron
 This flowchart provides a high-level overview of the segment inclusions and exclusions for each municipality. Data from Calgary were specific to on-street routes only. For detailed flow diagrams specific to each municipality, please refer to the Appendix.
 
 ```
-criteria_list <- list(
+criteria_settings <- list(
 	list(
-		city = ""
+		city = "vancouver",
+		data = vanc,
+		data_date = "January 2023",
+		infra_col = "install_type",
+		infra_filter = c("Painted Lanes", "Protected Bike Lanes"),
+		geom_col = "geometry",
+		geom_unit = "km",
+		geom_filter = TRUE,
+		misclass_col = "verify_misclass",
+		misclass_filter = c(NA, "NA")
+	),
+	list(
+		city = "calgary",
+		data = calg,
+		data_date = "January 2023",
+		infra_col = "install_type",
+		infra_filter = c("Bicycle Lane", "Cycle Track"),
+		status_col = "install_status",
+		status_filter = c(“INACTIVE”, “PLANNED”),
+		geom_col = "geometry",
+		geom_unit = "km",
+		geom_filter = TRUE,
+		misclass_col = "verify_misclass",
+		misclass_filter = c(NA, "NA")
+	),
+	list(
+		city = "toronto",
+		data = toron,
+		data_date = "January 2023",
+		infra_col = "install_type",
+		infra_filter = c("Bi-Directional Cycle Track", "Bike Lane", "Bike Lane - Buffered", "Bike Lane - Contraflow", "Cycle Track", "Cycle Track - Contraflow"),
+		geom_col = "geometry",
+		geom_unit = "km",
+		geom_filter = TRUE,
+		misclass_col = "verify_misclass",
+		misclass_filter = c(NA, "NA")
 	)
 )
+criteria_list <- filter(criteria_settings)
+diag_criteria(criteria_list)
 ```
 
 ```{r}
