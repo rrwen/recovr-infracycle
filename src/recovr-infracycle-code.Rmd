@@ -1268,6 +1268,13 @@ diag_criteria <- function(
 			n = criteria[["misclass_filter_nx"]]
 		)
 		
+		# Road length unit
+		if ("geom_unit" %in% names(criteria)) {
+			len_unit <- criteria$geom_unit
+		} else {
+			len_unit = "meters"
+		}
+		
 		# Generate single row addition
 		row_adds <- paste0(row_adds, glue(
 			row_temp,
@@ -1275,15 +1282,15 @@ diag_criteria <- function(
 			y = y,
 			city = str_to_title(criteria[["city"]]),
 			open_n = criteria[["data_n"]],
-			open_len = round(criteria[["data_len"]], 1),
+			open_len = paste(round(criteria[["data_len"]], 1), len_unit),
 			open_date = criteria[["data_date"]],
 			elig_n = criteria[["elig_n"]],
-			elig_len = round(criteria[["elig_len"]], 1),
+			elig_len = paste(round(criteria[["elig_len"]], 1), len_unit),
 			elig_inelig = elig_inelig,
 			elig_dup = elig_dup,
 			elig_poly = elig_poly,
 			incl_n = criteria[["incl_n"]],
-			incl_len = round(criteria[["incl_len"]], 1),
+			incl_len = paste(round(criteria[["incl_len"]], 1), len_unit),
 			incl_miss = incl_miss,
 			incl_dup = ""
 		))
@@ -1332,7 +1339,7 @@ diag_criteria <- function(
 	", text = note, y = y - -0.69)
 	
 	# Generate graphviz diag
-	out <- paste0(
+	out <- grViz(paste0(
 		"digraph {",
 		diag_settings,
 		row_top,
@@ -1341,7 +1348,7 @@ diag_criteria <- function(
 		line_screen,
 		note_bottom,
 		"}"
-	)
+	))
 	return(out)
 }
 ```
@@ -1667,6 +1674,14 @@ toron
 ## Figure 1: Flow diagram of inclusion criteria for bikeway segments in Vancouver, Calgary, and Toronto.
 
 This flowchart provides a high-level overview of the segment inclusions and exclusions for each municipality. Data from Calgary were specific to on-street routes only. For detailed flow diagrams specific to each municipality, please refer to the Appendix.
+
+```
+criteria_list <- list(
+	list(
+		city = ""
+	)
+)
+```
 
 ```{r}
 grViz("
