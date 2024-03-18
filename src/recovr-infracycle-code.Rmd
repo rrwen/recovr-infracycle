@@ -621,7 +621,7 @@ plot_yearly_len <- function(
 }
 ```
 
-## Function 4: plot_yearly_len_infra
+## Function 3a: plot_yearly_len_infra
 
 Plot yearly adjusted road lengths by infrastructure type.
 
@@ -692,7 +692,7 @@ plot_yearly_len_infra <- function(df_list) {
 }
 ```
 
-## Function 5: plot_yearly_len_road
+## Function 3b: plot_yearly_len_road
 
 Plots yearly adjusted road lengths for road types.
 
@@ -818,7 +818,7 @@ plot_yearly_len_road <- function(df, title = "Roadways with Dedicated Cycling In
 }
 ```
 
-## Function 6: plot_yearly_diff
+## Function 4: plot_yearly_diff
 
 Plots differences between two years.
 
@@ -846,7 +846,7 @@ This function is used to check the differences in installation years between the
 #' @param x_perc Set to TRUE to show proportions and FALSE to show counts.
 #' @param out_data Set to TRUE to return a list
 #' 
-#' @return A ggplot of yearly differences (year_col2 - year_col1), displaying the proportion of rows for each difference in years. If `out_data` is TRUE then returns a list with keys `data` representing the data used for plotting and `plot` with the ggplot object.
+#' @return A ggplot of yearly differences (year_col2 - year_col1), displaying the proportion of rows for each difference in years. If \code{out_data} is TRUE then returns a list with keys `data` representing the data used for plotting and \code{plot} with the ggplot object.
 #' @export
 #'
 plot_yearly_diff <- function(
@@ -955,24 +955,220 @@ plot_yearly_diff <- function(
 
 ```
 
-## Function 7: calc_criteria_stats
+## Function 5: filter_criteria
 
-Calculates segment inclusion criteria statistics.
+Fitler for segment inclusion criteria
 
-This function creates a data.frame of counts, segment lengths, and other exclusions (duplicates, misclassifications) per inclusion criteria step along with a list of the data.frames after applying the inclusion criteria.
+This function applies segment inclusion critieria to a list of data.frames. Optionally creates a data.frame of counts, segment lengths, and other exclusions (duplicates, misclassifications) per inclusion criteria step along with a list of the data.frames after applying the inclusion criteria.
 
 ```{r}
-calc_criteria_stats <- function(df_list) {}
+
+#' Filter for Segment Inclusion Criteria
+#'
+#' Creates a bar plot of the differences between two years.
+#'
+#' @param criteria_list A list of lists, where each list contains the following structure defining the segment inclusion criteria for each city:
+#' \itemize{
+#'	\item \code{city}: the name (char) of the city (required).
+#'	\item \code{data}: the data.frame containing road segments and applicable columns for inclusion criteria filtering (required).
+#'	\item \code{data_date}: the date (char) that the data was acquired.
+#'	\item \code{infra_col}: the column name (char) of the column containing the dedicated cycling infrastructure types to filter.
+#'	\item \code{infra_filter}: the vector of characters of dedicated cycling infrastructure types to include.
+#'	\item \code{status_col}: the column name (char) of the column containing the active road status types to filter.
+#'	\item \code{status_filter}: the vector of characters of active road status types to include.
+#'	\item \code{geom_col}: the column name (char) of the column containing geometries.
+#'	\item \code{geom_filter}: Set to TRUE to filter for null and duplicate geometries.
+#'	\item \code{misclass_col}: the column name (char) of the column containing misclassification types to filter.
+#'	\item \code{misclass_filter}: the vector of characters indicating non-misclassified rows of data to include. Usually set to c("NA", NA) to indicate that the row is not misclassified.
+#' }
+#' 
+#' @return A list of lists, where each list has keys and values from \code{criteria_list}, and the following additional keys:
+#' \itemize{
+#'	\item \code{data_filter}: the data.frame after filtering for segment inclusion criteria (required).
+#'	\item \code{infra_filter_applied}: TRUE if dedicated cycling infrastructure filter was applied and FALSE otherwise (required).
+#'	\item \code{infra_filter_n}: total rows (numeric) after filtering for dedicated cycling infrastructure using \code{infra_filter} (required).
+#'	\item \code{infra_filter_len}: total road length (numeric) after filtering for dedicated cycling infrastructure using \code{infra_filter} (required).
+#'	\item \code{infra_filter_nx}: total rows (numeric) affected by filtering for dedicated cycling infrastructure using \code{infra_filter} (required).
+#'	\item \code{infra_filter_lenx}: total road length (numeric) affected by filtering for dedicated cycling infrastructure using \code{infra_filter} (required).
+#'	\item \code{status_filter_applied}: TRUE if active road status filter was applied and FALSE otherwise (required).
+#'	\item \code{status_filter_n}: total rows (numeric) after filtering for active road status using \code{status_filter} (required).
+#'	\item \code{status_filter_len}: total road length (numeric) after filtering for active road status using \code{status_filter} (required).
+#'	\item \code{status_filter_nx}: total rows (numeric) affected by filtering for active road status using \code{status_filter} (required).
+#'	\item \code{status_filter_lenx}: total road length (numeric) affected by filtering for active road status using \code{status_filter} (required).
+#'	\item \code{geom_filter_null_applied}: TRUE if null geometries filter was applied and FALSE otherwise (required).
+#'	\item \code{geom_filter_null_n}: total rows (numeric) after filtering for null geometries (required).
+#'	\item \code{geom_filter_null_len}: total road length (numeric) after filtering for null geometries (required).
+#'	\item \code{geom_filter_null_nx}: total rows (numeric) affected by filtering for null geometries (required).
+#'	\item \code{geom_filter_null_lenx}: total road length (numeric) affected by filtering for null geometries (required).
+#'	\item \code{geom_filter_dup_applied}: TRUE if duplicate geometries filter was applied and FALSE otherwise (required).
+#'	\item \code{geom_filter_dup_n}: total rows (numeric) after filtering for duplicate geometries (required).
+#'	\item \code{geom_filter_dup_len}: total road length (numeric) after filtering for duplicate geometries (required).
+#'	\item \code{geom_filter_dup_nx}: total rows (numeric) affected by filtering for duplicate geometries (required).
+#'	\item \code{geom_filter_dup_lenx}: total road length (numeric) affected by filtering for duplicate geometries (required).
+#'	\item \code{elig_n}: total rows (numeric) after the above filters eligible for data entry and screening (required).
+#'	\item \code{elig_len}: total road length (numeric) after the above filters eligible for data entry and screening (required).
+#'	\item \code{misclass_filter_applied}: TRUE if null misclassifications filter was applied and FALSE otherwise (required).
+#'	\item \code{misclass_filter_n}: total rows (numeric) after filtering misclassifications using \code{misclass_filter} (required).
+#'	\item \code{misclass_filter_len}: total road length (numeric) after filtering misclassifications using \code{misclass_filter} (required).
+#'	\item \code{misclass_filter_nx}: total rows (numeric) affected by filtering misclassifications using \code{misclass_filter} (required).
+#'	\item \code{misclass_filter_lenx}: total road length (numeric) affected by misclassifications using \code{misclass_filter} (required).
+#'	\item \code{misclass_filter_uniq_n}: a data.frame of total rows for each misclassification type.
+#'	\item \code{misclass_filter_uniq_len}: a data.frame of total road lengths for each misclassification type.
+#'	\item \code{incl_n}: final total rows (numeric) after the above filters (required).
+#'	\item \code{incl_len}: final total road length (numeric) after the above filters (required).
+#' }
+#' @export
+#'
+filter_criteria <- function(criteria_list) {
+	
+	# Apply criteria to list and track counts and lengths
+	out <- criteria_list
+	for (i in 1:length(criteria_list)) {
+		
+		# Get criteria data
+		x <- criteria_list[[i]]
+		df <- x$data
+		
+		# Set initial apply status for filters
+		out[[i]]$infra_filter_applied <- FALSE
+		out[[i]]$status_filter_applied <- FALSE
+		out[[i]]$geom_filter_null_applied <- FALSE
+		out[[i]]$geom_filter_dup_applied <- FALSE
+		out[[i]]$misclass_filter_applied <- FALSE
+		
+		# Count/len initial
+		out[[i]]$data_n <- nrow(df)
+		out[[i]]$data_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		
+		# Filter for dedicated cycling infra
+		if (all(c("infra_col", "infra_filter") %in% names(x))) {
+			
+			# Apply ded cyc infra filter
+			df <- df %>%
+				filter(.data[[x$infra_col]] %in% x$infra_filter)
+			
+			# Set ded cyc infra filter status
+			out[[i]]$infra_filter_applied <- TRUE
+		}
+		
+		# Count/len ded cyc infra filter
+		out[[i]]$infra_filter_n <- nrow(df)
+		out[[i]]$infra_filter_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		
+		# Count/len affected by ded cyc infra filter
+		out[[i]]$infra_filter_nx <- out[[i]]$data_n - out[[i]]$infra_filter_n
+		out[[i]]$infra_filter_lenx <- out[[i]]$data_len - out[[i]]$infra_filter_len
+		
+		# Filter for status
+		if (all(c("status_col", "status_filter") %in% names(x))) {
+			
+			# Apply status filter
+			df <- df %>%
+				filter(.data[[x$status_col]] %in% x$status_filter)
+			
+			# Set status filter status
+			out[[i]]$status_filter_applied <- TRUE
+		}
+		
+		# Count/len status filter
+		out[[i]]$status_filter_n <- nrow(df)
+		out[[i]]$status_filter_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		
+		# Count/len affected by status filter
+		out[[i]]$status_filter_nx <- out[[i]]$infra_filter_n - out[[i]]$status_filter_n
+		out[[i]]$status_filter_lenx <- out[[i]]$infra_filter_len - out[[i]]$status_filter_len
+		
+		# Filter for null geoms
+		if (all(c("geom_col", "geom_filter") %in% names(x))) {
+			
+			# Apply null geom filter
+			df <- df %>%
+				filter(!is.na(.data[[x$geom_col]]))
+			
+			# Set dup geom filter status
+			out[[i]]$geom_filter_null_applied <- TRUE
+		}
+		
+		# Count/len null geom filter
+		out[[i]]$geom_filter_null_n <- nrow(df)
+		out[[i]]$geom_filter_null_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		
+		# Count/len affected by null geom filter
+		out[[i]]$geom_filter_null_nx <- out[[i]]$status_filter_n - out[[i]]$geom_filter_null_n
+		out[[i]]$geom_filter_null_lenx <- out[[i]]$status_filter_len - out[[i]]$geom_filter_null_len
+			
+		# Filter for dup geoms
+		if (all(c("geom_col", "geom_filter") %in% names(x))) {
+			
+			# Apply dup geom filter
+			df <- df %>%
+				distinct(.data[[x$geom_col]], .keep_all = TRUE)
+			
+			# Set dup geom filter status
+			out[[i]]$geom_filter_dup_applied <- TRUE
+		}
+		
+		# Count/len dupl geom filter
+		out[[i]]$geom_filter_dup_n <- nrow(df)
+		out[[i]]$geom_filter_dup_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		
+		# Count/len affected by dupl geom filter
+		out[[i]]$geom_filter_dup_nx <- out[[i]]$geom_filter_null_n - out[[i]]$geom_filter_dup_n
+		out[[i]]$geom_filter_dup_lenx <- out[[i]]$geom_filter_null_len - out[[i]]$geom_filter_dup_len
+		
+		# Count/len eligible
+		out[[i]]$elig_n <- nrow(df)
+		out[[i]]$elig_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		
+		# Filter for misclass
+		if (all(c("misclass_col", "misclass_filter") %in% names(x))) {
+			
+			# Count/len misclass groups
+			out[[i]]$misclass_filter_uniq_n <- df %>%
+				filter(!is.na(.data[[x$misclass_col]])) %>%
+				count(.data[[x$misclass_col]]) %>%
+				as_tibble
+			out[[i]]$misclass_filter_uniq_len <- df %>%
+				filter(!.data[[x$misclass_col]] %in% x$misclass_filter) %>%
+				group_by(.data[[x$misclass_col]]) %>%
+				summarize(len = sum(st_length(.data[[x$geom_col]]), na.rm = TRUE)) %>%
+				as_tibble
+			
+			# Apply misclass filter
+			df <- df %>%
+				filter(.data[[x$misclass_col]] %in% x$misclass_filter)
+			
+			# Set misclass filter status
+			out[[i]]$misclass_filter_applied <- TRUE
+		}
+		
+		# Count/len misclass filter
+		out[[i]]$misclass_filter_n <- nrow(df)
+		out[[i]]$misclass_filter_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		
+		# Count/len affected by misclass filter
+		out[[i]]$misclass_filter_nx <- out[[i]]$geom_filter_dup_n - out[[i]]$misclass_filter_n
+		out[[i]]$misclass_filter_lenx <- out[[i]]$geom_filter_dup_len - out[[i]]$misclass_filter_len
+		
+		# Count/len eligible
+		out[[i]]$incl_n <- nrow(df)
+		out[[i]]$incl_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		
+		# Save filtered data
+		out[[i]]$data_filter <- df
+	}
+	return(out)
+}
 ```
 
-## Function 8: draw_methods_diag
+## Function 5a: draw_criteria_diagram
 
 Draws a method diagram.
 
-This function draws a flow diagram of overall methods for the paper.
+This function draws a flow diagram of overall methods for the paper using the output from `filter_criteria`.
 
 ```{r}
-draw_methods_diag <- function(df) {
+draw_methods_diagram <- function(criteria_list) {
 	
 	# Diag settings
 	diag_settings <- "
@@ -1033,29 +1229,32 @@ draw_methods_diag <- function(df) {
 	y <- -0.06
 	y_gap <- -1.59
 	row_adds <- ""
-	for (i in 1:length(df)) {
+	for (criteria in criteria_list) {
 		
-		# Get data
-		df_row <- df[i, ]
+		# Calculate inelig
+		elig_inelig <- criteria$data_n - criteria$elig_n
+		elig_poly <- elig_inelig - criteria$geom_filter_null_n
+		elig_dup <- elig_poly - criteria$geom_filter_dup_n
+		incl_dup <- ""
 		
 		# Generate single row addition
 		row_adds <- paste0(row_adds, glue(
 			row_temp,
 			i = i,
 			y = y,
-			city = df_row[["city"]],
-			open_n = df_row[["open_n"]],
-			open_len = df_row[["open_len"]],
-			open_date = df_row[["open_date"]],
-			elig_n = df_row[["elig_n"]],
-			elig_len = df_row[["elig_len"]],
-			elig_inelig = df_row[["elig_inelig"]],
-			elig_dup = df_row[["elig_dup"]],
-			elig_poly = df_row[["elig_poly"]],
-			incl_n = df_row[["incl_n"]],
-			incl_len = df_row[["incl_len"]],
-			incl_miss = df_row[["incl_miss"]],
-			incl_dup = df_row[["incl_dup"]]
+			city = criteria[["city"]],
+			open_n = criteria[["data_n"]],
+			open_len = criteria[["data_len"]],
+			open_date = criteria[["data_date"]],
+			elig_n = criteria[["elig_n"]],
+			elig_len = criteria[["elig_len"]],
+			elig_inelig = elig_inelig,
+			elig_dup = elig_dup,
+			elig_poly = elig_poly,
+			incl_n = criteria[["incl_n"]],
+			incl_len = criteria[["incl_len"]],
+			incl_miss = criteria[["misclass_filter_n"]],
+			incl_dup = incl_dup
 		))
 		
 		# Move row below
