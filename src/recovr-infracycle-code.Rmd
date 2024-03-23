@@ -1655,11 +1655,55 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 			]
 			{s2}
 			{s2edges}
+			filter{fi} -> elig
 		",
 			h = (fi * 2.15),
+			fi = fi,
 			y = (y / 1.58),
 			s2 = s2,
 			s2edges = paste0("filter", 1:fi, collapse = " -> ")
+		)
+		
+		# Step 3 eligible
+		y <- y - 2.5
+		s3 <- glue("
+			elig_title[
+				label = <<b>Eligible</b>>
+				pos = '-8.5,{y}!'
+				width = 2
+				height = 1.9
+				fillcolor = '#d7e9fe'
+				style = 'rounded,filled'
+			]
+			elig[
+				label = 'Segments Included for Data Entry and Screening\\l(n = {n})\\l'
+				pos = '-2,{y}!'
+			]
+			
+		",
+			n = criteria$elig_n,
+			y = y
+		)
+		
+		# Step 5 Inclusions
+		y <- y - 2.5
+		s5 <- glue("
+			incl_title[
+				label = <<b>Inclusions</b>>
+				pos = '-8.5,{y}!'
+				width = 2
+				height = 1.9
+				fillcolor = '#c8e29d'
+				style = 'rounded,filled'
+			]
+			incl[
+				label = 'Verified Inclusions\\l(n = {n})\\l'
+				pos = '-2,{y}!'
+			]
+			
+		",
+			n = criteria$incl_n,
+			y = y
 		)
 		
 		# Combine steps
@@ -1670,6 +1714,10 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 			s1,
 			"\n",
 			s2,
+			"\n",
+			s3,
+			"\n",
+			s5,
 			"\n",
 			"}"
 		)
