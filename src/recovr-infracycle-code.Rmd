@@ -1677,16 +1677,82 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 			]
 			elig[
 				label = 'Segments Included for Data Entry and Screening\\l(n = {n})\\l'
-				pos = '-2,{y}!'
+				pos = '0,{y}!'
+				width = 14
 			]
-			
 		",
 			n = criteria$elig_n,
 			y = y
 		)
 		
+		# Step 4 Screening
+		s4 <- ""
+		misclass_keys <- c("misclass_col", "misclass_filter", "misclass_filter_uniq_n")
+		if (all(misclass_keys %in% names(criteria))) {
+			
+			# Step 4 title
+			y <- y - 3
+			s4 <- glue("
+				screen_title[
+					label = <<b>Screening</b>>
+					pos = '-8.5,{y}!'
+					width = 2
+					height = 2.55
+					fillcolor = '#d7e9fe'
+					style = 'rounded,filled'
+				]
+			",
+				n = criteria$misclass_n,
+				y = y
+			)
+			
+			# Step 4 misclass
+			s4 <- glue("
+				{s4}
+				
+				screen[
+					label = 'Exclusion of Misclassifications and\\lDuplicates following Screening\\l{column} != {filter}\\l(n = {n})\\l'
+					pos = '-4.5,{y}!'
+					width = 5
+					height = 2.5
+				]
+				screenx[
+					label = '{misclass}'
+					pos = '3,{y}!'
+					width = 7.95
+					height = 2.5
+				]
+				screen -> screenx
+				elig -> screen
+			",
+				column = criteria$misclass_col,
+				filter = str_replace_all(
+					str_wrap(
+						paste0(
+							criteria$misclass_filter,
+							collapse = ", "
+						),
+						width = 83
+					),
+					"[\r\n]",
+					"\\\\l"
+				),
+				n = criteria$misclass_filter_n,
+				misclass = paste0(
+					"Misclassifications: ",
+					criteria$misclass_filter_uniq_n[[1]],
+					" (n = ",
+					criteria$misclass_filter_uniq_n[[2]],
+					")\\l",
+					collapse = ""
+				),
+				y = y,
+				s4 = s4
+			)
+		}
+		
 		# Step 5 Inclusions
-		y <- y - 2.5
+		y <- y - 2.95
 		s5 <- glue("
 			incl_title[
 				label = <<b>Inclusions</b>>
@@ -1698,8 +1764,10 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 			]
 			incl[
 				label = 'Verified Inclusions\\l(n = {n})\\l'
-				pos = '-2,{y}!'
+				pos = '0,{y}!'
+				width = 14
 			]
+			screen -> incl
 			
 		",
 			n = criteria$incl_n,
@@ -1716,6 +1784,8 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 			s2,
 			"\n",
 			s3,
+			"\n",
+			s4,
 			"\n",
 			s5,
 			"\n",
