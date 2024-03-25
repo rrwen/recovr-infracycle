@@ -104,9 +104,9 @@ settings$type_recode_road <- c(
 )
 
 # Column references
-settings$year_col_road <- "install_year"
-settings$type_col_road <- "road_type"
-settings$type_col_infra <- "infra_type"
+settings$year_col_road <- "verify_install_year"
+settings$type_col_road <- "road_type_recode"
+settings$type_col_infra <- "verify_install_type"
 
 # Set years of interest
 settings$year_min <- 2009
@@ -163,9 +163,9 @@ Where:
 #'
 calc_yearly_len <- function(
 		df,
-		year_col = "install_year",
-		type_col = "install_type",
-		len_col = "segment_len",
+		year_col = "verify_install_year",
+		type_col = "verify_install_type",
+		len_col = "geometry_len_km",
 		out_col = "len",
 		year_min = settings$year_min,
 		year_max = settings$year_max
@@ -271,10 +271,10 @@ $$ Where:
 #'
 calc_yearly_adj_len <- function(
 		df,
-		year_cols = c("install_year", "upgrade1_year", "upgrade2_year"),
-		type_cols = c("install_type", "upgrade1_type", "upgrade2_type"),
+		year_cols = c("verify_install_year", "verify_upgrade1_year", "verify_upgrade2_year"),
+		type_cols = c("verify_install_type", "verify_upgrade1_type", "verify_upgrade2_type"),
 		type_col = "type",
-		len_cols = "segment_len",
+		len_cols = "geometry_len_km",
 		out_cols = c("install_len", "upgrade1_len", "upgrade2_len"),
 		out_col = "adj_len",
 		repl_suffix = "_replaced",
@@ -306,21 +306,24 @@ calc_yearly_adj_len <- function(
 		ocol <- out_cols[[i]]
 		
 		# Calc yearly len for install or change
-		out <- append(
-			out,
-			calc_yearly_len(
-				df,
-				year_col = ycol,
-				type_col = tcol,
-				len_col = lcol,
-				out_col = ocol,
-				...
-			) %>%
-				rename(
-					"year" := !!ycol,
-					"type" := !!tcol
-				) %>% list
-		)
+		has_infra <- !is.na(df[[tcol]]) %>% all
+		if (has_infra) {
+			out <- append(
+				out,
+				calc_yearly_len(
+					df,
+					year_col = ycol,
+					type_col = tcol,
+					len_col = lcol,
+					out_col = ocol,
+					...
+				) %>%
+					rename(
+						"year" := !!ycol,
+						"type" := !!tcol
+					) %>% list
+			)
+		}
 		
 		# Calc yearly len for replacement
 		if (i > 1) {
@@ -749,7 +752,7 @@ plot_yearly_len_road <- function(df, title = "Roadways with Dedicated Cycling In
 		
 		# Create infra plot for road type
 		p[[i + 1]] <- calc_yearly_adj_len(
-			df %>% filter(road_type == r),
+			df %>% filter(.data[[settings$type_col_road]] == r),
 			type_col = settings$type_col_infra
 		) %>%
 			plot_yearly_len(
@@ -848,8 +851,8 @@ This function is used to check the differences in installation years between the
 #'
 plot_yearly_diff <- function(
 		df,
-		year_col1 = "install_year_orig",
-		year_col2 = "install_year",
+		year_col1 = "install_year",
+		year_col2 = "verify_install_year",
 		year_col1_name = "City Year",
 		year_col2_name = "Verified Year",
 		year_min = settings$year_min,
@@ -897,7 +900,7 @@ plot_yearly_diff <- function(
 	
 	# Calc yearly diff
 	pdata <- pdata %>%
-		mutate(year_diff = install_year - install_year_orig) %>%
+		mutate(year_diff = .data[[year_col2]] - .data[[year_col1]]) %>%
 		count(year_diff) %>%
 		mutate(n_perc = (n / sum(n)) * 100)
 	
@@ -1874,67 +1877,30 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 
 Load raw data provided by Konrad Samsel.
 
-## Vancouver Raw Data
+## Vancouver Raw Data {.tabset}
 
 ```{r}
+vanc_raw <- read_sf("../data/raw/vancouver/Vancouver AS 3666 V2.shp")
+```
 
-# Load raw data
-vanc_bikeways <- read_csv("../data/vancouver_bikeways_2009_2022_v1.csv")
-vanc_roads <- read_csv("../data/vancouver_roads_2009_2022_v1.csv")
+### Map
 
-# Combine raw data
-vanc <- vanc_bikeways %>%
-	select(
-		ID_DATAENTRY,
-		INST_YR_ORIG,
-		INST_YR,
-		INST_MIN_HTYPE,
-		UPGR1_YR,
-		UPGR1_MIN_HTYPE,
-		UPGR2_YR,
-		UPGR2_MIN_TYPE,
-		ATR_SEGMENT_LENGTH
-	) %>%
-	left_join(
-		vanc_roads %>% select(
-			ID_DATAENTRY,
-			ATR_SEGMENT_TYPE
-		),
-		by = "ID_DATAENTRY"
-	) %>%
-	rename(
-		id = ID_DATAENTRY,
-		install_year_orig = INST_YR_ORIG,
-		install_year = INST_YR,
-		install_type = INST_MIN_HTYPE,
-		upgrade1_year = UPGR1_YR,
-		upgrade1_type = UPGR1_MIN_HTYPE,
-		upgrade2_year = UPGR2_YR,
-		upgrade2_type = UPGR2_MIN_TYPE,
-		segment_len = ATR_SEGMENT_LENGTH,
-		segment_type = ATR_SEGMENT_TYPE
-	) %>%
-	mutate(
-		segment_len = segment_len / 1000,
-		road_type = case_when( # create road types
-	        segment_type %in% c( # arterial equiv
-	        	"Arterial"
-	        ) ~ "Arterial",
-	        segment_type %in% c( # collector equiv
-	        	"Collector",
-	        	"Secondary Arterial",
-	        	"Sec Arterial"
-	        ) ~ "Collector",
-	        segment_type %in% c( # local equiv
-	        	"Lane",
-	        	"Residential",
-	        	"Leased",
-	        	"Recreational"
-	        ) ~ "Local",
-	        .default = segment_type
-	    )
-	)
-vanc
+```{r out.width = "100%"}
+tmap_mode("view")
+tm_shape(vanc_raw) +
+	tm_lines(col = "INST_TMIN", popup.vars = TRUE)
+```
+
+### Data
+
+```{r}
+vanc_raw %>% as_tibble
+```
+
+### Details
+
+```{r}
+print(vanc_raw)
 ```
 
 ## Calgary Raw Data
@@ -2010,7 +1976,7 @@ calg
 ## Toronto Raw Data {.tabset}
 
 ```{r}
-toron_raw <- read_sf("../data/raw/Toronto AS Export/Toronto_AS_1323.shp")
+toron_raw <- read_sf("../data/raw/toronto/Toronto AS 1323 V3.shp")
 ```
 
 ### Map
@@ -2035,20 +2001,19 @@ print(toron_raw)
 
 # Preprocessing
 
-## Toronto Preprocessed Data
+## Vancouver Preprocessed Data
 
-Note 1: Working on getting complete data.
+```{r warning = FALSE}
 
-```
 # Preprocess data
-toron_prep <- toron_raw %>%
+vanc <- vanc_raw %>%
 	select( # select and rename
-		id = OBJECTI2,
-		street = STREET_7,
-		street_from = FROM_ST8,
-		street_to = TO_STRE9,
-		install_year = INSTALL4,
-		install_type = INFRA_H20, # similar to C_INFRA_H
+		id = object_id,
+		street = street_nam,
+		status = status,
+		road_type = street_seg,
+		#install_year = INSTALL4,
+		install_type = bikeway_ty,
 		verify_install_year = INST_YR,
 		verify_install_date = INST_DATE,
 		verify_install_type = INST_TMIN,
@@ -2061,13 +2026,155 @@ toron_prep <- toron_raw %>%
 		verify_upgrade2_date = UPGR2_DATE,
 		verify_upgrade2_type = UPGR2_TMIN,
 		verify_upgrade2_comment = UPGR2_COMM,
-		verify_excl_flag = EXCL_FLAG
+		verify_exclude = EXCL_REAS
+	) %>%
+	mutate( # data types
+		id = as.character(id),
+		street = as.character(street),
+		road_type = as.character(road_type),
+		#install_year = as.numeric(install_year),
+		install_type = as.character(install_type),
+		verify_install_year = as.numeric(verify_install_year),
+		verify_install_date = as.character(verify_install_date),
+		verify_install_type = as.character(verify_install_type),
+		verify_install_comment = as.character(verify_install_comment),
+		verify_upgrade1_year = as.numeric(verify_upgrade1_year),
+		verify_upgrade1_date = as.character(verify_upgrade1_date),
+		verify_upgrade1_type = as.character(verify_upgrade1_type),
+		verify_upgrade1_comment = as.character(verify_upgrade1_comment),
+		verify_upgrade2_year = as.numeric(verify_upgrade2_year),
+		verify_upgrade2_date = as.character(verify_upgrade2_date),
+		verify_upgrade2_type = as.character(verify_upgrade2_type),
+		verify_upgrade2_comment = as.character(verify_upgrade2_comment),
+		verify_exclude = as.character(verify_exclude)
+	) %>%
+	mutate( # clean values
+		#install_year = na_if(install_year, 0),
+		verify_install_year = na_if(verify_install_year, 0),
+		verify_install_date = na_if(verify_install_date, "NA"),
+		verify_install_type = na_if(verify_install_type, "NA") %>%
+			str_replace_all("[^[:alpha:]]|\\s", ""),
+		verify_install_comment = na_if(verify_install_comment, "NA"),
+		verify_upgrade1_year = na_if(verify_upgrade1_year, 0),
+		verify_upgrade1_date = na_if(verify_upgrade1_date, "NA"),
+		verify_upgrade1_type = na_if(verify_upgrade1_type, "NA") %>%
+			str_replace_all("[^[:alpha:]]|\\s", ""),
+		verify_upgrade1_comment = na_if(verify_upgrade1_comment, "NA"),
+		verify_upgrade2_year = na_if(verify_upgrade2_year, 0),
+		verify_upgrade2_date = na_if(verify_upgrade2_date, "NA"),
+		verify_upgrade2_type = na_if(verify_upgrade2_type, "NA") %>%
+			str_replace_all("[^[:alpha:]]|\\s", ""),
+		verify_upgrade2_comment = na_if(verify_upgrade2_comment, "NA"),
+		verify_exclude =  na_if(verify_exclude, "NA") %>%
+			str_trim %>%
+			str_to_title
+	) %>%
+	mutate( # add local street as LSB to verify installs
+		verify_install_type = if_else(
+			is.na(verify_install_type) & install_type == "Local Street",
+			"LSB",
+			verify_install_type
+		)
+		# verify_install_year = if_else(
+		# 	is.na(verify_install_type) & install_type == "Local Street",
+		# 	install_year,
+		# 	verify_install_year
+		# )
+	) %>%
+	mutate( # create col for recoded road types
+		road_type_recode = case_when( # create road types
+	        road_type %in% c( # arterial equiv
+	        	"Arterial"
+	        ) ~ "Arterial",
+	        road_type %in% c( # collector equiv
+	        	"Collector",
+	        	"Secondary Arterial",
+	        	"Sec Arterial"
+	        ) ~ "Collector",
+	        road_type %in% c( # local equiv
+	        	"Lane",
+	        	"Residential",
+	        	"Leased",
+	        	"Recreational"
+	        ) ~ "Local",
+	        .default = road_type
+	    ),
+		.after = road_type
+	) %>%
+	mutate( # create col for segment lengths in km
+		geometry_len_km = as.numeric(st_length(geometry)) / 1000,
+		.before = geometry
+	)
+
+# Save geojson
+vanc %>%
+	st_write("../data/vancouver_verify_bikeways_v1.geojson", delete_dsn = TRUE)
+
+# Save csv
+# st_read("../data/vancouver_bikeways_v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
+vanc %>%
+	mutate(
+		geometry = st_as_text(geometry),
+		geometry_crs = st_crs(vanc)$proj4string,
+		.before = geometry
+	) %>%
+	write_csv("../data/vancouver_verify_bikeways_v1.csv", na = "")
+```
+
+### Map
+
+```{r out.width = "100%"}
+tmap_mode("view")
+tm_shape(vanc) +
+	tm_lines(col = "verify_install_type", popup.vars = TRUE)
+```
+
+### Data
+
+```{r}
+vanc %>% as_tibble
+```
+
+### Details
+
+```{r}
+print(vanc)
+```
+
+## Toronto Preprocessed Data
+
+```{r warning = FALSE}
+
+# Preprocess data
+toron <- toron_raw %>%
+	select( # select and rename
+		id = OBJECTI2,
+		street = STREET_7,
+		street_from = FROM_ST8,
+		street_to = TO_STRE9,
+		road_type = M_FEATUR36,
+		install_year = INSTALL4,
+		install_type = INFRA_H20,
+		verify_install_year = INST_YR,
+		verify_install_date = INST_DATE,
+		verify_install_type = INST_TMIN,
+		verify_install_comment = INST_COMM,
+		verify_upgrade1_year = UPGR1_YR,
+		verify_upgrade1_date = UPGR1_DATE,
+		verify_upgrade1_type = UPGR1_TMIN,
+		verify_upgrade1_comment = UPGR1_COMM,
+		verify_upgrade2_year = UPGR2_YR,
+		verify_upgrade2_date = UPGR2_DATE,
+		verify_upgrade2_type = UPGR2_TMIN,
+		verify_upgrade2_comment = UPGR2_COMM,
+		verify_exclude = EXCL_REAS
 	) %>%
 	mutate( # data types
 		id = as.character(id),
 		street = as.character(street),
 		street_from = as.character(street_from),
 		street_to = as.character(street_to),
+		road_type = as.character(road_type),
 		install_year = as.numeric(install_year),
 		install_type = as.character(install_type),
 		verify_install_year = as.numeric(verify_install_year),
@@ -2082,7 +2189,7 @@ toron_prep <- toron_raw %>%
 		verify_upgrade2_date = as.character(verify_upgrade2_date),
 		verify_upgrade2_type = as.character(verify_upgrade2_type),
 		verify_upgrade2_comment = as.character(verify_upgrade2_comment),
-		verify_excl_flag = as.character(verify_excl_flag)
+		verify_exclude = as.character(verify_exclude)
 	) %>%
 	mutate( # clean values
 		install_year = na_if(install_year, 0),
@@ -2101,89 +2208,66 @@ toron_prep <- toron_raw %>%
 		verify_upgrade2_type = na_if(verify_upgrade2_type, "NA") %>%
 			str_replace_all("[^[:alpha:]]|\\s", ""),
 		verify_upgrade2_comment = na_if(verify_upgrade2_comment, "NA"),
-		verify_excl_flag =  na_if(verify_excl_flag, "NA") %>%
-			str_replace_all("\\s", "")
+		verify_exclude =  na_if(verify_exclude, "NA") %>%
+			str_trim %>%
+			str_to_title
 	) %>%
-	mutate( # create columns
-		len_km = as.numeric(st_length(geometry)) / 1000,
-		.before = geometry
-	)
-
-# Save geojson
-toron_prep %>%
-	st_write("../data/toronto_bikeways_v1.geojson", delete_dsn = TRUE)
-
-# Save csv
-# st_read("../data/toronto_bikeways_v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
-toron_prep %>%
-	mutate(
-		geometry = st_as_text(geometry),
-		geometry_crs = st_crs(toron_prep)$proj4string,
-		.before = geometry
-	) %>%
-	write_csv("../data/toronto_bikeways_v1.csv", na = "")
-toron_prep
-```
-
-Note 2: Using this one for now.
-
-```{r}
-
-# Load raw data
-toron_bikeways <- read_csv("../data/toronto_bikeways_2009_2022_v1.csv")
-toron_roads <- read_csv("../data/toronto_roads_2009_2022_v1.csv")
-
-# Combine raw data
-toron <- toron_bikeways %>%
-    select(
-		ID_OID,
-		INSTALLED_ORIG,
-		INST_YR,
-		INST_MIN_HTYPE,
-		UPGR1_YR,
-		UPGR1_MIN_HTYPE,
-		UPGR2_YR,
-		UPGR2_MIN_HTYPE,
-		ATR_SEGMENT_LENGTH
-    ) %>%
-	left_join(
-		toron_roads %>% select(
-			OID_,
-			FEATURE36
-		),
-		by = join_by(ID_OID == OID_)
-	) %>%
-	rename(
-		id = ID_OID,
-		install_year_orig = INSTALLED_ORIG,
-		install_year = INST_YR,
-		install_type = INST_MIN_HTYPE,
-		upgrade1_year = UPGR1_YR,
-		upgrade1_type = UPGR1_MIN_HTYPE,
-		upgrade2_year = UPGR2_YR,
-		upgrade2_type = UPGR2_MIN_HTYPE,
-		segment_len = ATR_SEGMENT_LENGTH,
-		segment_type = FEATURE36
-	) %>%
-	mutate(
-		segment_len = segment_len / 1000,
-		road_type = case_when( # create road types
-	        segment_type %in% c( # arterial equiv
+	mutate( # create col for recoded road types
+		road_type_recode = case_when( # create road types
+	        road_type %in% c( # arterial equiv
 	        	"Major Arterial",
 	        	"Major Arterial Ramp",
 	        	"Minor Arterial"
 	        ) ~ "Arterial",
-	        segment_type %in% c( # collector equiv
+	        road_type %in% c( # collector equiv
 	        	"Collector"
 	        ) ~ "Collector",
-	        segment_type %in% c(  # local equiv
+	        road_type %in% c(  # local equiv
 	        	"Local",
 	        	"Other"
 	        ) ~ "Local",
-	        .default = segment_type
-	    )
+	        .default = road_type
+	    ),
+		.after = road_type
+	) %>%
+	mutate( # create col for segment lengths in km
+		geometry_len_km = as.numeric(st_length(geometry)) / 1000,
+		.before = geometry
 	)
-toron
+
+# Save geojson
+toron %>%
+	st_write("../data/toronto_verify_bikeways_v1.geojson", delete_dsn = TRUE)
+
+# Save csv
+# st_read("../data/toronto_bikeways_v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
+toron %>%
+	mutate(
+		geometry = st_as_text(geometry),
+		geometry_crs = st_crs(toron)$proj4string,
+		.before = geometry
+	) %>%
+	write_csv("../data/toronto_verify_bikeways_v1.csv", na = "")
+```
+
+### Map
+
+```{r out.width = "100%"}
+tmap_mode("view")
+tm_shape(toron) +
+	tm_lines(col = "verify_install_type", popup.vars = TRUE)
+```
+
+### Data
+
+```{r}
+toron %>% as_tibble
+```
+
+### Details
+
+```{r}
+print(toron)
 ```
 
 # Figures
@@ -2253,9 +2337,9 @@ Assessed using roadway centreline-km, with infrastructure classifications determ
 
 ```{r fig.width=8.5, fig.height=11}
 plot_yearly_len_infra(list(
-	"Vancouver, CA" = vanc,
-	"Calgary, CA" = calg,
-	"Toronto, CA" = toron
+	"Vancouver, CA" = vanc %>% as_tibble,
+	#"Calgary, CA" = calg %>% as_tibble,
+	"Toronto, CA" = toron %>% as_tibble
 ))
 ```
 
@@ -2274,7 +2358,7 @@ By (A) roadway classification, and (B) infrastructure distribution within each r
 
 ```{r fig.width=18, fig.height=10}
 plot_yearly_len_road(
-	vanc,
+	vanc %>% as_tibble,
 	title = "Roadways with Dedicated Cycling Infrastructure (Vancouver, CA)"
 )
 ```
@@ -2296,7 +2380,7 @@ By (A) roadway classification, and (B) infrastructure distribution within each r
 
 ```{r fig.width=18, fig.height=10}
 plot_yearly_len_road(
-	toron,
+	toron %>% as_tibble,
 	title = "Roadways with Dedicated Cycling Infrastructure (Toronto, CA)"
 )
 ```
@@ -2383,7 +2467,7 @@ sfig8$data
 
 # Create the plot
 sfig9 <- plot_yearly_diff(
-	toron,
+	toron %>% as_tibble,
 	title = "Difference in Installation Years, Comparing City Data and Verified Data: Toronto, CA",
 	out_data = TRUE
 )
