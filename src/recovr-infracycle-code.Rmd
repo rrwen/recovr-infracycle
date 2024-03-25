@@ -1412,7 +1412,10 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 	# Generate diagrams for each city
 	out <- list()
 	for (i in 1:length(criteria_list)) {
+		
+		# Diag vars
 		criteria <- criteria_list[[i]]
+		x_edge <- -4
 		
 		# Diag settings
 		diag_settings <- "
@@ -1453,22 +1456,23 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 			
 			id_top[
 				style = invis
-				pos = '-2,0!'
+				pos = '{x},0!'
 			]
 			id_bot[
 				style = invis
-				pos = '-2,-2.35!'
+				pos = '{x},-2.25!'
 			]
 			id_top -> id_bot
 		",
 			url = criteria$data_url,
 			date = criteria$data_date,
-			n = criteria$data_n
+			n = criteria$data_n,
+			x = x_edge
 		)
 		
 		# Step 2 vars
 		fi <- 0
-		y <- -0.15
+		y <- -0
 		s2 <- ""
 		
 		# Step 2 filtering infra
@@ -1489,6 +1493,16 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 					width = 3
 				]
 				filter{fi} -> filter{fi}x
+				
+				filter{fi}_top[
+					style = invis
+					pos = '{x},{y}!'
+				]
+				filter{fi}_bot[
+					style = invis
+					pos = '{x},{y - 2.25}!'
+				]
+				filter{fi}_top -> filter{fi}_bot
 			",
 				column = criteria$infra_col,
 				filter = str_replace_all(
@@ -1506,6 +1520,7 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 				nx = criteria$infra_filter_nx,
 				fi = fi,
 				y = y,
+				x = x_edge,
 				s2 = s2
 			)
 		}
@@ -1528,6 +1543,16 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 					width = 3
 				]
 				filter{fi} -> filter{fi}x
+				
+				filter{fi}_top[
+					style = invis
+					pos = '{x},{y}!'
+				]
+				filter{fi}_bot[
+					style = invis
+					pos = '{x},{y - 2.25}!'
+				]
+				filter{fi}_top -> filter{fi}_bot
 			",
 				column = criteria$road_col,
 				filter = str_replace_all(
@@ -1545,6 +1570,7 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 				nx = criteria$road_filter_nx,
 				fi = fi,
 				y = y,
+				x = x_edge,
 				s2 = s2
 			)
 		}
@@ -1567,6 +1593,16 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 					width = 3
 				]
 				filter{fi} -> filter{fi}x
+				
+				filter{fi}_top[
+					style = invis
+					pos = '{x},{y}!'
+				]
+				filter{fi}_bot[
+					style = invis
+					pos = '{x},{y - 2.25}!'
+				]
+				filter{fi}_top -> filter{fi}_bot
 			",
 				column = criteria$status_col,
 				filter = str_replace_all(
@@ -1584,6 +1620,7 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 				nx = criteria$status_filter_nx,
 				fi = fi,
 				y = y,
+				x = x_edge,
 				s2 = s2
 			)
 		}
@@ -1608,12 +1645,23 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 					width = 3
 				]
 				filter{fi} -> filter{fi}x
+				
+				filter{fi}_top[
+					style = invis
+					pos = '{x},{y}!'
+				]
+				filter{fi}_bot[
+					style = invis
+					pos = '{x},{y - 2.25}!'
+				]
+				filter{fi}_top -> filter{fi}_bot
 			",
 				column = criteria$geom_col,
 				n = criteria$geom_filter_n,
 				nx = criteria$geom_filter_nx,
 				fi = fi,
 				y = y,
+				x = x_edge,
 				s2 = s2
 			)
 
@@ -1633,12 +1681,23 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 					width = 3
 				]
 				filter{fi} -> filter{fi}x
+				
+				filter{fi}_top[
+					style = invis
+					pos = '{x},{y}!'
+				]
+				filter{fi}_bot[
+					style = invis
+					pos = '{x},{y - 2.25}!'
+				]
+				filter{fi}_top -> filter{fi}_bot
 			",
 				column = criteria$geom_col,
 				n = criteria$geom_filter_n,
 				nx = criteria$geom_filter_nx,
 				fi = fi,
 				y = y,
+				x = x_edge,
 				s2 = s2
 			)
 		}
@@ -1654,18 +1713,15 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 				style = 'rounded,filled'
 			]
 			{s2}
-			{s2edges}
-			filter{fi} -> elig
 		",
-			h = (fi * 2.15),
+			h = (fi * 2.1),
 			fi = fi,
-			y = (y / 1.58),
-			s2 = s2,
-			s2edges = paste0("filter", 1:fi, collapse = " -> ")
+			y = y + if (fi == 1) 0 else (((fi -1) / 2) * 2.25),
+			s2 = s2
 		)
 		
 		# Step 3 eligible
-		y <- y - 2.5
+		y <- y - 2.25
 		s3 <- glue("
 			elig_title[
 				label = <<b>Eligible</b>>
@@ -1680,79 +1736,97 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 				pos = '0,{y}!'
 				width = 14
 			]
+			
+			elig_top[
+				style = invis
+				pos = '{x},{y}!'
+			]
+			elig_bot[
+				style = invis
+				pos = '{x},{y - 2.25}!'
+			]
+			elig_top -> elig_bot
 		",
 			n = criteria$elig_n,
-			y = y
+			y = y,
+			x = x_edge
 		)
 		
 		# Step 4 Screening
 		s4 <- ""
-		misclass_keys <- c("misclass_col", "misclass_filter", "misclass_filter_uniq_n")
-		if (all(misclass_keys %in% names(criteria))) {
 			
-			# Step 4 title
-			y <- y - 3
-			s4 <- glue("
-				screen_title[
-					label = <<b>Screening</b>>
-					pos = '-8.5,{y}!'
-					width = 2
-					height = 2.55
-					fillcolor = '#d7e9fe'
-					style = 'rounded,filled'
-				]
-			",
-				n = criteria$misclass_n,
-				y = y
-			)
+		# Step 4 title
+		y <- y - 2.65
+		s4 <- glue("
+			screen_title[
+				label = <<b>Screening</b>>
+				pos = '-8.5,{y}!'
+				width = 2
+				height = 2.55
+				fillcolor = '#d7e9fe'
+				style = 'rounded,filled'
+			]
+		",
+			n = criteria$misclass_n,
+			y = y
+		)
+		
+		# Step 4 misclass
+		s4 <- glue("
+			{s4}
 			
-			# Step 4 misclass
-			s4 <- glue("
-				{s4}
-				
-				screen[
-					label = 'Exclusion of Misclassifications and\\lDuplicates following Screening\\l{column} != {filter}\\l(n = {n})\\l'
-					pos = '-4.5,{y}!'
-					width = 5
-					height = 2.5
-				]
-				screenx[
-					label = '{misclass}'
-					pos = '3,{y}!'
-					width = 7.95
-					height = 2.5
-				]
-				screen -> screenx
-				elig -> screen
-			",
-				column = criteria$misclass_col,
-				filter = str_replace_all(
-					str_wrap(
-						paste0(
-							criteria$misclass_filter,
-							collapse = ", "
-						),
-						width = 83
+			screen[
+				label = 'Exclusion of Misclassifications and\\lDuplicates following Screening\\l{column} != {filter}\\l(n = {n})\\l'
+				pos = '-4.5,{y}!'
+				width = 5
+				height = 2.5
+			]
+			screenx[
+				label = '{misclass}'
+				pos = '3,{y}!'
+				width = 7.95
+				height = 2.5
+			]
+			screen -> screenx
+			
+			screen_top[
+				style = invis
+				pos = '{x},{y - 0.35}!'
+			]
+			screen_bot[
+				style = invis
+				pos = '{x},{y - 2.75}!'
+			]
+			screen_top -> screen_bot
+		",
+			column = criteria$misclass_col,
+			filter = str_replace_all(
+				str_wrap(
+					paste0(
+						criteria$misclass_filter,
+						collapse = ", "
 					),
-					"[\r\n]",
-					"\\\\l"
+					width = 83
 				),
-				n = criteria$misclass_filter_n,
-				misclass = paste0(
-					"Misclassifications: ",
-					criteria$misclass_filter_uniq_n[[1]],
-					" (n = ",
-					criteria$misclass_filter_uniq_n[[2]],
-					")\\l",
-					collapse = ""
-				),
-				y = y,
-				s4 = s4
-			)
-		}
+				"[\r\n]",
+				"\\\\l"
+			),
+			n = criteria$misclass_filter_n,
+			misclass = paste0(
+				"Misclassifications: ",
+				criteria$misclass_filter_uniq_n[[1]],
+				" (n = ",
+				criteria$misclass_filter_uniq_n[[2]],
+				")\\l",
+				collapse = ""
+			),
+			y = y,
+			x = x_edge,
+			s4 = s4
+		)
 		
 		# Step 5 Inclusions
-		y <- y - 2.95
+		y <- y - 2.75
 		s5 <- glue("
 			incl_title[
 				label = <<b>Inclusions</b>>
@@ -1767,8 +1841,6 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 				pos = '0,{y}!'
 				width = 14
 			]
-			screen -> incl
-			
 		",
 			n = criteria$incl_n,
 			y = y
