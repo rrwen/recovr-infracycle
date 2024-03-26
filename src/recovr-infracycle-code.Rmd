@@ -63,6 +63,7 @@ install.packages("magick")
 install.packages("rsvg")
 install.packages("sf")
 install.packages("tmap")
+install.packages("units")
 ```
 
 Load R libraries.
@@ -78,6 +79,7 @@ library(rsvg)
 library(sf)
 library(tidyverse)
 library(tmap)
+library(units)
 ```
 
 # Settings
@@ -987,6 +989,8 @@ This function applies segment inclusion critieria to a list of data.frames. Opti
 #'	\item \code{geom_filter}: Set to TRUE to filter for null and duplicate geometries.
 #'	\item \code{misclass_col}: the column name (char) of the column containing misclassification types to filter.
 #'	\item \code{misclass_filter}: the vector of characters indicating non-misclassified rows of data to include. Usually set to c("NA", NA) to indicate that the row is not misclassified.
+#'  \item \code{noverify_col}: the column containing infrastructure install types (char) that are not verified. This does not filter the data, but calculates and adjusts for the rows and road lengths of non-verified segments.
+#'. \item \code{noverify_filter}: the vector of characters of non-verified infrastructure install types from the city. This does not filter the data, but calculates and adjusts for the rows and road lengths of non-verified segments.
 #' }
 #' @param len_func A function to apply to road length calculations. The default is a function that converts from meters to km.
 #' 
@@ -1027,6 +1031,9 @@ This function applies segment inclusion critieria to a list of data.frames. Opti
 #'	\item \code{misclass_filter_lenx}: total road length (numeric) affected by misclassifications using \code{misclass_filter} (required).
 #'	\item \code{misclass_filter_uniq_n}: a data.frame of total rows for each misclassification type.
 #'	\item \code{misclass_filter_uniq_len}: a data.frame of total road lengths for each misclassification type.
+#'	\item \code{noverify_filter_applied}: TRUE if non-verified infrastructure filter was calculated and FALSE otherwise (required).
+#'	\item \code{noverify_filter_nx}: total rows (numeric) of non-verified infrastructure from \code{noverify_filter} (required).
+#'	\item \code{noverify_filter_lenx}: total road length (numeric) affected by non-verified infrastructure using \code{noverify_filter} (required).
 #'	\item \code{incl_n}: final total rows (numeric) after the above filters (required).
 #'	\item \code{incl_len}: final total road length (numeric) after the above filters (required).
 #' }
@@ -1034,7 +1041,7 @@ This function applies segment inclusion critieria to a list of data.frames. Opti
 #'
 filter_criteria <- function(
 	criteria_list,
-	len_func = function (x) x / 1000
+	len_func = function (x) as.numeric(x) / 1000
 ) {
 	
 	# Apply criteria to list and track counts and lengths
@@ -1053,6 +1060,7 @@ filter_criteria <- function(
 		out[[city]]$geom_filter_null_applied <- FALSE
 		out[[city]]$geom_filter_dup_applied <- FALSE
 		out[[city]]$misclass_filter_applied <- FALSE
+		out[[city]]$noverify_filter_applied <- FALSE
 		
 		# Count/len initial
 		out[[city]]$data_n <- nrow(df)
@@ -1153,9 +1161,30 @@ filter_criteria <- function(
 		out[[city]]$geom_filter_dup_nx <- out[[city]]$geom_filter_null_n - out[[city]]$geom_filter_dup_n
 		out[[city]]$geom_filter_dup_lenx <- out[[city]]$geom_filter_null_len - out[[city]]$geom_filter_dup_len
 		
+		# Calculate noverify segments
+		if (all(c("noverify_col", "noverify_filter") %in% names(x))) {
+			
+			# Apply noverify filter separately
+			df_noverify <- df %>%
+				filter(!is.na(.data[[x$noverify_col]]))
+			
+			# Set noverify filter status
+			out[[city]]$noverify_filter_applied <- TRUE
+			
+			# Count/len of noverify segments
+			out[[city]]$noverify_filter_nx <- df_noverify %>% nrow
+			out[[city]]$noverify_filter_lenx <- len_func(sum(st_length(df_noverify[[x$geom_col]]), na.rm = TRUE))
+			
+		} else {
+			
+			# Set to 0 if all segments are verified
+			out[[city]]$noverify_filter_nx <- len_func(as_units(0, "meters"))
+			out[[city]]$noverify_filter_lenx <- len_func(as_units(0, "meters"))
+		}
+		
 		# Count/len eligible
-		out[[city]]$elig_n <- nrow(df)
-		out[[city]]$elig_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE))
+		out[[city]]$elig_n <- nrow(df) - out[[city]]$noverify_filter_nx
+		out[[city]]$elig_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE)) - out[[city]]$noverify_filter_lenx
 		
 		# Filter for misclass
 		if (all(c("misclass_col", "misclass_filter") %in% names(x))) {
@@ -1180,16 +1209,16 @@ filter_criteria <- function(
 		}
 		
 		# Count/len misclass filter
-		out[[city]]$misclass_filter_n <- nrow(df)
-		out[[city]]$misclass_filter_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE))
+		out[[city]]$misclass_filter_n <- nrow(df) - out[[city]]$noverify_filter_nx
+		out[[city]]$misclass_filter_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE)) - out[[city]]$noverify_filter_lenx
 		
 		# Count/len affected by misclass filter
-		out[[city]]$misclass_filter_nx <- out[[city]]$geom_filter_dup_n - out[[city]]$misclass_filter_n
-		out[[city]]$misclass_filter_lenx <- out[[city]]$geom_filter_dup_len - out[[city]]$misclass_filter_len
+		out[[city]]$misclass_filter_nx <- out[[city]]$elig_n - out[[city]]$misclass_filter_n
+		out[[city]]$misclass_filter_lenx <- out[[city]]$elig_len - out[[city]]$misclass_filter_len
 		
 		# Count/len eligible
-		out[[city]]$incl_n <- nrow(df)
-		out[[city]]$incl_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE))
+		out[[city]]$incl_n <- nrow(df) - out[[city]]$noverify_filter_nx
+		out[[city]]$incl_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE)) - out[[city]]$noverify_filter_lenx
 		
 		# Save filtered data
 		out[[city]]$data_filter <- df
@@ -1217,7 +1246,7 @@ This function draws a flow diagram of overall methods for segment inclusion crit
 #'
 diag_criteria <- function(
 		criteria_list,
-		note = "*Denotes segments misclassified as an ineligible type (off-street path, shared road, or inactive temporary infrastructure)"
+		note = "*Denotes segments misclassified as an ineligible type (off-street path, shared road, or inactive temporary infrastructure)<br/>**Local Street Bikeways (LSB) were included but not screened or verified as they did not fit the Can-BICS definitions"
 ) {
 	
 	# Diag settings
@@ -1226,7 +1255,7 @@ diag_criteria <- function(
 		node[
 			shape = box,
 			width = 2.75,
-			height = 1.35,
+			height = 1.65,
 			style = filled,
 			fillcolor = white,
 			penwidth = 1.5,
@@ -1269,12 +1298,12 @@ diag_criteria <- function(
 		]
 		
 		elig{i}[
-			label = <n = {elig_n} Segments<br/>({elig_len})<br/><i><b>Exclusions</b>{elig_inelig}{elig_dup}{elig_poly}</i>>,
+			label = <n = {elig_n} Segments<br/>({elig_len})<i><br/><b>Exclusions</b>{elig_inelig}{elig_dup}{elig_poly}</i>>,
 			pos = '3.25,{y}!'
 		]
 		
 		incl{i}[
-			label = <n = {incl_n} Segments<br/><i>({incl_len})<br/><b>Exclusions</b>{incl_miss}{incl_dup}</i>>,
+			label = <n = {incl_n} Segments<br/><i>({incl_len}){noverify}<br/><b>Exclusions</b>{incl_miss}{incl_dup}</i>>,
 			pos = '6.5,{y}!'
 		]
 		
@@ -1282,28 +1311,30 @@ diag_criteria <- function(
 	"
 	
 	# Generate row additions per city
-	y <- -0.06
-	y_gap <- 1.59
+	y <- -0.21
+	y_gap <- 1.85
 	row_adds <- ""
 	for (i in 1:length(criteria_list)) {
+		
+		# Vars per city
 		criteria <- criteria_list[[i]]
 		
-		# Generate geom filter info
+		# Generate geom filter dup info
+		elig_dup <- ""
 		if (criteria$geom_filter_dup_nx > 0) {
 			elig_dup <- glue(
 				"<br/>Duplicates: n = {n}",
 				n = criteria$geom_filter_dup_nx
 			)
-		} else {
-			elig_dup <- ""
 		}
+		
+		# Generate geom filter null info
+		elig_poly <- ""
 		if (criteria$geom_filter_null_nx > 0) {
 			elig_poly <- glue(
 				"<br/>No Polyline Data: n = {n}",
 				n = criteria$geom_filter_null_nx
 			)
-		} else {
-			elig_poly <- ""
 		}
 		
 		# Generate inelig info
@@ -1311,6 +1342,16 @@ diag_criteria <- function(
 			"<br/>Ineligible: n = {n}",
 			n = criteria[["infra_filter_nx"]] + criteria[["status_filter_nx"]] + criteria[["road_filter_nx"]]
 		)
+		
+		# Generate noverify info
+		noverify <- ""
+		if (criteria$noverify_filter_applied) {
+			noverify <- glue(
+				"<br/>**Screened: n = {n}<br/>**Not screened: n = {nx}",
+				n = criteria$elig_n,
+				nx = criteria$noverify_filter_nx
+			)
+		}
 		
 		# Generate incl info
 		incl_miss <- glue(
@@ -1334,15 +1375,16 @@ diag_criteria <- function(
 			open_n = criteria[["data_n"]],
 			open_len = paste(round(criteria[["data_len"]], 1), len_unit),
 			open_date = criteria[["data_date"]],
-			elig_n = criteria[["elig_n"]],
+			elig_n = criteria$elig_n + criteria$noverify_filter_nx,
 			elig_len = paste(round(criteria[["elig_len"]], 1), len_unit),
 			elig_inelig = elig_inelig,
 			elig_dup = elig_dup,
 			elig_poly = elig_poly,
-			incl_n = criteria[["incl_n"]],
-			incl_len = paste(round(criteria[["incl_len"]], 1), len_unit),
+			incl_n = criteria[["incl_n"]] + criteria$noverify_filter_nx,
+			incl_len = paste(round(criteria[["incl_len"]] + criteria$noverify_filter_lenx, 1), len_unit),
 			incl_miss = incl_miss,
-			incl_dup = ""
+			incl_dup = "",
+			noverify = noverify
 		))
 		
 		# Move row below
@@ -2082,7 +2124,15 @@ vanc <- vanc_raw %>%
 			str_trim %>%
 			str_to_title
 	) %>%
-	mutate( # add local street as LSB to verify installs
+	mutate( # add column for non-verified infra types
+		no_verify_install_type = if_else(
+			is.na(verify_install_type) & install_type == "Local Street",
+			"Local Street",
+			NA
+		),
+		.after = verify_misclass
+	) %>%
+	mutate( # add local street as non-verified LSB
 		verify_install_type = if_else(
 			is.na(verify_install_type) & install_type == "Local Street",
 			"LSB",
@@ -2297,7 +2347,7 @@ criteria_settings <- list(
 		data_date = "January 2023",
 		data_url = "https://opendata.vancouver.ca/explore/dataset/bikeways/information",
 		infra_col = "install_type",
-		infra_filter = c("Painted Lanes", "Protected Bike Lanes"),
+		infra_filter = c("Painted Lanes", "Protected Bike Lanes", "Local Street"),
 		geom_col = "geometry",
 		geom_unit = "km",
 		geom_filter = TRUE,
@@ -2352,14 +2402,16 @@ criteria_settings <- list(
 		data_date = "January 2023",
 		data_url = "https://opendata.vancouver.ca/explore/dataset/bikeways/information",
 		infra_col = "install_type",
-		infra_filter = c("Painted Lanes", "Protected Bike Lanes"),
+		infra_filter = c("Painted Lanes", "Protected Bike Lanes", "Local Street"),
 		road_col = "road_type",
 		road_filter = c("Off-street"),
 		geom_col = "geometry",
 		geom_unit = "km",
 		geom_filter = TRUE,
 		misclass_col = "verify_misclass",
-		misclass_filter = c(NA, "NA")
+		misclass_filter = c(NA, "NA"),
+		noverify_col = "no_verify_install_type",
+		noverify_filter = c("Local Street")
 	),
 	toronto = list(
 		city = "toronto",
@@ -2436,77 +2488,76 @@ plot_yearly_len_road(
 ## Supplementary Figure 7: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Vancouver, CA. {.tabset}
 
 ```{r}
-
-# Create the plot
-sfig7 <- plot_yearly_diff(
-	vanc,
-	title = "Difference in Installation Years, Comparing City Data and Verified Data: Vancouver, CA",
-	out_data = TRUE
-)
-
-# Calc metrics for description
-sfig7_n <- sum(sfig7$data$n)
-sfig7_0 <- sfig7$data %>%  # perc correct
-	filter(year_diff == 0) %>%
-	pull(n_perc) %>%
-	round(1)
-sfig7_pm1 <- sfig7$data %>% # perc plus/minus 1
-	filter(year_diff >= -1 & year_diff <= 1) %>%
-	pull(n_perc) %>%
-	sum %>%
-	round(1)
+# # Create the plot
+# sfig7 <- plot_yearly_diff(
+# 	vanc,
+# 	title = "Difference in Installation Years, Comparing City Data and Verified Data: Vancouver, CA",
+# 	out_data = TRUE
+# )
+# 
+# # Calc metrics for description
+# sfig7_n <- sum(sfig7$data$n)
+# sfig7_0 <- sfig7$data %>%  # perc correct
+# 	filter(year_diff == 0) %>%
+# 	pull(n_perc) %>%
+# 	round(1)
+# sfig7_pm1 <- sfig7$data %>% # perc plus/minus 1
+# 	filter(year_diff >= -1 & year_diff <= 1) %>%
+# 	pull(n_perc) %>%
+# 	sum %>%
+# 	round(1)
 ```
 
-Any data where a city provided and verified installation years were missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig7_n` segments. The graph shows that `r sfig7_0`% of the included segments had the correct installation year as per the city's data, and `r sfig7_pm1`% were accurate within a range of ±1 year.
+Any data where a city provided and verified installation years were missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=` sfig7_n` segments. The graph shows that ` sfig7_0`% of the included segments had the correct installation year as per the city's data, and ` sfig7_pm1`% were accurate within a range of ±1 year.
 
 ### Plot
 
 ```{r fig.width = 8, fig.height = 5}
-sfig7$plot
+#sfig7$plot
 ```
 
 ### Data
 
 ```{r}
-sfig7$data
+#sfig7$data
 ```
 
 ## Supplementary Figure 8: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Calgary, CA. {.tabset}
 
 ```{r}
 
-# Create the plot
-sfig8 <- plot_yearly_diff(
-	calg,
-	title = "Difference in Installation Years, Comparing City Data and Verified Data: Calgary, CA",
-	out_data = TRUE
-)
-
-# Calc metrics for description
-sfig8_n <- sum(sfig8$data$n)
-sfig8_0 <- sfig8$data %>%  # perc correct
-	filter(year_diff == 0) %>%
-	pull(n_perc) %>%
-	round(1)
-sfig8_pm1 <- sfig8$data %>% # perc plus/minus 1
-	filter(year_diff >= -1 & year_diff <= 1) %>%
-	pull(n_perc) %>%
-	sum %>%
-	round(1)
+# # Create the plot
+# sfig8 <- plot_yearly_diff(
+# 	calg,
+# 	title = "Difference in Installation Years, Comparing City Data and Verified Data: Calgary, CA",
+# 	out_data = TRUE
+# )
+# 
+# # Calc metrics for description
+# sfig8_n <- sum(sfig8$data$n)
+# sfig8_0 <- sfig8$data %>%  # perc correct
+# 	filter(year_diff == 0) %>%
+# 	pull(n_perc) %>%
+# 	round(1)
+# sfig8_pm1 <- sfig8$data %>% # perc plus/minus 1
+# 	filter(year_diff >= -1 & year_diff <= 1) %>%
+# 	pull(n_perc) %>%
+# 	sum %>%
+# 	round(1)
 ```
 
-Any data where a city provided and verified installation years were missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig8_n` segments. The graph shows that `r sfig8_0`% of the included segments had the correct installation year as per the city's data, and `r sfig8_pm1`% were accurate within a range of ±1 year.
+Any data where a city provided and verified installation years were missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=` sfig8_n` segments. The graph shows that ` sfig8_0`% of the included segments had the correct installation year as per the city's data, and ` sfig8_pm1`% were accurate within a range of ±1 year.
 
 ### Plot
 
 ```{r fig.width = 8, fig.height = 5}
-sfig8$plot
+#sfig8$plot
 ```
 
 ### Data
 
 ```{r}
-sfig8$data
+#sfig8$data
 ```
 
 ## Supplementary Figure 9: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Toronto, CA. {.tabset}
@@ -2515,7 +2566,7 @@ sfig8$data
 
 # Create the plot
 sfig9 <- plot_yearly_diff(
-	toron %>% as_tibble,
+	toron,
 	title = "Difference in Installation Years, Comparing City Data and Verified Data: Toronto, CA",
 	out_data = TRUE
 )
