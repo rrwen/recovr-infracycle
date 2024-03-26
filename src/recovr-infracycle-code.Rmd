@@ -172,6 +172,7 @@ calc_yearly_len <- function(
 	) {
 	
 	# Convert data types
+	df <- as.data.frame(df)
 	df[[year_col]] <- as.integer(df[[year_col]])
 	df[[type_col]] <- as.character(df[[type_col]])
 	df[[len_col]] <- as.numeric(df[[len_col]])
@@ -280,6 +281,9 @@ calc_yearly_adj_len <- function(
 		repl_suffix = "_replaced",
 		...
 	) {
+	
+	# Ensure df
+	df <- as.data.frame(df)
 	
 	# Convert len_col if char
 	len_cols <- rep(len_cols, length(year_cols))
@@ -984,6 +988,7 @@ This function applies segment inclusion critieria to a list of data.frames. Opti
 #'	\item \code{misclass_col}: the column name (char) of the column containing misclassification types to filter.
 #'	\item \code{misclass_filter}: the vector of characters indicating non-misclassified rows of data to include. Usually set to c("NA", NA) to indicate that the row is not misclassified.
 #' }
+#' @param len_func A function to apply to road length calculations. The default is a function that converts from meters to km.
 #' 
 #' @return A list of lists, where each list has keys and values from \code{criteria_list}, and the following additional keys:
 #' \itemize{
@@ -1027,7 +1032,10 @@ This function applies segment inclusion critieria to a list of data.frames. Opti
 #' }
 #' @export
 #'
-filter_criteria <- function(criteria_list) {
+filter_criteria <- function(
+	criteria_list,
+	len_func = function (x) x / 1000
+) {
 	
 	# Apply criteria to list and track counts and lengths
 	out <- criteria_list
@@ -1036,18 +1044,19 @@ filter_criteria <- function(criteria_list) {
 		# Get criteria data
 		x <- criteria_list[[i]]
 		df <- x$data
+		city <- x$city
 		
 		# Set initial apply status for filters
-		out[[i]]$infra_filter_applied <- FALSE
-		out[[i]]$road_filter_applied <- FALSE
-		out[[i]]$status_filter_applied <- FALSE
-		out[[i]]$geom_filter_null_applied <- FALSE
-		out[[i]]$geom_filter_dup_applied <- FALSE
-		out[[i]]$misclass_filter_applied <- FALSE
+		out[[city]]$infra_filter_applied <- FALSE
+		out[[city]]$road_filter_applied <- FALSE
+		out[[city]]$status_filter_applied <- FALSE
+		out[[city]]$geom_filter_null_applied <- FALSE
+		out[[city]]$geom_filter_dup_applied <- FALSE
+		out[[city]]$misclass_filter_applied <- FALSE
 		
 		# Count/len initial
-		out[[i]]$data_n <- nrow(df)
-		out[[i]]$data_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		out[[city]]$data_n <- nrow(df)
+		out[[city]]$data_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE))
 		
 		# Filter for dedicated cycling infra
 		if (all(c("infra_col", "infra_filter") %in% names(x))) {
@@ -1057,35 +1066,35 @@ filter_criteria <- function(criteria_list) {
 				filter(.data[[x$infra_col]] %in% x$infra_filter)
 			
 			# Set ded cyc infra filter status
-			out[[i]]$infra_filter_applied <- TRUE
+			out[[city]]$infra_filter_applied <- TRUE
 		}
 		
 		# Count/len ded cyc infra filter
-		out[[i]]$infra_filter_n <- nrow(df)
-		out[[i]]$infra_filter_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		out[[city]]$infra_filter_n <- nrow(df)
+		out[[city]]$infra_filter_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE))
 		
 		# Count/len affected by ded cyc infra filter
-		out[[i]]$infra_filter_nx <- out[[i]]$data_n - out[[i]]$infra_filter_n
-		out[[i]]$infra_filter_lenx <- out[[i]]$data_len - out[[i]]$infra_filter_len
+		out[[city]]$infra_filter_nx <- out[[city]]$data_n - out[[city]]$infra_filter_n
+		out[[city]]$infra_filter_lenx <- out[[city]]$data_len - out[[city]]$infra_filter_len
 		
 		# Filter for road location
-		if (all("road_col", "road_filter") %in% names(x)) {
+		if (all(c("road_col", "road_filter") %in% names(x))) {
 			
 			# Apply road filter
 			df <- df %>%
-				filter(!.data[[x$status_col]] %in% x$road_filter)
+				filter(!.data[[x$road_col]] %in% x$road_filter)
 			
 			# Set road filter status
-			out[[i]]$road_filter_applied <- TRUE
+			out[[city]]$road_filter_applied <- TRUE
 		}
 		
 		# Count/len road filter
-		out[[i]]$road_filter_n <- nrow(df)
-		out[[i]]$road_filter_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		out[[city]]$road_filter_n <- nrow(df)
+		out[[city]]$road_filter_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE))
 		
 		# Count/len affected by road filter
-		out[[i]]$road_filter_nx <- out[[i]]$infra_filter_n - out[[i]]$road_filter_n
-		out[[i]]$road_filter_lenx <- out[[i]]$infra_filter_len - out[[i]]$road_filter_len
+		out[[city]]$road_filter_nx <- out[[city]]$infra_filter_n - out[[city]]$road_filter_n
+		out[[city]]$road_filter_lenx <- out[[city]]$infra_filter_len - out[[city]]$road_filter_len
 		
 		# Filter for status
 		if (all(c("status_col", "status_filter") %in% names(x))) {
@@ -1095,16 +1104,16 @@ filter_criteria <- function(criteria_list) {
 				filter(!.data[[x$status_col]] %in% x$status_filter)
 			
 			# Set status filter status
-			out[[i]]$status_filter_applied <- TRUE
+			out[[city]]$status_filter_applied <- TRUE
 		}
 		
 		# Count/len status filter
-		out[[i]]$status_filter_n <- nrow(df)
-		out[[i]]$status_filter_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		out[[city]]$status_filter_n <- nrow(df)
+		out[[city]]$status_filter_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE))
 		
 		# Count/len affected by status filter
-		out[[i]]$status_filter_nx <- out[[i]]$road_filter_n - out[[i]]$status_filter_n
-		out[[i]]$status_filter_lenx <- out[[i]]$road_filter_len - out[[i]]$status_filter_len
+		out[[city]]$status_filter_nx <- out[[city]]$road_filter_n - out[[city]]$status_filter_n
+		out[[city]]$status_filter_lenx <- out[[city]]$road_filter_len - out[[city]]$status_filter_len
 		
 		# Filter for null geoms
 		if (all(c("geom_col", "geom_filter") %in% names(x))) {
@@ -1114,16 +1123,16 @@ filter_criteria <- function(criteria_list) {
 				filter(!is.na(.data[[x$geom_col]]))
 			
 			# Set dup geom filter status
-			out[[i]]$geom_filter_null_applied <- TRUE
+			out[[city]]$geom_filter_null_applied <- TRUE
 		}
 		
 		# Count/len null geom filter
-		out[[i]]$geom_filter_null_n <- nrow(df)
-		out[[i]]$geom_filter_null_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		out[[city]]$geom_filter_null_n <- nrow(df)
+		out[[city]]$geom_filter_null_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE))
 		
 		# Count/len affected by null geom filter
-		out[[i]]$geom_filter_null_nx <- out[[i]]$status_filter_n - out[[i]]$geom_filter_null_n
-		out[[i]]$geom_filter_null_lenx <- out[[i]]$status_filter_len - out[[i]]$geom_filter_null_len
+		out[[city]]$geom_filter_null_nx <- out[[city]]$status_filter_n - out[[city]]$geom_filter_null_n
+		out[[city]]$geom_filter_null_lenx <- out[[city]]$status_filter_len - out[[city]]$geom_filter_null_len
 			
 		# Filter for dup geoms
 		if (all(c("geom_col", "geom_filter") %in% names(x))) {
@@ -1133,33 +1142,33 @@ filter_criteria <- function(criteria_list) {
 				distinct(.data[[x$geom_col]], .keep_all = TRUE)
 			
 			# Set dup geom filter status
-			out[[i]]$geom_filter_dup_applied <- TRUE
+			out[[city]]$geom_filter_dup_applied <- TRUE
 		}
 		
 		# Count/len dupl geom filter
-		out[[i]]$geom_filter_dup_n <- nrow(df)
-		out[[i]]$geom_filter_dup_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		out[[city]]$geom_filter_dup_n <- nrow(df)
+		out[[city]]$geom_filter_dup_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE))
 		
 		# Count/len affected by dupl geom filter
-		out[[i]]$geom_filter_dup_nx <- out[[i]]$geom_filter_null_n - out[[i]]$geom_filter_dup_n
-		out[[i]]$geom_filter_dup_lenx <- out[[i]]$geom_filter_null_len - out[[i]]$geom_filter_dup_len
+		out[[city]]$geom_filter_dup_nx <- out[[city]]$geom_filter_null_n - out[[city]]$geom_filter_dup_n
+		out[[city]]$geom_filter_dup_lenx <- out[[city]]$geom_filter_null_len - out[[city]]$geom_filter_dup_len
 		
 		# Count/len eligible
-		out[[i]]$elig_n <- nrow(df)
-		out[[i]]$elig_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		out[[city]]$elig_n <- nrow(df)
+		out[[city]]$elig_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE))
 		
 		# Filter for misclass
 		if (all(c("misclass_col", "misclass_filter") %in% names(x))) {
 			
 			# Count/len misclass groups
-			out[[i]]$misclass_filter_uniq_n <- df %>%
+			out[[city]]$misclass_filter_uniq_n <- df %>%
 				filter(!is.na(.data[[x$misclass_col]])) %>%
 				count(.data[[x$misclass_col]]) %>%
 				as_tibble
-			out[[i]]$misclass_filter_uniq_len <- df %>%
+			out[[city]]$misclass_filter_uniq_len <- df %>%
 				filter(!.data[[x$misclass_col]] %in% x$misclass_filter) %>%
 				group_by(.data[[x$misclass_col]]) %>%
-				summarize(len = sum(st_length(.data[[x$geom_col]]), na.rm = TRUE)) %>%
+				summarize(len = len_func(sum(st_length(.data[[x$geom_col]]), na.rm = TRUE))) %>%
 				as_tibble
 			
 			# Apply misclass filter
@@ -1167,23 +1176,23 @@ filter_criteria <- function(criteria_list) {
 				filter(.data[[x$misclass_col]] %in% x$misclass_filter)
 			
 			# Set misclass filter status
-			out[[i]]$misclass_filter_applied <- TRUE
+			out[[city]]$misclass_filter_applied <- TRUE
 		}
 		
 		# Count/len misclass filter
-		out[[i]]$misclass_filter_n <- nrow(df)
-		out[[i]]$misclass_filter_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		out[[city]]$misclass_filter_n <- nrow(df)
+		out[[city]]$misclass_filter_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE))
 		
 		# Count/len affected by misclass filter
-		out[[i]]$misclass_filter_nx <- out[[i]]$geom_filter_dup_n - out[[i]]$misclass_filter_n
-		out[[i]]$misclass_filter_lenx <- out[[i]]$geom_filter_dup_len - out[[i]]$misclass_filter_len
+		out[[city]]$misclass_filter_nx <- out[[city]]$geom_filter_dup_n - out[[city]]$misclass_filter_n
+		out[[city]]$misclass_filter_lenx <- out[[city]]$geom_filter_dup_len - out[[city]]$misclass_filter_len
 		
 		# Count/len eligible
-		out[[i]]$incl_n <- nrow(df)
-		out[[i]]$incl_len <- sum(st_length(df[[x$geom_col]]), na.rm = TRUE)
+		out[[city]]$incl_n <- nrow(df)
+		out[[city]]$incl_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE))
 		
 		# Save filtered data
-		out[[i]]$data_filter <- df
+		out[[city]]$data_filter <- df
 	}
 	return(out)
 }
@@ -1407,10 +1416,16 @@ This function draws a flow diagram of detailed methods for segment inclusion cri
 #'
 #' @param criteria_list A list of lists in the structure of the output from \code{\link{filter_criteria}}.
 #' @param city The city (char) to create the diagram for. If `NULL`, this function produces a list of diagrams where keys are the city name and values are the diagrams.
-#' @return A list of \code{\link[DiagrammeR]{grViz}} objects if `city` is `NULL`, or a single \code{\link[DiagrammeR]{grViz}} if `city` is provided.
+#' @param out_render Set to TRUE to render the diagram and return \code{\link[DiagrammeR]{grViz}} objects or FALSE to return the text used to generate the diagram.
+#' @return A list of \code{\link[DiagrammeR]{grViz}} objects if `city` is `NULL`, or a single \code{\link[DiagrammeR]{grViz}} if `city` is provided. The \code{\link[DiagrammeR]{grViz}} objects become text (char) if `out_render` is `FALSE`.
 #' @export
 #'
-diag_criteria_details <- function(criteria_list, city = NULL) {
+diag_criteria_details <- function(criteria_list, city = NULL, out_render = TRUE) {
+	
+	# Filter for city if avail
+	if (!is.null(city)) {
+		criteria_list <- criteria_list[sapply(criteria_list, function (x) x$city == city)]
+	}
 	
 	# Generate diagrams for each city
 	out <- list()
@@ -1479,8 +1494,7 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 		s2 <- ""
 		
 		# Step 2 filtering infra
-		infra_keys <- c("infra_col", "infra_filter", "infra_filter_n", "infra_filter_nx")
-		if (all(infra_keys %in% names(criteria))) {
+		if (criteria$infra_filter_applied) {
 			fi <- fi + 1
 			y <- y - 2.25
 			s2 <- glue("
@@ -1529,15 +1543,14 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 		}
 		
 		# Step 2 filtering road
-		road_keys <- c("road_col", "road_filter", "road_filter_n", "road_filter_nx")
-		if (all(road_keys %in% names(criteria))) {
+		if (criteria$road_filter_applied) {
 			fi <- fi + 1
 			y <- y - 2.25
 			s2 <- glue("
 				{s2}
 
 				filter{fi}[
-					label = 'Filter for Infrastructure Located on Roadway\\l{column} in {filter}\\l(n = {n})\\l'
+					label = 'Filter for Infrastructure Located on Roadway\\l{column} != {filter}\\l(n = {n})\\l'
 					pos = '-2,{y}!'
 				]
 				filter{fi}x[
@@ -1561,7 +1574,7 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 				filter = str_replace_all(
 					str_wrap(
 						paste0(
-							criteria$infra_filter,
+							criteria$road_filter,
 							collapse = ", "
 						),
 						width = 83
@@ -1579,8 +1592,7 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 		}
 
 		# Step 2 filtering status
-		status_keys <- c("status_col", "status_filter", "status_filter_n", "status_filter_nx")
-		if (all(status_keys %in% names(criteria))) {
+		if (criteria$status_filter_applied) {
 			fi <- fi + 1
 			y <- y - 2.25
 			s2 <- glue("
@@ -1628,11 +1640,8 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 			)
 		}
 
-		# Step 2 filtering geom
-		geom_keys <- c("geom_col", "geom_filter", "geom_filter_n", "geom_filter_nx")
-		if (all(geom_keys %in% names(criteria))) {
-
-			# Filter geom null
+		# Step 2 filtering null geom
+		if (criteria$geom_filter_null_applied) {
 			fi <- fi + 1
 			y <- y - 2.25
 			s2 <- glue("
@@ -1660,15 +1669,17 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 				filter{fi}_top -> filter{fi}_bot
 			",
 				column = criteria$geom_col,
-				n = criteria$geom_filter_n,
-				nx = criteria$geom_filter_nx,
+				n = criteria$geom_filter_null_n,
+				nx = criteria$geom_filter_null_nx,
 				fi = fi,
 				y = y,
 				x = x_edge,
 				s2 = s2
 			)
-
-			# Filter geom dup
+		}
+		
+		# Step 2 filtering dup geom
+		if (criteria$geom_filter_dup_applied) {
 			fi <- fi + 1
 			y <- y - 2.25
 			s2 <- glue("
@@ -1696,8 +1707,8 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 				filter{fi}_top -> filter{fi}_bot
 			",
 				column = criteria$geom_col,
-				n = criteria$geom_filter_n,
-				nx = criteria$geom_filter_nx,
+				n = criteria$geom_filter_dup_n,
+				nx = criteria$geom_filter_dup_nx,
 				fi = fi,
 				y = y,
 				x = x_edge,
@@ -1850,7 +1861,7 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 		)
 		
 		# Combine steps
-		out[[i]] <- paste0(
+		out[[criteria$city]] <- paste0(
 			"digraph {\n",
 			diag_settings,
 			"\n",
@@ -1868,7 +1879,9 @@ diag_criteria_details <- function(criteria_list, city = NULL) {
 		)
 	}
 	
-	# Return diagrams
+	# Return diagrams or single diagram if city is given
+	out <- if (length(out) > 1) out else out[[1]]
+	out <- if (out_render) grViz(out) else out
 	return(out)
 }
 ```
@@ -1905,7 +1918,7 @@ print(vanc_raw)
 
 ## Calgary Raw Data
 
-```{r}
+```
 
 # Load raw data
 calg_bikeways <- read_csv("../data/calgary_bikeways_2009_2022_v1.csv")
@@ -2026,7 +2039,7 @@ vanc <- vanc_raw %>%
 		verify_upgrade2_date = UPGR2_DATE,
 		verify_upgrade2_type = UPGR2_TMIN,
 		verify_upgrade2_comment = UPGR2_COMM,
-		verify_exclude = EXCL_REAS
+		verify_misclass = EXCL_REAS
 	) %>%
 	mutate( # data types
 		id = as.character(id),
@@ -2046,7 +2059,7 @@ vanc <- vanc_raw %>%
 		verify_upgrade2_date = as.character(verify_upgrade2_date),
 		verify_upgrade2_type = as.character(verify_upgrade2_type),
 		verify_upgrade2_comment = as.character(verify_upgrade2_comment),
-		verify_exclude = as.character(verify_exclude)
+		verify_misclass = as.character(verify_misclass)
 	) %>%
 	mutate( # clean values
 		#install_year = na_if(install_year, 0),
@@ -2065,7 +2078,7 @@ vanc <- vanc_raw %>%
 		verify_upgrade2_type = na_if(verify_upgrade2_type, "NA") %>%
 			str_replace_all("[^[:alpha:]]|\\s", ""),
 		verify_upgrade2_comment = na_if(verify_upgrade2_comment, "NA"),
-		verify_exclude =  na_if(verify_exclude, "NA") %>%
+		verify_misclass =  na_if(verify_misclass, "NA") %>%
 			str_trim %>%
 			str_to_title
 	) %>%
@@ -2167,7 +2180,7 @@ toron <- toron_raw %>%
 		verify_upgrade2_date = UPGR2_DATE,
 		verify_upgrade2_type = UPGR2_TMIN,
 		verify_upgrade2_comment = UPGR2_COMM,
-		verify_exclude = EXCL_REAS
+		verify_misclass = EXCL_REAS
 	) %>%
 	mutate( # data types
 		id = as.character(id),
@@ -2189,7 +2202,7 @@ toron <- toron_raw %>%
 		verify_upgrade2_date = as.character(verify_upgrade2_date),
 		verify_upgrade2_type = as.character(verify_upgrade2_type),
 		verify_upgrade2_comment = as.character(verify_upgrade2_comment),
-		verify_exclude = as.character(verify_exclude)
+		verify_misclass = as.character(verify_misclass)
 	) %>%
 	mutate( # clean values
 		install_year = na_if(install_year, 0),
@@ -2208,7 +2221,7 @@ toron <- toron_raw %>%
 		verify_upgrade2_type = na_if(verify_upgrade2_type, "NA") %>%
 			str_replace_all("[^[:alpha:]]|\\s", ""),
 		verify_upgrade2_comment = na_if(verify_upgrade2_comment, "NA"),
-		verify_exclude =  na_if(verify_exclude, "NA") %>%
+		verify_misclass =  na_if(verify_misclass, "NA") %>%
 			str_trim %>%
 			str_to_title
 	) %>%
@@ -2331,15 +2344,50 @@ diag_criteria(criteria_list)
     rsvg_png("test.png")
 ```
 
+```{r}
+criteria_settings <- list(
+	vancouver = list(
+		city = "vancouver",
+		data = vanc,
+		data_date = "January 2023",
+		data_url = "https://opendata.vancouver.ca/explore/dataset/bikeways/information",
+		infra_col = "install_type",
+		infra_filter = c("Painted Lanes", "Protected Bike Lanes"),
+		road_col = "road_type",
+		road_filter = c("Off-street"),
+		geom_col = "geometry",
+		geom_unit = "km",
+		geom_filter = TRUE,
+		misclass_col = "verify_misclass",
+		misclass_filter = c(NA, "NA")
+	),
+	toronto = list(
+		city = "toronto",
+		data = toron,
+		data_date = "January 2023",
+		data_url = "https://open.toronto.ca/dataset/cycling-network",
+		infra_col = "install_type",
+		infra_filter = c("Bi-Directional Cycle Track", "Bike Lane", "Bike Lane - Buffered", "Bike Lane - Contraflow", "Cycle Track", "Cycle Track - Contraflow"),
+		geom_col = "geometry",
+		geom_unit = "km",
+		geom_filter = TRUE,
+		misclass_col = "verify_misclass",
+		misclass_filter = c(NA, "NA")
+	)
+)
+criteria_list <- filter_criteria(criteria_settings)
+diag_criteria(criteria_list)
+```
+
 ## Figure 2: Changes in dedicated cycling infrastructure between 2009 and 2022 for Vancouver, Calgary, and Toronto by infrastructure category.
 
 Assessed using roadway centreline-km, with infrastructure classifications determined by the most protective element present along each road segment.
 
 ```{r fig.width=8.5, fig.height=11}
 plot_yearly_len_infra(list(
-	"Vancouver, CA" = vanc %>% as_tibble,
+	"Vancouver, CA" = vanc,
 	#"Calgary, CA" = calg %>% as_tibble,
-	"Toronto, CA" = toron %>% as_tibble
+	"Toronto, CA" = toron
 ))
 ```
 
@@ -2358,7 +2406,7 @@ By (A) roadway classification, and (B) infrastructure distribution within each r
 
 ```{r fig.width=18, fig.height=10}
 plot_yearly_len_road(
-	vanc %>% as_tibble,
+	vanc,
 	title = "Roadways with Dedicated Cycling Infrastructure (Vancouver, CA)"
 )
 ```
@@ -2368,10 +2416,10 @@ plot_yearly_len_road(
 By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
 
 ```{r fig.width=18, fig.height=10}
-plot_yearly_len_road(
-	calg,
-	title = "Roadways with Dedicated Cycling Infrastructure (Calgary, CA)"
-)
+# plot_yearly_len_road(
+# 	calg,
+# 	title = "Roadways with Dedicated Cycling Infrastructure (Calgary, CA)"
+# )
 ```
 
 ## Supplementary Figure 6: Changes in dedicated cycling infrastructure between 2009 and 2022 for the Municipality of Toronto, CA.
@@ -2380,7 +2428,7 @@ By (A) roadway classification, and (B) infrastructure distribution within each r
 
 ```{r fig.width=18, fig.height=10}
 plot_yearly_len_road(
-	toron %>% as_tibble,
+	toron,
 	title = "Roadways with Dedicated Cycling Infrastructure (Toronto, CA)"
 )
 ```
@@ -2503,143 +2551,17 @@ sfig9$data
 
 ## Segment Inclusion Criteria for Vancouver
 
-
-```
-id -> infra_filter [minlen = 3]
-subgraph cluster1 {
-	
-		label = <<br/><b>    2. Filtering</b>>
-		margin = 30
-		bgcolor = '#d7e9fe'
-		
-		infra_filter -> road_filter -> geom_filter
-		{rank=same infra_filter -> infra_filterx [minlen = 2]}
-		{rank=same road_filter -> road_filterx [minlen = 2]}
-		{rank=same geom_filter -> geom_filterx [minlen = 2]}
-	}
-	geom_filter -> elig [minlen = 3]
-	
-	subgraph cluster2 {
-	
-		label = <<br/><b>    3. Eligible</b>>
-		margin = 30
-		bgcolor = '#d7e9fe'
-		
-		eligv[style=invis]
-		{
-			rank = same
-			elig -> eligv [style = invis, minlen = 2]
-		}
-	}
-	elig -> screen [minlen = 3]
-	
-	subgraph cluster3 {
-	
-		label = <<br/><b>    4. Screening</b>>
-		margin = 30
-		bgcolor = '#d7e9fe'
-		
-		{rank=same screen -> screenx [minlen = 2]}
-	}
-	screen -> inclu [minlen = 3]
-	
-	subgraph cluster4 {
-	
-		label = <<br/><b>    5. Inclusions</b>>
-		bgcolor = '#c8e29d'
-		margin = 30
-		
-		incluv[style=invis]
-		{rank=same inclu -> incluv [style = invis, minlen = 2]}
-	}
-```
-
 ```{r}
-grViz("
-digraph{
-
-	rankdir = TB
-	labeljust = l
-	node[
-		shape = box
-		width = 10
-		height = 1.35
-		style = filled
-		fillcolor = white
-		penwidth = 1.5
-		fontsize = 16
-		fontname = 'Arial'
-		margin = 0.25
-	]
-	edge[
-		arrowhead = vee,
-		arrowtail = vee
-	]
-	layout = neato
-	
-	id_title[
-		label = <<b>Identification</b>>
-		pos = '-8.5,0!'
-		width = 2
-		height = 1.45
-		fillcolor = '#d7e9fe'
-		style = 'rounded,filled'
-	]
-	id[
-		label = 'Shapefile from: https://data.calgary.ca/Transportation-Transit/Calgary-Bikeways/jjqk-9b73\\lDownloaded: January 2023\\lN = 1000 Segments\\l'
-		pos = '0,0!'
-		width = 14
-	]
-	
-	id_top[
-		style = invis
-		pos = '-2,0!'
-	]
-	id_bot[
-		style = invis
-		pos = '-2,-2!'
-	]
-	id_top -> id_bot
-	
-	filter_title[
-		label = <<b>Filtering</b>>
-		pos = '-8.5,-2.95!'
-		width = 2
-		height = 3.25
-		fillcolor = '#d7e9fe'
-		style = 'rounded,filled'
-	]
-	
-	filter1[
-		label = 'Filter for Dedicated Cycling Infrastructure\\lbicycle class = “Bicycle - Lane” or “Cycle Track”.\\l(n = 795)\\l'
-		pos = '-2,-2!'
-	]
-	filter1x[
-		label = 'Segments Excluded\\l(n = 992)\\l'
-		pos = '5.5,-2!'
-		width = 3
-	]
-	filter1 -> filter1x
-	
-	filter2[
-		label = 'Remove null geometries and check for duplicated segments\\l(n = 782)\\l'
-		pos = '-2,-3.85!'
-	]
-	filter2x[
-		label = 'Segments Excluded\\l(n = 992)\\l'
-		pos = '5.5,-3.85!'
-		width = 3
-	]
-	filter2 -> filter2x
-	
-	filter1 -> filter2
-}
-")
+diag_criteria_details(criteria_list, "vancouver")
 ```
 
 ## Segment Inclusion Criteria for Calgary
 
 ## Segment Inclusion Criteria for Toronto
+
+```{r}
+diag_criteria_details(criteria_list, "toronto")
+```
 
 # Contributions
 
