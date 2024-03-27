@@ -47,36 +47,69 @@ sessionInfo()
 1. Ensure the installation steps above are completed
 2. Download a zip of the code and data [here](https://github.com/rrwen/recovr-infracycle/archive/refs/heads/main.zip) and unzip it
 	* Code Repository: [github.com/rrwen/recovr-infracycle](https://github.com/rrwen/recovr-infracycle)
-3. Open RStudio and open the [src/src.Rproj](https://github.com/rrwen/recovr-infracycle/blob/main/src/src.Rproj)
+3. In RStudio, open the [src/src.Rproj](https://github.com/rrwen/recovr-infracycle/blob/main/src/src.Rproj) file
 4. In RStudio, open the [src/recovr-infracycle-code.Rmd](https://github.com/rrwen/recovr-infracycle/blob/main/src/recovr-infracycle-code.Rmd) file
-5. In the R Console on the bottom pane, install the required R libraries using the code below
-6. Click the `Run` drop down (top right of code pane) and click `Run All`
-
-```{r eval=FALSE}
-install.packages("rmarkdown")
-install.packages("bookdown")
-install.packages("knitr")
-install.packages("tidyverse")
-install.packages("glue")
-install.packages("readxl")
-install.packages("ggtext")
-install.packages("scales")
-install.packages("patchwork")
-install.packages("DiagrammeR")
-install.packages("DiagrammeRsvg")
-install.packages("webshot2")
-install.packages("magick")
-install.packages("rsvg")
-install.packages("sf")
-install.packages("tmap")
-install.packages("units")
-```
+6. In RStudio:
+	* Run all code: Click the `Run` drop down (top right of the code pane) and click `Run All`
+	* Generate HTML version: Click `knit` (top left of code pane) and a file will be generated in `docs/index.html`
 
 # Libraries
 
+Install R packages if needed.
+
+```{r warning = FALSE, message = FALSE, results = FALSE}
+
+# Required packages
+required_packages <- c(
+	"rmarkdown",
+	"bookdown",
+	"knitr",
+	"tidyverse",
+	"glue",
+	"readxl",
+	"ggtext",
+	"scales",
+	"patchwork",
+	"DiagrammeR",
+	"DiagrammeRsvg",
+	"webshot2",
+	"magick",
+	"rsvg",
+	"sf",
+	"tmap",
+	"units"
+)
+
+# Try to install packages if not installed
+default_options <- options()
+tryCatch(
+	{
+		# Disable interactivity
+		options(install.packages.compile.from.source = "always")
+		
+		# Install package if not installed
+		for (package in required_packages) {
+			is_package_installed <- require(package, character.only = TRUE)
+			if (!is_package_installed) {
+				cat(paste0("Installing package: ", package, "\n"))
+				install.packages(package)
+			} else {
+				cat(paste0("Package already installed: ", package, "\n"))
+			}
+		}
+	},
+	error = function(cond) {
+		stop(cond)
+	},
+	finally = {
+		options(default_options) # reset interactivity
+	}
+)
+```
+
 Load R libraries.
 
-```{r warning=FALSE, message=FALSE}
+```{r warning = FALSE, message = FALSE}
 library(DiagrammeR)
 library(DiagrammeRsvg)
 library(ggtext)
@@ -1997,7 +2030,7 @@ Save [vancouver-bikeways-raw-v1.geojson](https://github.com/rrwen/recovr-infracy
 
 # Save geojson
 vanc_raw %>%
-	st_write("../data/vancouver-bikeways-raw-v1.geojson", delete_dsn = TRUE)
+	write_sf("../data/vancouver-bikeways-raw-v1.geojson", delete_dsn = TRUE)
 ```
 
 Save [vancouver-bikeways-raw-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-raw-v1.csv) file:
@@ -2327,7 +2360,7 @@ Save [vancouver-bikeways-preprocess-v1.geojson](https://github.com/rrwen/recovr-
 
 # Save geojson
 vanc_preprocess %>%
-	st_write("../data/vancouver-bikeways-preprocess-v1.geojson", delete_dsn = TRUE)
+	write_sf("../data/vancouver-bikeways-preprocess-v1.geojson", delete_dsn = TRUE)
 ```
 
 Save [vancouver-bikeways-preprocess-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-preprocess-v1.csv) file:
@@ -2487,7 +2520,7 @@ Save [calgary-bikeways-preprocess-v1.geojson](https://github.com/rrwen/recovr-in
 
 # Save geojson
 # calg_preprocess %>%
-# 	st_write("../data/calgary-bikeways-preprocess-v1.geojson", delete_dsn = TRUE)
+# 	write_sf("../data/calgary-bikeways-preprocess-v1.geojson", delete_dsn = TRUE)
 ```
 
 Save [calgary-bikeways-preprocess-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v1.csv) file:
