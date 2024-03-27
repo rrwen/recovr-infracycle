@@ -42,9 +42,15 @@ R and RMarkdown in RStudio (version 2023.06.1+524) was used to generate this doc
 sessionInfo()
 ```
 
-# Libraries
+# Running This Code
 
-Install R libraries if needed.
+1. Ensure the installation steps above are completed
+2. Download a zip of the code and data [here](https://github.com/rrwen/recovr-infracycle/archive/refs/heads/main.zip) and unzip it
+	* Code Repository: [github.com/rrwen/recovr-infracycle](https://github.com/rrwen/recovr-infracycle)
+3. Open RStudio and open the [src/src.Rproj](https://github.com/rrwen/recovr-infracycle/blob/main/src/src.Rproj)
+4. In RStudio, open the [src/recovr-infracycle-code.Rmd](https://github.com/rrwen/recovr-infracycle/blob/main/src/recovr-infracycle-code.Rmd) file
+5. In the R Console on the bottom pane, install the required R libraries using the code below
+6. Click the `Run` drop down (top right of code pane) and click `Run All`
 
 ```{r eval=FALSE}
 install.packages("rmarkdown")
@@ -65,6 +71,8 @@ install.packages("sf")
 install.packages("tmap")
 install.packages("units")
 ```
+
+# Libraries
 
 Load R libraries.
 
@@ -973,7 +981,7 @@ This function applies segment inclusion critieria to a list of data.frames. Opti
 #'
 #' This function applies segment inclusion critieria to a list of data.frames. Optionally creates a data.frame of counts, segment lengths, and other exclusions (duplicates, misclassifications) per inclusion criteria step along with a list of the data.frames after applying the inclusion criteria.
 #'
-#' @param criteria_list A list of lists, where each list contains the following structure defining the segment inclusion criteria for each city:
+#' @param criteria_data A list of lists, where each list contains the following structure defining the segment inclusion criteria for each city:
 #' \itemize{
 #'	\item \code{city}: the name (char) of the city (required).
 #'	\item \code{data}: the data.frame containing road segments and applicable columns for inclusion criteria filtering (required).
@@ -994,7 +1002,7 @@ This function applies segment inclusion critieria to a list of data.frames. Opti
 #' }
 #' @param len_func A function to apply to road length calculations. The default is a function that converts from meters to km.
 #' 
-#' @return A list of lists, where each list has keys and values from \code{criteria_list}, and the following additional keys:
+#' @return A list of lists, where each list has keys and values from \code{criteria_data}, and the following additional keys:
 #' \itemize{
 #'	\item \code{data_filter}: the data.frame after filtering for segment inclusion criteria (required).
 #'	\item \code{infra_filter_applied}: TRUE if dedicated cycling infrastructure filter was applied and FALSE otherwise (required).
@@ -1040,16 +1048,16 @@ This function applies segment inclusion critieria to a list of data.frames. Opti
 #' @export
 #'
 filter_criteria <- function(
-	criteria_list,
+	criteria_data,
 	len_func = function (x) as.numeric(x) / 1000
 ) {
 	
 	# Apply criteria to list and track counts and lengths
-	out <- criteria_list
-	for (i in 1:length(criteria_list)) {
+	out <- criteria_data
+	for (i in 1:length(criteria_data)) {
 		
 		# Get criteria data
-		x <- criteria_list[[i]]
+		x <- criteria_data[[i]]
 		df <- x$data
 		city <- x$city
 		
@@ -1239,13 +1247,13 @@ This function draws a flow diagram of overall methods for segment inclusion crit
 #' 
 #' This function draws a flow diagram of overall methods for segment inclusion criteria using output from \code{\link{filter_criteria}}.
 #'
-#' @param criteria_list A list of lists in the structure of the output from \code{\link{filter_criteria}}.
+#' @param criteria_data A list of lists in the structure of the output from \code{\link{filter_criteria}}.
 #' @param note A note (char) to display at the end of the diagram.
 #' @return A \code{\link[DiagrammeR]{grViz}} object.
 #' @export
 #'
 diag_criteria <- function(
-		criteria_list,
+		criteria_data,
 		note = "*Denotes segments misclassified as an ineligible type (off-street path, shared road, or inactive temporary infrastructure)<br/>**Local Street Bikeways (LSB) were included but not screened or verified as they did not fit the Can-BICS definitions"
 ) {
 	
@@ -1314,10 +1322,10 @@ diag_criteria <- function(
 	y <- -0.21
 	y_gap <- 1.85
 	row_adds <- ""
-	for (i in 1:length(criteria_list)) {
+	for (i in 1:length(criteria_data)) {
 		
 		# Vars per city
-		criteria <- criteria_list[[i]]
+		criteria <- criteria_data[[i]]
 		
 		# Generate geom filter dup info
 		elig_dup <- ""
@@ -1456,25 +1464,25 @@ This function draws a flow diagram of detailed methods for segment inclusion cri
 #' 
 #' This function draws a flow diagram of detailed methods for segment inclusion criteria using output from \code{\link{filter_criteria}}.
 #'
-#' @param criteria_list A list of lists in the structure of the output from \code{\link{filter_criteria}}.
+#' @param criteria_data A list of lists in the structure of the output from \code{\link{filter_criteria}}.
 #' @param city The city (char) to create the diagram for. If `NULL`, this function produces a list of diagrams where keys are the city name and values are the diagrams.
 #' @param out_render Set to TRUE to render the diagram and return \code{\link[DiagrammeR]{grViz}} objects or FALSE to return the text used to generate the diagram.
 #' @return A list of \code{\link[DiagrammeR]{grViz}} objects if `city` is `NULL`, or a single \code{\link[DiagrammeR]{grViz}} if `city` is provided. The \code{\link[DiagrammeR]{grViz}} objects become text (char) if `out_render` is `FALSE`.
 #' @export
 #'
-diag_criteria_details <- function(criteria_list, city = NULL, out_render = TRUE) {
+diag_criteria_details <- function(criteria_data, city = NULL, out_render = TRUE) {
 	
 	# Filter for city if avail
 	if (!is.null(city)) {
-		criteria_list <- criteria_list[sapply(criteria_list, function (x) x$city == city)]
+		criteria_data <- criteria_data[sapply(criteria_data, function (x) x$city == city)]
 	}
 	
 	# Generate diagrams for each city
 	out <- list()
-	for (i in 1:length(criteria_list)) {
+	for (i in 1:length(criteria_data)) {
 		
 		# Diag vars
-		criteria <- criteria_list[[i]]
+		criteria <- criteria_data[[i]]
 		x_edge <- -4
 		
 		# Diag settings
@@ -1803,7 +1811,7 @@ diag_criteria_details <- function(criteria_list, city = NULL, out_render = TRUE)
 			]
 			elig_top -> elig_bot
 		",
-			n = criteria$elig_n,
+			n = criteria$elig_n + criteria$noverify_filter_nx,
 			y = y,
 			x = x_edge
 		)
@@ -1827,12 +1835,22 @@ diag_criteria_details <- function(criteria_list, city = NULL, out_render = TRUE)
 			y = y
 		)
 		
+		# Step 4 noverify
+		misclass_noverify <- ""
+		if (criteria$noverify_filter_nx > 0) {
+			misclass_noverify <- glue(
+				"{n} screened, {nx} not screened\\l",
+				n = criteria$misclass_filter_n,
+				nx = criteria$noverify_filter_nx
+			)
+		}
+		
 		# Step 4 misclass
 		s4 <- glue("
 			{s4}
 			
 			screen[
-				label = 'Exclusion of Misclassifications and\\lDuplicates following Screening\\l{column} != {filter}\\l(n = {n})\\l'
+				label = 'Exclusion of Misclassifications and\\lDuplicates following Screening\\l{column} != {filter}\\l{noverify}(n = {n})\\l'
 				pos = '-4.5,{y}!'
 				width = 5
 				height = 2.5
@@ -1867,7 +1885,8 @@ diag_criteria_details <- function(criteria_list, city = NULL, out_render = TRUE)
 				"[\r\n]",
 				"\\\\l"
 			),
-			n = criteria$misclass_filter_n,
+			n = criteria$misclass_filter_n + criteria$noverify_filter_nx,
+			noverify = misclass_noverify,
 			misclass = paste0(
 				"Misclassifications: ",
 				criteria$misclass_filter_uniq_n[[1]],
@@ -1881,6 +1900,16 @@ diag_criteria_details <- function(criteria_list, city = NULL, out_render = TRUE)
 			s4 = s4
 		)
 		
+		# Step 5 noverify
+		incl_noverify <- ""
+		if (criteria$noverify_filter_nx > 0) {
+			incl_noverify <- glue(
+				"{n} verified, {nx} not verified\\l",
+				n = criteria$incl_n,
+				nx = criteria$noverify_filter_nx
+			)
+		}
+		
 		# Step 5 Inclusions
 		y <- y - 2.75
 		s5 <- glue("
@@ -1893,12 +1922,14 @@ diag_criteria_details <- function(criteria_list, city = NULL, out_render = TRUE)
 				style = 'rounded,filled'
 			]
 			incl[
-				label = 'Verified Inclusions\\l(n = {n})\\l'
+				label = '{verified}Inclusions\\l{noverify}(n = {n})\\l'
 				pos = '0,{y}!'
 				width = 14
 			]
 		",
-			n = criteria$incl_n,
+			verified = if (criteria$noverify_filter_nx > 0) "Verified and Non-verified " else "Verified ",
+			noverify = incl_noverify,
+			n = criteria$incl_n + criteria$noverify_filter_nx,
 			y = y
 		)
 		
@@ -1958,7 +1989,33 @@ vanc_raw %>% as_tibble
 print(vanc_raw)
 ```
 
-## Calgary Raw Data
+### Files
+
+Save [vancouver-bikeways-raw-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-raw-v1.geojson) file:
+
+```{r}
+
+# Save geojson
+vanc_raw %>%
+	st_write("../data/vancouver-bikeways-raw-v1.geojson", delete_dsn = TRUE)
+```
+
+Save [vancouver-bikeways-raw-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-raw-v1.csv) file:
+
+```{r}
+
+# Save csv
+# st_read("../data/vancouver-bikeways-raw-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
+vanc_raw %>%
+	mutate(
+		geometry = st_as_text(geometry),
+		geometry_crs = st_crs(vanc_raw)$proj4string,
+		.before = geometry
+	) %>%
+	write_csv("../data/vancouver-bikeways-raw-v1.csv", na = "")
+```
+
+## Calgary Raw Data {.tabset}
 
 ```
 
@@ -2028,6 +2085,52 @@ calg <- calg_bikeways %>%
 calg
 ```
 
+### Map
+
+```{r out.width = "100%"}
+# tmap_mode("view")
+# tm_shape(calg_raw) +
+# 	tm_lines(col = "INST_TMIN", popup.vars = TRUE)
+```
+
+### Data
+
+```{r}
+# calg_raw %>% as_tibble
+```
+
+### Details
+
+```{r}
+# print(calg_raw)
+```
+
+### Files
+
+Save [calgary-bikeways-raw-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-raw-v1.geojson) file:
+
+```{r}
+
+# Save geojson
+# calg_raw %>%
+# 	write_sf("../data/calgary-bikeways-raw-v1.geojson", delete_dsn = TRUE)
+```
+
+Save [calgary-bikeways-raw-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-raw-v1.csv) file:
+
+```{r}
+
+# Save csv
+# st_read("../data/calgary-bikeways-raw-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
+# calg_raw %>%
+# 	mutate(
+# 		geometry = st_as_text(geometry),
+# 		geometry_crs = st_crs(calg_raw)$proj4string,
+# 		.before = geometry
+# 	) %>%
+# 	write_csv("../data/calgary-bikeways-raw-v1.csv", na = "")
+```
+
 ## Toronto Raw Data {.tabset}
 
 ```{r}
@@ -2054,6 +2157,32 @@ toron_raw %>% as_tibble
 print(toron_raw)
 ```
 
+### Files
+
+Save [toronto-bikeways-raw-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-raw-v1.geojson) file:
+
+```{r}
+
+# Save geojson
+toron_raw %>%
+	write_sf("../data/toronto-bikeways-raw-v1.geojson", delete_dsn = TRUE)
+```
+
+Save [toronto-bikeways-raw-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-raw-v1.csv) file:
+
+```{r}
+
+# Save csv
+# st_read("../data/toronto-bikeways-raw-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
+toron_raw %>%
+	mutate(
+		geometry = st_as_text(geometry),
+		geometry_crs = st_crs(toron_raw)$proj4string,
+		.before = geometry
+	) %>%
+	write_csv("../data/toronto-bikeways-raw-v1.csv", na = "")
+```
+
 # Preprocessing
 
 ## Vancouver Preprocessed Data {.tabset}
@@ -2061,7 +2190,7 @@ print(toron_raw)
 ```{r warning = FALSE}
 
 # Preprocess data
-vanc <- vanc_raw %>%
+vanc_preprocess <- vanc_raw %>%
 	select( # select and rename
 		id = object_id,
 		street = street_nam,
@@ -2168,40 +2297,212 @@ vanc <- vanc_raw %>%
 		geometry_len_km = as.numeric(st_length(geometry)) / 1000,
 		.before = geometry
 	)
-
-# Save geojson
-vanc %>%
-	st_write("../data/vancouver_verify_bikeways_v1.geojson", delete_dsn = TRUE)
-
-# Save csv
-# st_read("../data/vancouver_bikeways_v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
-vanc %>%
-	mutate(
-		geometry = st_as_text(geometry),
-		geometry_crs = st_crs(vanc)$proj4string,
-		.before = geometry
-	) %>%
-	write_csv("../data/vancouver_verify_bikeways_v1.csv", na = "")
 ```
 
 ### Map
 
 ```{r out.width = "100%"}
 tmap_mode("view")
-tm_shape(vanc) +
+tm_shape(vanc_preprocess) +
 	tm_lines(col = "verify_install_type", popup.vars = TRUE)
 ```
 
 ### Data
 
 ```{r}
-vanc %>% as_tibble
+vanc_preprocess %>% as_tibble
 ```
 
 ### Details
 
 ```{r}
-print(vanc)
+print(vanc_preprocess)
+```
+
+### Files
+
+Save [vancouver-bikeways-preprocess-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-preprocess-v1.geojson) file:
+
+```{r}
+
+# Save geojson
+vanc_preprocess %>%
+	st_write("../data/vancouver-bikeways-preprocess-v1.geojson", delete_dsn = TRUE)
+```
+
+Save [vancouver-bikeways-preprocess-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-preprocess-v1.csv) file:
+
+```{r}
+
+# Save csv
+# st_read("../data/vancouver-bikeways-preprocess-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
+vanc_preprocess %>%
+	mutate(
+		geometry = st_as_text(geometry),
+		geometry_crs = st_crs(vanc_preprocess)$proj4string,
+		.before = geometry
+	) %>%
+	write_csv("../data/vancouver-bikeways-preprocess-v1.csv", na = "")
+```
+
+## Calgary Preprocessed Data {.tabset}
+
+```{r warning = FALSE}
+
+# Preprocess data
+# calg_preprocess <- calg_raw %>%
+# 	select( # select and rename
+# 		id = object_id,
+# 		street = street_nam,
+# 		status = status,
+# 		road_type = street_seg,
+# 		#install_year = INSTALL4,
+# 		install_type = bikeway_ty,
+# 		verify_install_year = INST_YR,
+# 		verify_install_date = INST_DATE,
+# 		verify_install_type = INST_TMIN,
+# 		verify_install_comment = INST_COMM,
+# 		verify_upgrade1_year = UPGR1_YR,
+# 		verify_upgrade1_date = UPGR1_DATE,
+# 		verify_upgrade1_type = UPGR1_TMIN,
+# 		verify_upgrade1_comment = UPGR1_COMM,
+# 		verify_upgrade2_year = UPGR2_YR,
+# 		verify_upgrade2_date = UPGR2_DATE,
+# 		verify_upgrade2_type = UPGR2_TMIN,
+# 		verify_upgrade2_comment = UPGR2_COMM,
+# 		verify_misclass = EXCL_REAS
+# 	) %>%
+# 	mutate( # data types
+# 		id = as.character(id),
+# 		street = as.character(street),
+# 		road_type = as.character(road_type),
+# 		#install_year = as.numeric(install_year),
+# 		install_type = as.character(install_type),
+# 		verify_install_year = as.numeric(verify_install_year),
+# 		verify_install_date = as.character(verify_install_date),
+# 		verify_install_type = as.character(verify_install_type),
+# 		verify_install_comment = as.character(verify_install_comment),
+# 		verify_upgrade1_year = as.numeric(verify_upgrade1_year),
+# 		verify_upgrade1_date = as.character(verify_upgrade1_date),
+# 		verify_upgrade1_type = as.character(verify_upgrade1_type),
+# 		verify_upgrade1_comment = as.character(verify_upgrade1_comment),
+# 		verify_upgrade2_year = as.numeric(verify_upgrade2_year),
+# 		verify_upgrade2_date = as.character(verify_upgrade2_date),
+# 		verify_upgrade2_type = as.character(verify_upgrade2_type),
+# 		verify_upgrade2_comment = as.character(verify_upgrade2_comment),
+# 		verify_misclass = as.character(verify_misclass)
+# 	) %>%
+# 	mutate( # clean values
+# 		#install_year = na_if(install_year, 0),
+# 		verify_install_year = na_if(verify_install_year, 0),
+# 		verify_install_date = na_if(verify_install_date, "NA"),
+# 		verify_install_type = na_if(verify_install_type, "NA") %>%
+# 			str_replace_all("[^[:alpha:]]|\\s", ""),
+# 		verify_install_comment = na_if(verify_install_comment, "NA"),
+# 		verify_upgrade1_year = na_if(verify_upgrade1_year, 0),
+# 		verify_upgrade1_date = na_if(verify_upgrade1_date, "NA"),
+# 		verify_upgrade1_type = na_if(verify_upgrade1_type, "NA") %>%
+# 			str_replace_all("[^[:alpha:]]|\\s", ""),
+# 		verify_upgrade1_comment = na_if(verify_upgrade1_comment, "NA"),
+# 		verify_upgrade2_year = na_if(verify_upgrade2_year, 0),
+# 		verify_upgrade2_date = na_if(verify_upgrade2_date, "NA"),
+# 		verify_upgrade2_type = na_if(verify_upgrade2_type, "NA") %>%
+# 			str_replace_all("[^[:alpha:]]|\\s", ""),
+# 		verify_upgrade2_comment = na_if(verify_upgrade2_comment, "NA"),
+# 		verify_misclass =  na_if(verify_misclass, "NA") %>%
+# 			str_trim %>%
+# 			str_to_title
+# 	) %>%
+# 	mutate( # add column for non-verified infra types
+# 		no_verify_install_type = if_else(
+# 			is.na(verify_install_type) & install_type == "Local Street",
+# 			"Local Street",
+# 			NA
+# 		),
+# 		.after = verify_misclass
+# 	) %>%
+# 	mutate( # add local street as non-verified LSB
+# 		verify_install_type = if_else(
+# 			is.na(verify_install_type) & install_type == "Local Street",
+# 			"LSB",
+# 			verify_install_type
+# 		)
+# 		# verify_install_year = if_else(
+# 		# 	is.na(verify_install_type) & install_type == "Local Street",
+# 		# 	install_year,
+# 		# 	verify_install_year
+# 		# )
+# 	) %>%
+# 	mutate( # create col for recoded road types
+# 		road_type_recode = case_when( # create road types
+# 	        road_type %in% c( # arterial equiv
+# 	        	"Arterial"
+# 	        ) ~ "Arterial",
+# 	        road_type %in% c( # collector equiv
+# 	        	"Collector",
+# 	        	"Secondary Arterial",
+# 	        	"Sec Arterial"
+# 	        ) ~ "Collector",
+# 	        road_type %in% c( # local equiv
+# 	        	"Lane",
+# 	        	"Residential",
+# 	        	"Leased",
+# 	        	"Recreational"
+# 	        ) ~ "Local",
+# 	        .default = road_type
+# 	    ),
+# 		.after = road_type
+# 	) %>%
+# 	mutate( # create col for segment lengths in km
+# 		geometry_len_km = as.numeric(st_length(geometry)) / 1000,
+# 		.before = geometry
+# 	)
+```
+
+### Map
+
+```{r out.width = "100%"}
+# tmap_mode("view")
+# tm_shape(calg_preprocess) +
+# 	tm_lines(col = "verify_install_type", popup.vars = TRUE)
+```
+
+### Data
+
+```{r}
+# calg_preprocess %>% as_tibble
+```
+
+### Details
+
+```{r}
+# print(calg_preprocess)
+```
+
+### Files
+
+Save [calgary-bikeways-preprocess-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v1.geojson) file:
+
+```{r}
+
+# Save geojson
+# calg_preprocess %>%
+# 	st_write("../data/calgary-bikeways-preprocess-v1.geojson", delete_dsn = TRUE)
+```
+
+Save [calgary-bikeways-preprocess-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v1.csv) file:
+
+```{r}
+
+# Save csv
+# st_read("../data/calgary-bikeways-preprocess-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
+# calg_preprocess %>%
+# 	mutate(
+# 		geometry = st_as_text(geometry),
+# 		geometry_crs = st_crs(calg_preprocess)$proj4string,
+# 		.before = geometry
+# 	) %>%
+# 	write_csv("../data/calgary-bikeways-preprocess-v1.csv", na = "")
 ```
 
 ## Toronto Preprocessed Data {.tabset}
@@ -2209,7 +2510,7 @@ print(vanc)
 ```{r warning = FALSE}
 
 # Preprocess data
-toron <- toron_raw %>%
+toron_preprocess <- toron_raw %>%
 	select( # select and rename
 		id = OBJECTI2,
 		street = STREET_7,
@@ -2297,20 +2598,169 @@ toron <- toron_raw %>%
 		geometry_len_km = as.numeric(st_length(geometry)) / 1000,
 		.before = geometry
 	)
+```
+
+### Map
+
+```{r out.width = "100%"}
+tmap_mode("view")
+tm_shape(toron_preprocess) +
+	tm_lines(col = "verify_install_type", popup.vars = TRUE)
+```
+
+### Data
+
+```{r}
+toron_preprocess %>% as_tibble
+```
+
+### Details
+
+```{r}
+print(toron_preprocess)
+```
+
+### Files
+
+Save [toronto-bikeways-preprocess-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-preprocess-v1.geojson) file:
+
+```{r}
 
 # Save geojson
-toron %>%
-	st_write("../data/toronto_verify_bikeways_v1.geojson", delete_dsn = TRUE)
+toron_preprocess %>%
+	write_sf("../data/toronto-bikeways-preprocess-v1.geojson", delete_dsn = TRUE)
+```
+
+Save [toronto-bikeways-preprocess-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-preprocess-v1.csv) file:
+
+```{r}
 
 # Save csv
-# st_read("../data/toronto_bikeways_v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
-toron %>%
+# st_read("../data/toronto-bikeways-preprocess-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
+toron_preprocess %>%
 	mutate(
 		geometry = st_as_text(geometry),
-		geometry_crs = st_crs(toron)$proj4string,
+		geometry_crs = st_crs(toron_preprocess)$proj4string,
 		.before = geometry
 	) %>%
-	write_csv("../data/toronto_verify_bikeways_v1.csv", na = "")
+	write_csv("../data/toronto-bikeways-preprocess-v1.csv", na = "")
+```
+
+# Inclusion and Exclusion Criteria
+
+Apply filters for inclusion and exclusion criteria using function `filter_criteria` as described in the methods and Appendix 2.
+
+```{r}
+
+# Build filter criteria
+cities_criteria <- list(
+	vancouver = list(
+		city = "vancouver",
+		data = vanc_preprocess,
+		data_date = "January 2023",
+		data_url = "https://opendata.vancouver.ca/explore/dataset/bikeways/information",
+		infra_col = "install_type",
+		infra_filter = c("Painted Lanes", "Protected Bike Lanes", "Local Street"),
+		road_col = "road_type",
+		road_filter = c("Off-street"),
+		geom_col = "geometry",
+		geom_unit = "km",
+		geom_filter = TRUE,
+		misclass_col = "verify_misclass",
+		misclass_filter = c(NA, "NA"),
+		noverify_col = "no_verify_install_type",
+		noverify_filter = c("Local Street")
+	),
+	# list(
+	# 	city = "calgary",
+	# 	data = calg_preprocess,
+	# 	data_date = "January 2023",
+	# 	data_url = "https://data.calgary.ca/Transportation-Transit/Calgary-Bikeways/jjqk-9b73",
+	# 	infra_col = "install_type",
+	# 	infra_filter = c("Bicycle Lane", "Cycle Track"),
+	# 	status_col = "install_status",
+	# 	status_filter = c("INACTIVE", "PLANNED"),
+	# 	geom_col = "geometry",
+	# 	geom_unit = "km",
+	# 	geom_filter = TRUE,
+	# 	misclass_col = "verify_misclass",
+	# 	misclass_filter = c(NA, "NA")
+	# ),
+	toronto = list(
+		city = "toronto",
+		data = toron_preprocess,
+		data_date = "January 2023",
+		data_url = "https://open.toronto.ca/dataset/cycling-network",
+		infra_col = "install_type",
+		infra_filter = c("Bi-Directional Cycle Track", "Bike Lane", "Bike Lane - Buffered", "Bike Lane - Contraflow", "Cycle Track", "Cycle Track - Contraflow"),
+		geom_col = "geometry",
+		geom_unit = "km",
+		geom_filter = TRUE,
+		misclass_col = "verify_misclass",
+		misclass_filter = c(NA, "NA")
+	)
+)
+
+# Apply filter criteria for all cities
+criteria_data <- filter_criteria(cities_criteria)
+```
+
+## Vancouver Filtered Data {.tabset}
+
+```{r}
+vanc <- criteria_data$vancouver$data_filter
+```
+
+### Map
+
+```{r out.width = "100%"}
+tmap_mode("view")
+tm_shape(vanc) +
+	tm_lines(col = "verify_install_type", popup.vars = TRUE)
+```
+
+### Data
+
+```{r}
+vanc %>% as_tibble
+```
+
+### Details
+
+```{r}
+print(vanc)
+```
+
+## Calgary Filtered Data {.tabset}
+
+```{r}
+#calg<- criteria_data$calgary$data_filter
+```
+
+### Map
+
+```{r out.width = "100%"}
+#tmap_mode("view")
+#tm_shape(calg) +
+#	tm_lines(col = "verify_install_type", popup.vars = TRUE)
+```
+
+### Data
+
+```{r}
+#calg %>% as_tibble
+```
+
+### Details
+
+```{r}
+#print(calg)
+```
+
+## Toronto Filtered Data {.tabset}
+
+```{r}
+toron <- criteria_data$toronto$data_filter
 ```
 
 ### Map
@@ -2339,96 +2789,15 @@ print(toron)
 
 This flowchart provides a high-level overview of the segment inclusions and exclusions for each municipality. Data from Calgary were specific to on-street routes only. For detailed flow diagrams specific to each municipality, please refer to the Appendix.
 
-```
-criteria_settings <- list(
-	list(
-		city = "vancouver",
-		data = vanc,
-		data_date = "January 2023",
-		data_url = "https://opendata.vancouver.ca/explore/dataset/bikeways/information",
-		infra_col = "install_type",
-		infra_filter = c("Painted Lanes", "Protected Bike Lanes", "Local Street"),
-		geom_col = "geometry",
-		geom_unit = "km",
-		geom_filter = TRUE,
-		misclass_col = "verify_misclass",
-		misclass_filter = c(NA, "NA")
-	),
-	list(
-		city = "calgary",
-		data = calg,
-		data_date = "January 2023",
-		data_url = "https://data.calgary.ca/Transportation-Transit/Calgary-Bikeways/jjqk-9b73",
-		infra_col = "install_type",
-		infra_filter = c("Bicycle Lane", "Cycle Track"),
-		status_col = "install_status",
-		status_filter = c(“INACTIVE”, “PLANNED”),
-		geom_col = "geometry",
-		geom_unit = "km",
-		geom_filter = TRUE,
-		misclass_col = "verify_misclass",
-		misclass_filter = c(NA, "NA")
-	),
-	list(
-		city = "toronto",
-		data = toron,
-		data_date = "January 2023",
-		data_url = "https://open.toronto.ca/dataset/cycling-network",
-		infra_col = "install_type",
-		infra_filter = c("Bi-Directional Cycle Track", "Bike Lane", "Bike Lane - Buffered", "Bike Lane - Contraflow", "Cycle Track", "Cycle Track - Contraflow"),
-		geom_col = "geometry",
-		geom_unit = "km",
-		geom_filter = TRUE,
-		misclass_col = "verify_misclass",
-		misclass_filter = c(NA, "NA")
-	)
-)
-criteria_list <- filter_criteria(criteria_settings)
-diag_criteria(criteria_list)
-```
-
 ```         
 %>%
     export_svg %>%
     charToRaw %>%
-    rsvg_png("test.png")
+    rsvg_pdf("fig-methods.pdf")
 ```
 
 ```{r}
-criteria_settings <- list(
-	vancouver = list(
-		city = "vancouver",
-		data = vanc,
-		data_date = "January 2023",
-		data_url = "https://opendata.vancouver.ca/explore/dataset/bikeways/information",
-		infra_col = "install_type",
-		infra_filter = c("Painted Lanes", "Protected Bike Lanes", "Local Street"),
-		road_col = "road_type",
-		road_filter = c("Off-street"),
-		geom_col = "geometry",
-		geom_unit = "km",
-		geom_filter = TRUE,
-		misclass_col = "verify_misclass",
-		misclass_filter = c(NA, "NA"),
-		noverify_col = "no_verify_install_type",
-		noverify_filter = c("Local Street")
-	),
-	toronto = list(
-		city = "toronto",
-		data = toron,
-		data_date = "January 2023",
-		data_url = "https://open.toronto.ca/dataset/cycling-network",
-		infra_col = "install_type",
-		infra_filter = c("Bi-Directional Cycle Track", "Bike Lane", "Bike Lane - Buffered", "Bike Lane - Contraflow", "Cycle Track", "Cycle Track - Contraflow"),
-		geom_col = "geometry",
-		geom_unit = "km",
-		geom_filter = TRUE,
-		misclass_col = "verify_misclass",
-		misclass_filter = c(NA, "NA")
-	)
-)
-criteria_list <- filter_criteria(criteria_settings)
-diag_criteria(criteria_list)
+diag_criteria(criteria_data)
 ```
 
 ## Figure 2: Changes in dedicated cycling infrastructure between 2009 and 2022 for Vancouver, Calgary, and Toronto by infrastructure category.
@@ -2603,7 +2972,7 @@ sfig9$data
 ## Segment Inclusion Criteria for Vancouver
 
 ```{r}
-diag_criteria_details(criteria_list, "vancouver")
+diag_criteria_details(criteria_data, "vancouver")
 ```
 
 ## Segment Inclusion Criteria for Calgary
@@ -2611,7 +2980,7 @@ diag_criteria_details(criteria_list, "vancouver")
 ## Segment Inclusion Criteria for Toronto
 
 ```{r}
-diag_criteria_details(criteria_list, "toronto")
+diag_criteria_details(criteria_data, "toronto")
 ```
 
 # Contributions
