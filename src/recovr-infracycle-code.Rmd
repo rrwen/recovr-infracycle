@@ -57,7 +57,7 @@ sessionInfo()
 
 Install R packages if needed.
 
-```{r warning = FALSE, message = FALSE, results = FALSE}
+```{r warning = FALSE, message = FALSE, results = FALSE, eval = FALSE}
 
 # Required packages
 required_packages <- c(
@@ -77,6 +77,8 @@ required_packages <- c(
 	"rsvg",
 	"sf",
 	"tmap",
+	"tmaptools",
+	"OpenStreetMap",
 	"units"
 )
 
@@ -120,6 +122,7 @@ library(rsvg)
 library(sf)
 library(tidyverse)
 library(tmap)
+library(tmaptools)
 library(units)
 ```
 
@@ -162,6 +165,10 @@ settings$basemaps <- c(
 	"CartoDB.DarkMatter",
 	"Esri.WorldGrayCanvas"
 )
+settings$static_basemap <- "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+
+# Map infrastructure changes since year
+settings$infra_changes_year <- 2020
 
 # Apply map settings
 tmap_options(basemaps = settings$basemaps)
@@ -1992,6 +1999,169 @@ diag_criteria_details <- function(criteria_data, city = NULL, out_render = TRUE)
 }
 ```
 
+## Function 6: map_infra
+
+Maps Infrastructure Changes.
+
+Creates maps of infrastructure changes since a certain year for each city and their downtown region.
+
+```{r}
+map_infra <- function(
+		cities_list,
+		year_since = settings$infra_changes_year
+) {
+	
+	# Generate maps per city
+	out <- list()
+	for (i in 1:length(cities_list)) {
+		
+		# Get vars
+		city <- cities_list[[i]]
+		city_name <- names(cities_list)[[i]]
+		dt_name <- glue(
+			"Downtown {city}",
+			city = str_to_title(city_name)
+		)
+		city$zoom <- if ("zoom" %in% names(city)) city$zoom else 12
+		city$basemap_extend <- if ("basemap_extend" %in% names(city)) city$basemap_extend else 10000
+		
+		# Create col to identify infra changes
+		map_data <- city$data %>%
+			mutate(
+				changes = case_when(
+			        (
+			        	!is.na(verify_upgrade1_type) &
+			        	!is.na(verify_upgrade1_year) &
+			         	verify_upgrade1_year >= 2020
+			        ) | (
+			        	!is.na(verify_upgrade2_type) &
+			        	!is.na(verify_upgrade2_year) &
+			        	verify_upgrade2_year >= 2020
+			        ) ~ glue(
+			        	"Upgraded Infrastructure Since Jan. {year}",
+			        	year = year_since
+			        ),
+			        !is.na(verify_install_type) &
+			        !is.na(verify_install_year) &
+			        verify_install_year >= 2020 ~
+			        glue(
+			        	"New Infrastructure Since Jan. {year}",
+			        	year = year_since
+			        ),
+			        .default = "Unchanged Infrastructure"
+			    )
+			)
+		
+		# Create col for city
+		map_data <- map_data %>%
+			mutate(group = city$title)
+		
+		# Create bounding box for downtown region
+		bbox <- st_as_sfc(
+			st_bbox(city$downtown_bbox),
+			crs = 4326
+		)
+		
+		# Subset data for downtown region
+		submap_data <- map_data %>%
+			st_crop(bbox) %>%
+			mutate(group = dt_name)
+		
+		# Add bounding box as polylines for main map
+		map_data <- map_data %>%
+			add_row(
+				st_sf(
+					geometry = bbox,
+					changes = dt_name,
+					group = city$title,
+					crs = 4326
+				) %>%
+				st_cast("LINESTRING")
+			)
+		
+		# Combine map data into single sdf
+		all_data <- bind_rows(list(map_data, submap_data)) %>%
+			mutate(group = factor(
+				group,
+				levels = c(city$title, dt_name)
+			))
+		
+		# Create color palette
+		colors <- c("green", "orange", "gray", "red")
+		names(colors) <- c(
+			glue("New Infrastructure Since Jan. {year}", year = year_since), # green
+			glue("Upgraded Infrastructure Since Jan. {year}", year = year_since), # orange
+			"Unchanged Infrastructure", # gray
+			dt_name # red
+		)
+		
+		# Create the base map with extended boundaries
+		ext_bounds <- st_buffer(
+			st_as_sfc(st_bbox(map_data)),
+			dist = city$basemap_extend
+		)
+		basemap <- read_osm(
+			ext_bounds,
+			type = settings$static_basemap,
+			zoom = city$zoom
+		)
+		
+		# Set map plotting mode
+		current_mode <- tmap_mode()
+		tmap_mode("plot")
+		
+		# Generate map
+		out[[i]] <- tm_shape(basemap) +
+			tm_rgb() +
+			tm_shape(all_data) +
+			tm_lines(
+				col = "changes",
+				palette = colors,
+				lwd = 2.25,
+				legend.col.show = FALSE
+			) +
+			tm_scale_bar(position = c("left")) +
+			tm_compass(position = "right", type = "arrow") +
+			tm_facets(by = "group") +
+			tm_layout(
+				legend.outside = TRUE,
+				legend.outside.position = "bottom",
+				panel.label.bg.color = "white",
+				panel.label.height = 1.5
+			)
+		
+		# Add legend at the end
+		if (i == length(cities_list)) {
+			out[[i]] <- out[[i]] +
+				tm_add_legend(
+					title = "Legend",
+					type = "line",
+					lwd = 4,
+					col = c("green", "orange", "gray"),
+					labels = c(
+						glue(
+							"New Infrastructure Since Jan. {year}",
+							year = year_since
+						),
+						glue(
+							"Upgraded Infrastructure Since Jan. {year}",
+							year = year_since
+						),
+						"Unchanged Infrastructure"
+					)
+			    )
+		}
+	}
+	
+	# Combine maps
+	#out <- tmap_arrange(out, ncol = 1)
+	
+	# Reset map plotting mode and return map
+	tmap_mode(current_mode)
+	return(out)
+}
+```
+
 # Data
 
 Load raw data provided by Konrad Samsel.
@@ -2847,9 +3017,42 @@ plot_yearly_len_infra(list(
 
 ## Figure 4: Changes in Dedicated On-Street Infrastructure Since January 2020 for Vancouver, Calgary, and Toronto.
 
-New installations of dedicated infrastructure are denoted in green, upgrades from a previous dedicated infrastructure type are denoted in orange. Mapped in ArcGIS Pro 3.0.1.
+New installations of dedicated infrastructure are denoted in green, upgrades from a previous dedicated infrastructure type are denoted in orange.
 
-```{r}
+
+```{r warning = FALSE, message = FALSE, fig.width = 8.5, fig.height = 9}
+x <- map_infra(list(
+	toronto = list(
+		title = "Toronto, CA",
+		data = toron,
+		downtown_bbox = c(
+			xmin = -79.300395,
+			xmax = -79.489565,
+			ymax = 43.718150,
+			ymin = 43.626621
+		)
+	),
+	# calgary = list(
+	# 	title = "Calgary, CA",
+	# 	data = calg,
+	# 	downtown_bbox = c(
+	# 		xmin = -113.975817,
+	# 		xmax = -114.127909,
+	# 		ymax = 51.081312,
+	# 		ymin = 51.006626
+	# 	)
+	# ),
+	vancouver = list(
+		title = "Vancouver, CA",
+		data = vanc,
+		downtown_bbox = c(
+			xmin = -123.083584,
+			xmax = -123.153450,
+			ymax = 49.296229,
+			ymin = 49.263529
+		)
+	)
+))
 ```
 
 # Appendix 1 - Supplementary Results
@@ -3009,6 +3212,10 @@ diag_criteria_details(criteria_data, "vancouver")
 ```
 
 ## Segment Inclusion Criteria for Calgary
+
+```{r}
+#diag_criteria_details(criteria_data, "calgary")
+```
 
 ## Segment Inclusion Criteria for Toronto
 
