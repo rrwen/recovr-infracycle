@@ -900,7 +900,7 @@ This function is used to check the differences in installation years between the
 #' @param x_perc Set to TRUE to show proportions and FALSE to show counts.
 #' @param out_data Set to TRUE to return a list
 #' 
-#' @return A ggplot of yearly differences (year_col2 - year_col1), displaying the proportion of rows for each difference in years. If \code{out_data} is TRUE then returns a list with keys `data` representing the data used for plotting and \code{plot} with the ggplot object.
+#' @return A ggplot of yearly differences (year_col2 - year_col1), displaying the proportion of rows for each difference in years. If `out_data` is TRUE then returns a list with keys `data` representing the data used for plotting and `plot` with the ggplot object.
 #' @export
 #'
 plot_yearly_diff <- function(
@@ -2008,7 +2008,7 @@ Prepare Infrastructure Changes Data for Mapping.
 #'
 #' This function prepares city data in a list format for mapping infrastructure changes since a target year.
 #'
-#' @param cities_list A list of lists, where each list contains the following structure defining the city mapping data and settings:
+#' @param map_list A list of lists, where each list contains the following structure defining the city mapping data and settings:
 #' \itemize{
 #'  \item \code{title}: the title (char) of the main city map.
 #'	\item \code{data}: the sf data.frame containing road segments of the install, upgrade1, and upgrade2 years and types (required).
@@ -2016,7 +2016,7 @@ Prepare Infrastructure Changes Data for Mapping.
 #' }
 #' @param year_since The year (numeric) since to examine infrastructure changes.
 #' 
-#' @return A list of lists, where each list has keys and values from \code{cities_list}, and the following additional keys:
+#' @return A list of lists, where each list has keys and values from \code{map_list}, and the following additional keys:
 #' \itemize{
 #'	\item \code{data_map}: a sf data.frame with an additional `changes` column indicating the infrastructure changes since the target `year_since`.
 #'	\item \code{data_bbox}: a sf data.frame of the bounding box of `data_map`.
@@ -2029,7 +2029,7 @@ Prepare Infrastructure Changes Data for Mapping.
 #' @export
 #'
 prep_infra <- function(
-		cities_list,
+		map_list,
 		year_since = settings$infra_changes_year
 ) {
 	
@@ -2042,15 +2042,15 @@ prep_infra <- function(
 	)
 	
 	# Generate maps per city
-	out <- cities_list
-	for (i in 1:length(cities_list)) {
+	out <- map_list
+	for (i in 1:length(map_list)) {
 		
 		# Get city vars
-		city <- cities_list[[i]]
+		city <- map_list[[i]]
 		
 		# Create downtown title if not given
 		if (!"downtown_title" %in% names(city)) {
-			id <- names(cities_list)[[i]]
+			id <- names(map_list)[[i]]
 			downtown_title <- glue(
 				"Downtown {id}",
 				id = str_to_title(id)
@@ -2119,13 +2119,23 @@ Maps Infrastructure Changes.
 Creates maps of infrastructure changes since a certain year for each city and their downtown region using output from `prep_map`.
 
 ```{r}
+
+#' Map Infrastructure Changes
+#'
+#' This function maps infrastructure changes since a target year.
+#'
+#' @inheritParams prep_infra
+#' 
+#' @return A `patchwork` object of `ggplot` objects combined together to form the multiple maps in arranged on a layout.
+#' @export
+#'
 map_infra <- function(
-		cities_list,
+		map_list,
 		year_since = settings$infra_changes_year
 ) {
 	
 	# Prepare data for maps
-	cities_prep <- prep_infra(cities_list)
+	cities_prep <- prep_infra(map_list)
 		
 	# Generate maps per city
 	out <- list()
@@ -2199,14 +2209,45 @@ Maps Infrastructure Changes in Detail.
 Creates enlarged maps of infrastructure changes since a certain year for each city and their downtown region.
 
 ```{r}
+
+#' Map Infrastructure Changes in Detail
+#'
+#' This function creates enlarged maps of infrastructure changes since a target year.
+#'
+#' @inheritParams prep_infra
+#' @param city_key They city key (char) to map from `map_list`. If `NULL`, maps all cities and returns a list, otherwise if given, returns an item from the list (required).
+#' @param map_inset Set to `TRUE` to create an inset map of the downtown region or `FALSE` to omit the inset map.
+#' @param map_inset_position A named vector (numeric) containing four values indicating the position of the inset map with the names being `left`, `bottom`, `right`, and `top` aligned to the `full` area. See \link[patchwork]{inset_element}.
+#' 
+#' @param map_ratio The aspect ratio (numeric) of the map.
+#' @param map_inset_ratio The aspect ratio (numeric) of the subset map.
+#' @return A list of `patchwork` object of `ggplot` objects combined together to form the enlarged maps, where the keys are the names of the cities as in `map_list`. If `city_key` is provided, returns only one of the items from this list.
+#' @export
+#'
 map_infra_detail <- function(
-		cities_list,
-		city_key,
-		year_since = settings$infra_changes_year
+		map_list,
+		city_key = NULL,
+		map_inset = TRUE,
+		map_inset_position = c(
+			left = 0.6,
+			bottom = 0.6,
+			right = 1,
+			top = 1
+		),
+		map_ratio = 1.75,
+		map_inset_ratio = 2,
+		year_since = settings$infra_changes_year,
+		...
 ) {
 	
+	# Only map one city if given
+	if (!is.null(city_key)) {
+		map_list <- list(map_list[[city_key]])
+		names(map_list) <- city_key
+	}
+	
 	# Prepare data for maps
-	cities_prep <- prep_infra(cities_list)
+	cities_prep <- prep_infra(map_list)
 		
 	# Generate enlarged maps per city
 	out <- list()
@@ -2223,6 +2264,15 @@ map_infra_detail <- function(
 		    	type = "cartolight",
 		    	cachedir = "../data/cache"
 		    ) +
+			scale_color_manual(values = city$map_colors) +
+			theme_void()
+		
+		# Generate city map
+		if ("map_ratio" %in% city) {
+			map_ratio <- city$map_ratio
+		}
+		city_map <- base_map +
+			fixed_plot_aspect(ratio = map_ratio) +
 			annotation_north_arrow(
 				width = unit(0.2, "cm"),
 				height = unit(0.5, "cm"),
@@ -2232,24 +2282,67 @@ map_infra_detail <- function(
 				location = "bl",
 				style = "ticks"
 			) +
-			scale_color_manual(values = city$map_colors) +
-			fixed_plot_aspect(ratio = 1.5) +
-			theme_void()
-		
-		# Generate city map
-		city_map <- base_map +
-			ggtitle(city$title) +
 			layer_spatial(city$data_map, aes(color = .data[[city$map_column]])) +
-			layer_spatial(city$data_downtown_bbox, color = "red", fill = NA, linewidth = 0.5) +
 			guides(colour = guide_legend(
 				override.aes = list(linewidth = 3)
-			))
+			)) +
+		    theme(
+		        legend.position = "bottom",
+		        legend.title = element_blank(),
+		        panel.border = element_rect(
+		            colour = "gray20",
+		            fill = NA,
+		            linewidth = 0.5
+		        )
+		    )
 		
-		# Generate downtown map
-		downtown_map <- base_map +
-			ggtitle(city$downtown_title) +
-			layer_spatial(city$data_downtown, aes(color = .data[[city$map_column]])) +
-			guides(color = "none")
+		# Add inset map as downtown region
+		map_inset <- if ("map_inset" %in% names(city)) city$map_inset else map_inset
+		if (map_inset) {
+			
+			# Generate downtown map
+			if ("map_inset_ratio" %in% city) {
+				map_inset_ratio <- city$map_inset_ratio
+			}
+			downtown_map <- base_map +
+				fixed_plot_aspect(ratio = map_inset_ratio) +
+			    layer_spatial(city$data_downtown, aes(color = .data[[city$map_column]])) +
+			    guides(color = "none") +
+			    annotation_scale(
+			        location = "tl",
+			        style = "ticks"
+			    ) +
+			    theme(
+			        panel.border = element_rect(
+			            colour = "black",
+			            fill = NA,
+			            linewidth = 0.75
+			        )
+			    )
+			
+			# Create final map with inset
+			if ("map_inset_position" %in% names(city)) {
+				map_inset_position <- city$map_inset_position
+			}
+			out[[id]] <- city_map + inset_element(
+				downtown_map,
+				left = map_inset_position[["left"]],
+				bottom = map_inset_position[["bottom"]],
+				right = map_inset_position[["right"]],
+				top = map_inset_position[["top"]],
+				align_to = "full"
+			)
+			
+		} else {
+			
+			# No inset for final map
+			out[[id]] <- city_map
+		}
+	}
+	
+	# Return list of all city maps or single map if city_key given
+	if (!is.null(city_key)) {
+		out <- out[[city_key]]
 	}
 	return(out)
 }
@@ -3079,6 +3172,45 @@ toron %>% as_tibble
 print(toron)
 ```
 
+# Map Data Preparation
+
+Prepare data and settings for figures with maps.
+
+```{r}
+map_data <- list(
+	toronto = list(
+		title = "Toronto, CA",
+		data = toron,
+		downtown_bbox = c(
+			xmin = -79.300395,
+			ymin = 43.636621,
+			xmax = -79.489565,
+			ymax = 43.698150
+		)
+	),
+	# calgary = list(
+	# 	title = "Calgary, CA",
+	# 	data = calg,
+	# 	downtown_bbox = c(
+	# 		xmin = -114.127909,
+	#		ymin = 51.006626,
+	# 		xmax = -113.975817,
+	# 		ymax = 51.081312,
+	# 	)
+	# ),
+	vancouver = list(
+		title = "Vancouver, CA",
+		data = vanc,
+		downtown_bbox = c(
+			xmin = -123.143450,
+			ymin = 49.269529,
+			xmax = -123.095584,
+			ymax = 49.296229
+		)
+	)
+)
+```
+
 # Figures
 
 ## Figure 1: Flow diagram of inclusion criteria for bikeway segments in Vancouver, Calgary, and Toronto.
@@ -3110,45 +3242,72 @@ plot_yearly_len_infra(list(
 
 ## Figure 4: Changes in Dedicated On-Street Infrastructure Since January 2020 for Vancouver, Calgary, and Toronto.
 
-New installations of dedicated infrastructure are denoted in green, upgrades from a previous dedicated infrastructure type are denoted in orange.
+New installations of dedicated infrastructure are denoted in green, upgrades from a previous dedicated infrastructure type are denoted in orange.  Basemap from OpenStreetMap and Carto (Positron).
 
 
 ```{r warning = FALSE, message = FALSE}
-map_infra(list(
-	toronto = list(
-		title = "Toronto, CA",
-		data = toron,
-		downtown_bbox = c(
-			xmin = -79.300395,
-			ymin = 43.626621,
-			xmax = -79.489565,
-			ymax = 43.718150
-		)
-	),
-	# calgary = list(
-	# 	title = "Calgary, CA",
-	# 	data = calg,
-	# 	downtown_bbox = c(
-	# 		xmin = -114.127909,
-	#		ymin = 51.006626,
-	# 		xmax = -113.975817,
-	# 		ymax = 51.081312,
-	# 	)
-	# ),
-	vancouver = list(
-		title = "Vancouver, CA",
-		data = vanc,
-		downtown_bbox = c(
-			xmin = -123.153450,
-			ymin = 49.263529,
-			xmax = -123.083584,
-			ymax = 49.296229
-		)
-	)
-)) %>% print
+map_infra(map_data) %>% print
 ```
 
 # Appendix 1 - Supplementary Results
+
+## Supplementary Figure 1: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2021 for the Municipality of Vancouver, CA.
+
+New installations of dedicated infrastructure are denoted in green, upgrades from a previous dedicated infrastructure type are denoted in orange. Basemap from OpenStreetMap and Carto (Positron).
+
+```{r warning = FALSE, message = FALSE}
+map_infra_detail(
+    map_data,
+    "vancouver",
+    map_inset_position = c(
+        left = -0.85,
+        bottom = 0.65,
+        right = 1.2125,
+        top = 0.99
+    ),
+    map_ratio = 1.25,
+    map_inset_ratio = 1.2
+) %>% print
+```
+
+## Supplementary Figure 2: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2022 for the Municipality of Calgary, CA.
+
+New installations of dedicated infrastructure are denoted in green, upgrades of dedicated infrastructure are denoted in orange. Basemap from OpenStreetMap and Carto (Positron).
+
+```{r warning = FALSE, message = FALSE}
+# map_infra_detail(
+#     map_data,
+#     "calgary",
+#     map_inset_position = c(
+#         left = -0.85,
+#         bottom = 0.65,
+#         right = 1.2125,
+#         top = 0.99
+#     ),
+#     map_ratio = 1.25,
+#     map_inset_ratio = 1.2
+# ) %>% print
+```
+
+## Supplementary Figure 3: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2022 for the Municipality of Toronto, CA.
+
+New installations of dedicated infrastructure are denoted in green, upgrades of dedicated infrastructure are denoted in orange. Basemap from OpenStreetMap and Carto (Positron).
+
+```{r warning = FALSE, message = FALSE}
+map_infra_detail(
+    map_data,
+    "toronto",
+    map_inset_position = c(
+        left = -0.85,
+        bottom = 0.65,
+        right = 1.38,
+        top = 0.99
+    ),
+    map_ratio = 1.75,
+    map_inset_ratio = 2.5
+) %>% print
+```
+
 
 ## Supplementary Figure 4: Changes in dedicated cycling infrastructure between 2009 and 2021 for the Municipality of Vancouver, CA.
 
