@@ -57,10 +57,11 @@ sessionInfo()
 
 Install R packages if needed.
 
-```{r warning = FALSE, message = FALSE, results = FALSE, eval = FALSE}
+```{r warning = FALSE, message = FALSE, results = FALSE}
 
 # Required packages
 required_packages <- c(
+	"devtools",
 	"rmarkdown",
 	"bookdown",
 	"knitr",
@@ -77,8 +78,8 @@ required_packages <- c(
 	"rsvg",
 	"sf",
 	"tmap",
-	"tmaptools",
-	"OpenStreetMap",
+	"osmplotr",
+	"gtable",
 	"units"
 )
 
@@ -92,10 +93,13 @@ tryCatch(
 		# Install package if not installed
 		for (package in required_packages) {
 			is_package_installed <- require(package, character.only = TRUE)
-			if (!is_package_installed) {
+			if (!is_package_installed & package != "osmplotr") { # CRAN packages
 				cat(paste0("Installing package: ", package, "\n"))
 				install.packages(package)
-			} else {
+			} else if (!is_package_installed & package == "osmplotr") { # Github packages
+				cat(paste0("Installing package (development version): ", package, "\n"))
+				devtools::install_github ("ropensci/osmplotr")
+			} else { # Already installed
 				cat(paste0("Package already installed: ", package, "\n"))
 			}
 		}
@@ -122,7 +126,7 @@ library(rsvg)
 library(sf)
 library(tidyverse)
 library(tmap)
-library(tmaptools)
+library(osmplotr)
 library(units)
 ```
 
@@ -165,7 +169,6 @@ settings$basemaps <- c(
 	"CartoDB.DarkMatter",
 	"Esri.WorldGrayCanvas"
 )
-settings$static_basemap <- "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
 
 # Map infrastructure changes since year
 settings$infra_changes_year <- 2020
@@ -2154,7 +2157,7 @@ map_infra <- function(
 	}
 	
 	# Combine maps
-	#out <- tmap_arrange(out, ncol = 1)
+	out <- tmap_arrange(out, ncol = 1)
 	
 	# Reset map plotting mode and return map
 	tmap_mode(current_mode)
@@ -3020,16 +3023,16 @@ plot_yearly_len_infra(list(
 New installations of dedicated infrastructure are denoted in green, upgrades from a previous dedicated infrastructure type are denoted in orange.
 
 
-```{r warning = FALSE, message = FALSE, fig.width = 8.5, fig.height = 9}
-x <- map_infra(list(
+```{r map-infra, warning = FALSE, message = FALSE, eval = FALSE}
+map_infra(list(
 	toronto = list(
 		title = "Toronto, CA",
 		data = toron,
 		downtown_bbox = c(
 			xmin = -79.300395,
+			ymin = 43.626621,
 			xmax = -79.489565,
-			ymax = 43.718150,
-			ymin = 43.626621
+			ymax = 43.718150
 		)
 	),
 	# calgary = list(
@@ -3052,7 +3055,61 @@ x <- map_infra(list(
 			ymin = 49.263529
 		)
 	)
-))
+)) #%>% tmap_save("../manuscript/fig-map-infra.pdf", dpi = 600)
+```
+
+```{r}
+bbox <- get_bbox(st_bbox(toron))
+water <- extract_osm_objects(
+	key = "natural",
+	value = "water",
+	bbox = bbox)
+river <- extract_osm_objects(
+	key = "waterway",
+	value = "river",
+	return_type = "line",
+	bbox = bbox
+)
+lake <- extract_osm_objects(
+	key = "name",
+	value = "Lake Ontario",
+	return_type = "multipolygon",
+	bbox = bbox
+)
+highway_main <- extract_osm_objects(
+	key = "highway",
+	value = "motorway|trunk",
+	bbox = bbox
+)
+highway <- extract_osm_objects(
+	key = "highway",
+	value = "primary|unclassified",
+	bbox = bbox
+)
+```
+```{r}
+ggplot() +
+	geom_sf(data = lake %>% st_crop(st_bbox(toron)), fill = "gray90", color = "gray90") +
+	geom_sf(data = water %>% st_crop(st_bbox(toron)), size = 0.75, color = "gray90") +
+	geom_sf(data = river %>% st_crop(st_bbox(toron)), size = 0.5, color = "gray90") +
+	geom_sf(data = highway_main %>% st_crop(st_bbox(toron)), color = "white") +
+	geom_sf(data = highway %>% st_crop(st_bbox(toron)), size = 0.5, color = "white") +
+	geom_sf(data = toron, aes(color = verify_install_type)) +
+	annotation_scale(
+		location = "bl"
+	) +
+	annotation_north_arrow(
+		width = unit(0.25, "cm"),
+		height = unit(0.5, "cm"),
+		location = "br",
+		which_north = "true"
+	) +
+	scale_x_continuous(expand=c(0,0)) +
+	scale_y_continuous(expand=c(0,0)) +
+	theme_void() +
+	theme(
+		panel.background = element_rect(fill = "gray95", color = NA)
+	)
 ```
 
 # Appendix 1 - Supplementary Results
