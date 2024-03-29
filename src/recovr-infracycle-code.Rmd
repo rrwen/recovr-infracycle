@@ -123,7 +123,7 @@ library(rsvg)
 library(sf)
 library(tidyverse)
 library(tmap)
-library(osmplotr)
+library(ggspatial)
 library(units)
 ```
 
@@ -1999,31 +1999,65 @@ diag_criteria_details <- function(criteria_data, city = NULL, out_render = TRUE)
 }
 ```
 
-## Function 6: map_infra
+## Function 6: prep_infra
 
-Maps Infrastructure Changes.
-
-Creates maps of infrastructure changes since a certain year for each city and their downtown region.
+Prepare Infrastructure Changes Data for Mapping.
 
 ```{r}
-map_infra <- function(
+#' Prepare Infrastructure Changes Data for Mapping
+#'
+#' This function prepares city data in a list format for mapping infrastructure changes since a target year.
+#'
+#' @param cities_list A list of lists, where each list contains the following structure defining the city mapping data and settings:
+#' \itemize{
+#'  \item \code{title}: the title (char) of the main city map.
+#'	\item \code{data}: the sf data.frame containing road segments of the install, upgrade1, and upgrade2 years and types (required).
+#'	\item \code{downtown_bbox}: a vector (numeric) containing the coordinates of the downtown region's bounding box in xmin, ymin, xmax, and ymax respectively.
+#' }
+#' @param year_since The year (numeric) since to examine infrastructure changes.
+#' 
+#' @return A list of lists, where each list has keys and values from \code{cities_list}, and the following additional keys:
+#' \itemize{
+#'	\item \code{data_map}: a sf data.frame with an additional `changes` column indicating the infrastructure changes since the target `year_since`.
+#'	\item \code{data_bbox}: a sf data.frame of the bounding box of `data_map`.
+#'	\item \code{data_downtown}: Same as `data_map` except for the downtown region indicated by `downtown_bbox`.
+#'	\item \code{data_downtown_bbox}: a sf data.frame of the bounding box of `data_downtown`.
+#'	\item \code{map_colors}: the colors (char) for each of the infrastructure change categories.
+#'	\item \code{map_column}: the column name (char) to be mapped
+#'	\item \code{downtown_title}: the name (char) of the downtown subset map
+#' }
+#' @export
+#'
+prep_infra <- function(
 		cities_list,
 		year_since = settings$infra_changes_year
 ) {
 	
+	# Create color palette
+	colors <- c("green", "orange", "gray")
+	names(colors) <- c(
+		glue("New Infrastructure Since Jan. {year}", year = year_since), # green
+		glue("Upgraded Infrastructure Since Jan. {year}", year = year_since), # orange
+		"Unchanged Infrastructure" # gray
+	)
+	
 	# Generate maps per city
-	out <- list()
+	out <- cities_list
 	for (i in 1:length(cities_list)) {
 		
-		# Get vars
+		# Get city vars
 		city <- cities_list[[i]]
-		city_name <- names(cities_list)[[i]]
-		dt_name <- glue(
-			"Downtown {city}",
-			city = str_to_title(city_name)
-		)
-		city$zoom <- if ("zoom" %in% names(city)) city$zoom else 12
-		city$basemap_extend <- if ("basemap_extend" %in% names(city)) city$basemap_extend else 10000
+		
+		# Create downtown title if not given
+		if (!"downtown_title" %in% names(city)) {
+			id <- names(cities_list)[[i]]
+			downtown_title <- glue(
+				"Downtown {id}",
+				id = str_to_title(id)
+			)
+		} else {
+			downtown_title <- city$downtown_title
+		}
 		
 		# Create col to identify infra changes
 		map_data <- city$data %>%
@@ -2032,18 +2066,18 @@ map_infra <- function(
 			        (
 			        	!is.na(verify_upgrade1_type) &
 			        	!is.na(verify_upgrade1_year) &
-			         	verify_upgrade1_year >= 2020
+			         	verify_upgrade1_year >= year_since
 			        ) | (
 			        	!is.na(verify_upgrade2_type) &
 			        	!is.na(verify_upgrade2_year) &
-			        	verify_upgrade2_year >= 2020
+			        	verify_upgrade2_year >= year_since
 			        ) ~ glue(
 			        	"Upgraded Infrastructure Since Jan. {year}",
 			        	year = year_since
 			        ),
 			        !is.na(verify_install_type) &
 			        !is.na(verify_install_year) &
-			        verify_install_year >= 2020 ~
+			        verify_install_year >= year_since ~
 			        glue(
 			        	"New Infrastructure Since Jan. {year}",
 			        	year = year_since
@@ -2052,112 +2086,171 @@ map_infra <- function(
 			    )
 			)
 		
-		# Create col for city
-		map_data <- map_data %>%
-			mutate(group = city$title)
+		# Create bounding box for city
+		city_bbox <- st_as_sfc(
+			st_bbox(city$data, crs = 4326)
+		)
 		
 		# Create bounding box for downtown region
-		bbox <- st_as_sfc(
-			st_bbox(city$downtown_bbox),
-			crs = 4326
+		downtown_bbox <- st_as_sfc(
+			st_bbox(city$downtown_bbox, crs = 4326)
 		)
 		
 		# Subset data for downtown region
-		submap_data <- map_data %>%
-			st_crop(bbox) %>%
-			mutate(group = dt_name)
+		submap_data <- map_data %>% st_crop(downtown_bbox)
 		
-		# Add bounding box as polylines for main map
-		map_data <- map_data %>%
-			add_row(
-				st_sf(
-					geometry = bbox,
-					changes = dt_name,
-					group = city$title,
-					crs = 4326
-				) %>%
-				st_cast("LINESTRING")
-			)
+		# Add prep data to cities list
+		out[[i]]$data_map <- map_data
+		out[[i]]$data_bbox <- city_bbox
+		out[[i]]$data_downtown <- submap_data
+		out[[i]]$data_downtown_bbox <- downtown_bbox
+		out[[i]]$map_colors <- colors
+		out[[i]]$map_column <- "changes"
+		out[[i]]$downtown_title <- downtown_title
+	}
+	return(out)
+}
+```
+
+## Function 6a: map_infra
+
+Maps Infrastructure Changes.
+
+Creates maps of infrastructure changes since a certain year for each city and their downtown region using output from `prep_map`.
+
+```{r}
+map_infra <- function(
+		cities_list,
+		year_since = settings$infra_changes_year
+) {
+	
+	# Prepare data for maps
+	cities_prep <- prep_infra(cities_list)
 		
-		# Combine map data into single sdf
-		all_data <- bind_rows(list(map_data, submap_data)) %>%
-			mutate(group = factor(
-				group,
-				levels = c(city$title, dt_name)
+	# Generate maps per city
+	out <- list()
+	for (i in 1:length(cities_prep)) {
+		
+		# Get city vars
+		city <- cities_prep[[i]]
+		id <- names(cities_prep)[[i]]
+		
+		# Create base map for city and downtown map
+		base_map <- ggplot() +
+		    annotation_map_tile(
+		    	zoomin = 1,
+		    	type = "cartolight",
+		    	cachedir = "../data/cache"
+		    ) +
+			annotation_north_arrow(
+				width = unit(0.2, "cm"),
+				height = unit(0.5, "cm"),
+				location = "br"
+			) +
+			annotation_scale(
+				location = "bl",
+				style = "ticks"
+			) +
+			scale_color_manual(values = city$map_colors) +
+			fixed_plot_aspect(ratio = 1.5) +
+			theme_void()
+		
+		# Generate city map
+		out[[id]] <- base_map +
+			ggtitle(city$title) +
+			layer_spatial(city$data_map, aes(color = .data[[city$map_column]])) +
+			layer_spatial(city$data_downtown_bbox, color = "red", fill = NA, linewidth = 0.5) +
+			guides(colour = guide_legend(
+				override.aes = list(linewidth = 3)
 			))
 		
-		# Create color palette
-		colors <- c("green", "orange", "gray", "red")
-		names(colors) <- c(
-			glue("New Infrastructure Since Jan. {year}", year = year_since), # green
-			glue("Upgraded Infrastructure Since Jan. {year}", year = year_since), # orange
-			"Unchanged Infrastructure", # gray
-			dt_name # red
-		)
-		
-		# Create the base map with extended boundaries
-		ext_bounds <- st_buffer(
-			st_as_sfc(st_bbox(map_data)),
-			dist = city$basemap_extend
-		)
-		basemap <- read_osm(
-			ext_bounds,
-			type = settings$static_basemap,
-			zoom = city$zoom
-		)
-		
-		# Set map plotting mode
-		current_mode <- tmap_mode()
-		tmap_mode("plot")
-		
-		# Generate map
-		out[[i]] <- tm_shape(basemap) +
-			tm_rgb() +
-			tm_shape(all_data) +
-			tm_lines(
-				col = "changes",
-				palette = colors,
-				lwd = 2.25,
-				legend.col.show = FALSE
-			) +
-			tm_scale_bar(position = c("left")) +
-			tm_compass(position = "right", type = "arrow") +
-			tm_facets(by = "group") +
-			tm_layout(
-				legend.outside = TRUE,
-				legend.outside.position = "bottom",
-				panel.label.bg.color = "white",
-				panel.label.height = 1.5
-			)
-		
-		# Add legend at the end
-		if (i == length(cities_list)) {
-			out[[i]] <- out[[i]] +
-				tm_add_legend(
-					title = "Legend",
-					type = "line",
-					lwd = 4,
-					col = c("green", "orange", "gray"),
-					labels = c(
-						glue(
-							"New Infrastructure Since Jan. {year}",
-							year = year_since
-						),
-						glue(
-							"Upgraded Infrastructure Since Jan. {year}",
-							year = year_since
-						),
-						"Unchanged Infrastructure"
-					)
-			    )
-		}
+		# Generate downtown map
+		out[[paste0(id, "_downtown")]] <- base_map +
+			ggtitle(city$downtown_title) +
+			layer_spatial(city$data_downtown, aes(color = .data[[city$map_column]])) +
+			guides(color = "none")
 	}
 	
-	# Combine maps
-	out <- tmap_arrange(out, ncol = 1)
+	# Combine maps into single layout
+	out <- wrap_plots(out, ncol = 2) + 
+		plot_layout(guides = "collect") &
+		theme(
+			legend.position = "bottom",
+			legend.title = element_blank(),
+			plot.title = element_text(
+				size = 8,
+				margin = margin(t = 8, b = -20, l = 8)
+			),
+			plot.margin = margin(t = 8, l = 0, r = 0),
+			panel.border = element_rect(
+				colour = "gray20",
+				fill = NA,
+				linewidth = 0.5
+			)
+		)
+	return(out)
+}
+```
+
+## Function 6b: map_infra_detail
+
+Maps Infrastructure Changes in Detail.
+
+Creates enlarged maps of infrastructure changes since a certain year for each city and their downtown region.
+
+```{r}
+map_infra_detail <- function(
+		cities_list,
+		city_key,
+		year_since = settings$infra_changes_year
+) {
 	
-	# Reset map plotting mode and return map
-	tmap_mode(current_mode)
+	# Prepare data for maps
+	cities_prep <- prep_infra(cities_list)
+		
+	# Generate enlarged maps per city
+	out <- list()
+	for (i in 1:length(cities_prep)) {
+		
+		# Get city vars
+		city <- cities_prep[[i]]
+		id <- names(cities_prep)[[i]]
+		
+		# Create base map for city and downtown map
+		base_map <- ggplot() +
+		    annotation_map_tile(
+		    	zoomin = 1,
+		    	type = "cartolight",
+		    	cachedir = "../data/cache"
+		    ) +
+			annotation_north_arrow(
+				width = unit(0.2, "cm"),
+				height = unit(0.5, "cm"),
+				location = "br"
+			) +
+			annotation_scale(
+				location = "bl",
+				style = "ticks"
+			) +
+			scale_color_manual(values = city$map_colors) +
+			fixed_plot_aspect(ratio = 1.5) +
+			theme_void()
+		
+		# Generate city map
+		city_map <- base_map +
+			ggtitle(city$title) +
+			layer_spatial(city$data_map, aes(color = .data[[city$map_column]])) +
+			layer_spatial(city$data_downtown_bbox, color = "red", fill = NA, linewidth = 0.5) +
+			guides(colour = guide_legend(
+				override.aes = list(linewidth = 3)
+			))
+		
+		# Generate downtown map
+		downtown_map <- base_map +
+			ggtitle(city$downtown_title) +
+			layer_spatial(city$data_downtown, aes(color = .data[[city$map_column]])) +
+			guides(color = "none")
+	}
 	return(out)
 }
 ```
@@ -3020,7 +3113,7 @@ plot_yearly_len_infra(list(
 New installations of dedicated infrastructure are denoted in green, upgrades from a previous dedicated infrastructure type are denoted in orange.
 
 
-```{r map-infra, warning = FALSE, message = FALSE, eval = FALSE}
+```{r warning = FALSE, message = FALSE}
 map_infra(list(
 	toronto = list(
 		title = "Toronto, CA",
@@ -3036,65 +3129,23 @@ map_infra(list(
 	# 	title = "Calgary, CA",
 	# 	data = calg,
 	# 	downtown_bbox = c(
-	# 		xmin = -113.975817,
-	# 		xmax = -114.127909,
+	# 		xmin = -114.127909,
+	#		ymin = 51.006626,
+	# 		xmax = -113.975817,
 	# 		ymax = 51.081312,
-	# 		ymin = 51.006626
 	# 	)
 	# ),
 	vancouver = list(
 		title = "Vancouver, CA",
 		data = vanc,
 		downtown_bbox = c(
-			xmin = -123.083584,
-			xmax = -123.153450,
-			ymax = 49.296229,
-			ymin = 49.263529
+			xmin = -123.153450,
+			ymin = 49.263529,
+			xmax = -123.083584,
+			ymax = 49.296229
 		)
 	)
-)) #%>% tmap_save("../manuscript/fig-map-infra.pdf", dpi = 600)
-```
-
-```{r}
-p1 <- ggplot() +
-	ggtitle("Toronto, CA") +
-    annotation_map_tile(zoomin = 1, type = "cartolight", cachedir = "../data/cache") +
-	annotation_north_arrow(
-		width = unit(0.2, "cm"),
-		height = unit(0.5, "cm"),
-		location = "br"
-	) +
-	annotation_scale(
-		location = "bl",
-		style = "ticks"
-	) +
-    layer_spatial(toron, aes(color = verify_install_type)) +
-	theme_void()
-p2 <- ggplot() +
-	ggtitle("Vancouver, CA") +
-    annotation_map_tile(zoomin = 1, type = "cartolight", cachedir = "../data/cache") +
-	annotation_north_arrow(
-		width = unit(0.2, "cm"),
-		height = unit(0.5, "cm"),
-		location = "br"
-	) +
-	annotation_scale(
-		location = "bl",
-		style = "ticks"
-	) +
-    layer_spatial(toron, aes(color = verify_install_type)) +
-	theme_void()
-
-p1 / p2 + 
-	plot_layout(guides = "collect") &
-	theme(
-		legend.position = "bottom",
-		legend.title = element_blank(),
-		plot.title = element_text(
-			size = 8,
-			margin = margin(t = 8, b = -20, l = 8)
-		)
-	)
+)) %>% print
 ```
 
 # Appendix 1 - Supplementary Results
