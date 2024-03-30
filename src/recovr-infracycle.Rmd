@@ -36,11 +36,7 @@ knitr::opts_chunk$set(
 2. Install [RTools](https://cran.r-project.org/) if you are on Windows
 3. Install [RStudio](https://posit.co/download/rstudio-desktop/)
 
-R and RMarkdown in RStudio (version 2023.06.1+524) was used to generate this document:
-
-```{r echo=FALSE}
-sessionInfo()
-```
+For more details, see [Software and Package Versions](#software-and-package-versions).
 
 # Running This Code
 
@@ -48,7 +44,7 @@ sessionInfo()
 2. Download a zip of the code and data [here](https://github.com/rrwen/recovr-infracycle/archive/refs/heads/main.zip) and unzip it
 	* Code Repository: [github.com/rrwen/recovr-infracycle](https://github.com/rrwen/recovr-infracycle)
 3. In RStudio, open the [src/src.Rproj](https://github.com/rrwen/recovr-infracycle/blob/main/src/src.Rproj) file
-4. In RStudio, open the [src/recovr-infracycle-code.Rmd](https://github.com/rrwen/recovr-infracycle/blob/main/src/recovr-infracycle-code.Rmd) file
+4. Then, open the [src/index.Rmd](https://github.com/rrwen/recovr-infracycle/blob/main/src/index.Rmd) file
 6. In RStudio:
 	* Run all code: Click the `Run` drop down (top right of the code pane) and click `Run All`
 	* Generate HTML version: Click `knit` (top left of code pane) and a file will be generated in `docs/index.html`
@@ -61,7 +57,6 @@ Install R packages if needed.
 
 # Required packages
 required_packages <- c(
-	"devtools",
 	"rmarkdown",
 	"bookdown",
 	"knitr",
@@ -3178,14 +3173,14 @@ Prepare data and settings for figures with maps.
 
 ```{r}
 map_data <- list(
-	toronto = list(
-		title = "Toronto, CA",
-		data = toron,
+	vancouver = list(
+		title = "Vancouver, CA",
+		data = vanc,
 		downtown_bbox = c(
-			xmin = -79.300395,
-			ymin = 43.636621,
-			xmax = -79.489565,
-			ymax = 43.698150
+			xmin = -123.143450,
+			ymin = 49.269529,
+			xmax = -123.095584,
+			ymax = 49.296229
 		)
 	),
 	# calgary = list(
@@ -3198,14 +3193,14 @@ map_data <- list(
 	# 		ymax = 51.081312,
 	# 	)
 	# ),
-	vancouver = list(
-		title = "Vancouver, CA",
-		data = vanc,
+	toronto = list(
+		title = "Toronto, CA",
+		data = toron,
 		downtown_bbox = c(
-			xmin = -123.143450,
-			ymin = 49.269529,
-			xmax = -123.095584,
-			ymax = 49.296229
+			xmin = -79.300395,
+			ymin = 43.636621,
+			xmax = -79.489565,
+			ymax = 43.698150
 		)
 	)
 )
@@ -3213,19 +3208,27 @@ map_data <- list(
 
 # Figures
 
-## Figure 1: Flow diagram of inclusion criteria for bikeway segments in Vancouver, Calgary, and Toronto.
+## Figure 1: Flow diagram of inclusion criteria for bikeway segments in Vancouver, Calgary, and Toronto. {.tabset}
 
 This flowchart provides a high-level overview of the segment inclusions and exclusions for each municipality. Data from Calgary were specific to on-street routes only. For detailed flow diagrams specific to each municipality, please refer to the Appendix.
 
+```{r}
+fig1 <- diag_criteria(criteria_data)
+```
+
+### Figure
+
+```{r}
+fig1
+```
+
+### File
+
 ```         
-%>%
+fig1 %>%
     export_svg %>%
     charToRaw %>%
     rsvg_pdf("fig-methods.pdf")
-```
-
-```{r}
-diag_criteria(criteria_data)
 ```
 
 ## Figure 2: Changes in dedicated cycling infrastructure between 2009 and 2022 for Vancouver, Calgary, and Toronto by infrastructure category.
@@ -3367,16 +3370,8 @@ plot_yearly_len_road(
 
 Any data where a city provided and verified installation years were missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=` sfig7_n` segments. The graph shows that ` sfig7_0`% of the included segments had the correct installation year as per the city's data, and ` sfig7_pm1`% were accurate within a range of ±1 year.
 
-### Plot
-
 ```{r fig.width = 8, fig.height = 5}
 #sfig7$plot
-```
-
-### Data
-
-```{r}
-#sfig7$data
 ```
 
 ## Supplementary Figure 8: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Calgary, CA. {.tabset}
@@ -3405,16 +3400,8 @@ Any data where a city provided and verified installation years were missing or t
 
 Any data where a city provided and verified installation years were missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=` sfig8_n` segments. The graph shows that ` sfig8_0`% of the included segments had the correct installation year as per the city's data, and ` sfig8_pm1`% were accurate within a range of ±1 year.
 
-### Plot
-
 ```{r fig.width = 8, fig.height = 5}
 #sfig8$plot
-```
-
-### Data
-
-```{r}
-#sfig8$data
 ```
 
 ## Supplementary Figure 9: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Toronto, CA. {.tabset}
@@ -3443,16 +3430,8 @@ sfig9_pm1 <- sfig9$data %>% # perc plus/minus 1
 
 Any data where a city provided and verified installation years were missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig9_n` segments. The graph shows that `r sfig9_0`% of the included segments had the correct installation year as per the city's data, and `r sfig9_pm1`% were accurate within a range of ±1 year.
 
-### Plot
-
 ```{r fig.width = 8, fig.height = 5}
 sfig9$plot
-```
-
-### Data
-
-```{r}
-sfig9$data
 ```
 
 # Appendix 2 - Methodology
@@ -3482,3 +3461,17 @@ Richard Wen developed reproducible R code and organized the data based on Konrad
 # Acknowledgements
 
 Linda Rothman and Brice Batomen provided supervision, project administration, resources, funding, and review/editing for the draft manuscript.
+
+# Software and Package Versions
+
+R and R package versions:
+
+```{r echo = FALSE}
+sessionInfo()
+```
+
+RStudio version:
+
+```{r echo = FALSE}
+rstudioapi::versionInfo()
+```
