@@ -2356,9 +2356,11 @@ vanc_raw <- read_sf("../data/raw/vancouver/Vancouver AS KS Mar26.shp")
 
 ### Map
 
+**Note**: Only segments with verified installations are shown (n = `r vanc_raw %>% filter(!is.na(INST_TMIN)) %>% nrow` of `r vanc_raw %>% nrow`).
+
 ```{r out.width = "100%"}
 tmap_mode("view")
-tm_shape(vanc_raw) +
+tm_shape(vanc_raw %>% filter(!is.na(INST_TMIN))) +
 	tm_lines(col = "INST_TMIN", popup.vars = TRUE)
 ```
 
@@ -2472,9 +2474,11 @@ calg
 
 ### Map
 
+**Note**: Only segments with verified installations are shown (n = `calg_raw %>% filter(!is.na(INST_TMIN)) %>% nrow` of `calg_raw %>% nrow`).
+
 ```{r out.width = "100%"}
 # tmap_mode("view")
-# tm_shape(calg_raw) +
+# tm_shape(calg_raw %>% filter(!is.na(INST_TMIN))) +
 # 	tm_lines(col = "INST_TMIN", popup.vars = TRUE)
 ```
 
@@ -2524,9 +2528,11 @@ toron_raw <- read_sf("../data/raw/toronto/Toronto AS 1323 V3.shp")
 
 ### Map
 
+**Note**: Only segments with verified installations are shown (n = `r toron_raw %>% filter(!is.na(INST_TMIN)) %>% nrow` of `r toron_raw %>% nrow`).
+
 ```{r out.width = "100%"}
 tmap_mode("view")
-tm_shape(toron_raw) +
+tm_shape(toron_raw %>% filter(!is.na(INST_TMIN))) +
 	tm_lines(col = "INST_TMIN", popup.vars = TRUE)
 ```
 
@@ -2686,9 +2692,12 @@ vanc_preprocess <- vanc_raw %>%
 
 ### Map
 
+**Note**: Only the first 1000 records are shown as a sample.
+
 ```{r out.width = "100%"}
 tmap_mode("view")
-tm_shape(vanc_preprocess) +
+tm_shape(
+	vanc_preprocess %>% head(1000)) +
 	tm_lines(col = "verify_install_type", popup.vars = TRUE)
 ```
 
@@ -2846,9 +2855,11 @@ vanc_preprocess %>%
 
 ### Map
 
+**Note**: Only the first 1000 records are shown as a sample.
+
 ```{r out.width = "100%"}
 # tmap_mode("view")
-# tm_shape(calg_preprocess) +
+# tm_shape(calg_preprocess %>% head(1000)) +
 # 	tm_lines(col = "verify_install_type", popup.vars = TRUE)
 ```
 
@@ -2987,9 +2998,11 @@ toron_preprocess <- toron_raw %>%
 
 ### Map
 
+**Note**: Only the first 1000 records are shown as a sample.
+
 ```{r out.width = "100%"}
 tmap_mode("view")
-tm_shape(toron_preprocess) +
+tm_shape(toron_preprocess %>% head(1000)) +
 	tm_lines(col = "verify_install_type", popup.vars = TRUE)
 ```
 
@@ -3098,9 +3111,11 @@ vanc <- criteria_data$vancouver$data_filter
 
 ### Map
 
+**Note**: Only the first 1000 records are shown as a sample.
+
 ```{r out.width = "100%"}
 tmap_mode("view")
-tm_shape(vanc) +
+tm_shape(vanc %>% head(1000)) +
 	tm_lines(col = "verify_install_type", popup.vars = TRUE)
 ```
 
@@ -3124,9 +3139,11 @@ print(vanc)
 
 ### Map
 
+**Note**: Only the first 1000 records are shown as a sample.
+
 ```{r out.width = "100%"}
 #tmap_mode("view")
-#tm_shape(calg) +
+#tm_shape(calg %>% head(1000)) +
 #	tm_lines(col = "verify_install_type", popup.vars = TRUE)
 ```
 
@@ -3150,9 +3167,11 @@ toron <- criteria_data$toronto$data_filter
 
 ### Map
 
+**Note**: Only the first 1000 records are shown as a sample.
+
 ```{r out.width = "100%"}
 tmap_mode("view")
-tm_shape(toron) +
+tm_shape(toron %>% head(1000)) +
 	tm_lines(col = "verify_install_type", popup.vars = TRUE)
 ```
 
