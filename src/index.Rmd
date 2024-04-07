@@ -11,15 +11,16 @@ knit: |
     (function(input_rmd, ...) {
     rmarkdown::render(
         input_rmd,
-        rmarkdown::html_notebook(
+        rmarkdown::html_document(
             toc = TRUE,
             toc_float = TRUE,
             highlight = "zenburn",
-            code_folding = "hide"
+            code_folding = "hide",
+            df_print = "paged",
+            self_contained = FALSE
         ),
         output_dir = "../docs",
         output_file = "index", ...)
-    renamed <- file.rename("../docs/index.nb.html", "../docs/index.html")
     })
 ---
 
@@ -2350,7 +2351,7 @@ Load raw data provided by Konrad Samsel.
 ## Vancouver Raw Data {.tabset}
 
 ```{r}
-vanc_raw <- read_sf("../data/raw/vancouver/Vancouver AS 3666 V2.shp")
+vanc_raw <- read_sf("../data/raw/vancouver/Vancouver AS KS Mar26.shp")
 ```
 
 ### Map
@@ -2580,7 +2581,7 @@ vanc_preprocess <- vanc_raw %>%
 		street = street_nam,
 		status = status,
 		road_type = street_seg,
-		#install_year = INSTALL4,
+		install_year = year_of_co,
 		install_type = bikeway_ty,
 		verify_install_year = INST_YR,
 		verify_install_date = INST_DATE,
@@ -2600,7 +2601,7 @@ vanc_preprocess <- vanc_raw %>%
 		id = as.character(id),
 		street = as.character(street),
 		road_type = as.character(road_type),
-		#install_year = as.numeric(install_year),
+		install_year = as.numeric(install_year),
 		install_type = as.character(install_type),
 		verify_install_year = as.numeric(verify_install_year),
 		verify_install_date = as.character(verify_install_date),
@@ -2617,7 +2618,7 @@ vanc_preprocess <- vanc_raw %>%
 		verify_misclass = as.character(verify_misclass)
 	) %>%
 	mutate( # clean values
-		#install_year = na_if(install_year, 0),
+		install_year = na_if(install_year, 0),
 		verify_install_year = na_if(verify_install_year, 0),
 		verify_install_date = na_if(verify_install_date, "NA"),
 		verify_install_type = na_if(verify_install_type, "NA") %>%
@@ -2650,12 +2651,12 @@ vanc_preprocess <- vanc_raw %>%
 			is.na(verify_install_type) & install_type == "Local Street",
 			"LSB",
 			verify_install_type
+		),
+		verify_install_year = if_else(
+			is.na(verify_install_year) & install_type == "Local Street",
+			install_year,
+			verify_install_year
 		)
-		# verify_install_year = if_else(
-		# 	is.na(verify_install_type) & install_type == "Local Street",
-		# 	install_year,
-		# 	verify_install_year
-		# )
 	) %>%
 	mutate( # create col for recoded road types
 		road_type_recode = case_when( # create road types
@@ -3348,30 +3349,30 @@ plot_yearly_len_road(
 ## Supplementary Figure 7: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Vancouver, CA. {.tabset}
 
 ```{r}
-# # Create the plot
-# sfig7 <- plot_yearly_diff(
-# 	vanc,
-# 	title = "Difference in Installation Years, Comparing City Data and Verified Data: Vancouver, CA",
-# 	out_data = TRUE
-# )
-# 
-# # Calc metrics for description
-# sfig7_n <- sum(sfig7$data$n)
-# sfig7_0 <- sfig7$data %>%  # perc correct
-# 	filter(year_diff == 0) %>%
-# 	pull(n_perc) %>%
-# 	round(1)
-# sfig7_pm1 <- sfig7$data %>% # perc plus/minus 1
-# 	filter(year_diff >= -1 & year_diff <= 1) %>%
-# 	pull(n_perc) %>%
-# 	sum %>%
-# 	round(1)
+# Create the plot
+sfig7 <- plot_yearly_diff(
+	vanc,
+	title = "Difference in Installation Years, Comparing City Data and Verified Data: Vancouver, CA",
+	out_data = TRUE
+)
+
+# Calc metrics for description
+sfig7_n <- sum(sfig7$data$n)
+sfig7_0 <- sfig7$data %>%  # perc correct
+	filter(year_diff == 0) %>%
+	pull(n_perc) %>%
+	round(1)
+sfig7_pm1 <- sfig7$data %>% # perc plus/minus 1
+	filter(year_diff >= -1 & year_diff <= 1) %>%
+	pull(n_perc) %>%
+	sum %>%
+	round(1)
 ```
 
-Any data where a city provided and verified installation years were missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=` sfig7_n` segments. The graph shows that ` sfig7_0`% of the included segments had the correct installation year as per the city's data, and ` sfig7_pm1`% were accurate within a range of ±1 year.
+Any data where a city provided and verified installation years were missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=`r `sfig7_n` segments. The graph shows that `r `sfig7_0`% of the included segments had the correct installation year as per the city's data, and `r `sfig7_pm1`% were accurate within a range of ±1 year.
 
 ```{r fig.width = 8, fig.height = 5}
-#sfig7$plot
+sfig7$plot
 ```
 
 ## Supplementary Figure 8: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Calgary, CA. {.tabset}
