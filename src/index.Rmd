@@ -3370,7 +3370,9 @@ plot_yearly_len_road(
 ```{r}
 # Create the plot
 sfig7 <- plot_yearly_diff(
-	vanc,
+	vanc %>% filter(
+		is.na(no_verify_install_type)
+	),
 	title = "Difference in Installation Years, Comparing City Data and Verified Data: Vancouver, CA",
 	out_data = TRUE
 )
@@ -3388,7 +3390,7 @@ sfig7_pm1 <- sfig7$data %>% # perc plus/minus 1
 	round(1)
 ```
 
-Any data where a city provided and verified installation years were missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=`r `sfig7_n` segments. The graph shows that `r `sfig7_0`% of the included segments had the correct installation year as per the city's data, and `r `sfig7_pm1`% were accurate within a range of ±1 year.
+Any data where a city provided and verified installation years were missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig7_n` segments. The graph shows that `r sfig7_0`% of the included segments had the correct installation year as per the city's data, and `r sfig7_pm1`% were accurate within a range of ±1 year.
 
 ```{r fig.width = 8, fig.height = 5}
 sfig7$plot
