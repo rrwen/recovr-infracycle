@@ -932,14 +932,14 @@ plot_yearly_diff <- function(
 	# Filter within min year
 	if (year_min) {
 		pdata <- pdata %>% filter(
-			.data[[year_col1]] >= year_min | .data[[year_col2]] >= year_min
+			.data[[year_col2]] > year_min
 		)
 	}
 	
 	# Filter within max year
 	if (year_max) {
 		pdata <- pdata %>% filter(
-			.data[[year_col1]] <= year_max | .data[[year_col2]] <= year_max
+			.data[[year_col2]] <= year_max
 		)
 	}
 	
@@ -3390,7 +3390,7 @@ sfig7_pm1 <- sfig7$data %>% # perc plus/minus 1
 	round(1)
 ```
 
-Any data where a city provided and verified installation years were missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig7_n` segments. The graph shows that `r sfig7_0`% of the included segments had the correct installation year as per the city's data, and `r sfig7_pm1`% were accurate within a range of ±1 year.
+Any data where a city provided and verified installation years were missing or the verified year occurred earlier or equal to the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig7_n` segments. The graph shows that `r sfig7_0`% of the included segments had the correct installation year as per the city's data, and `r sfig7_pm1`% were accurate within a range of ±1 year.
 
 ```{r fig.width = 8, fig.height = 5}
 sfig7$plot
@@ -3420,7 +3420,7 @@ sfig7$plot
 # 	round(1)
 ```
 
-Any data where a city provided and verified installation years were missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=` sfig8_n` segments. The graph shows that ` sfig8_0`% of the included segments had the correct installation year as per the city's data, and ` sfig8_pm1`% were accurate within a range of ±1 year.
+Any data where a city provided and verified installation years were missing or the verified year occurred earlier or equal to the start of the study period (2009) has been excluded from analysis, yielding n=` sfig8_n` segments. The graph shows that ` sfig8_0`% of the included segments had the correct installation year as per the city's data, and ` sfig8_pm1`% were accurate within a range of ±1 year.
 
 ```{r fig.width = 8, fig.height = 5}
 #sfig8$plot
@@ -3450,7 +3450,7 @@ sfig9_pm1 <- sfig9$data %>% # perc plus/minus 1
 	round(1)
 ```
 
-Any data where a city provided and verified installation years were missing or the verified year occurred earlier than the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig9_n` segments. The graph shows that `r sfig9_0`% of the included segments had the correct installation year as per the city's data, and `r sfig9_pm1`% were accurate within a range of ±1 year.
+Any data where a city provided and verified installation years were missing or the verified year occurred earlier or equal to the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig9_n` segments. The graph shows that `r sfig9_0`% of the included segments had the correct installation year as per the city's data, and `r sfig9_pm1`% were accurate within a range of ±1 year.
 
 ```{r fig.width = 8, fig.height = 5}
 sfig9$plot
