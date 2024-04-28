@@ -688,10 +688,11 @@ This uses the `plot_yearly_len` function.
 #' Creates area plots of road lengths by infrastructure type.
 #'
 #' @param df_list A list of data.frame containing the install and change years, type, and road segment lengths.
+#' @param len_per Units of road length (numeric) to normalize by (e.g. 1000 means per 1000 km of roadway). Set to `NULL` to disable normalization of road lengths.
 #' @return Multiple area ggplots of the cumulative yearly road lengths by infrastructure type combined with patchwork.
 #' @export
 #'
-plot_yearly_len_infra <- function(df_list) {
+plot_yearly_len_infra <- function(df_list, len_per = NULL) {
 	
 	# Create infra plots from data
 	p <- list()
