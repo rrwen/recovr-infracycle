@@ -76,7 +76,8 @@ required_packages <- c(
 	"tmap",
 	"ggspatial",
 	"prettymapr",
-	"units"
+	"units",
+	"lubridate"
 )
 
 # Try to install packages if not installed
@@ -113,6 +114,7 @@ library(DiagrammeR)
 library(DiagrammeRsvg)
 library(ggtext)
 library(glue)
+library(lubridate)
 library(patchwork)
 library(readxl)
 library(rsvg)
@@ -2404,72 +2406,8 @@ vanc_raw %>%
 
 ## Calgary Raw Data {.tabset}
 
-```
-
-# Load raw data
-calg_bikeways <- read_csv("../data/calgary_bikeways_2009_2022_v1.csv")
-calg_roads <- read_csv("../data/calgary_roads_2009_2022_v1.csv")
-
-# Combine raw data
-calg <- calg_bikeways %>%
-    select(
-		SHAPE_ID,
-		YEAR_ORIG,
-		INST_YR,
-		INST_MIN_HTYPE,
-		UPGR1_YR,
-		UPGR1_MIN_HTYPE,
-		UPGR2_YR,
-		UPGR2_MIN_HTYPE,
-		ATR_SEGMENT_LENGTH
-	) %>%
-	left_join(
-		calg_roads %>% select(
-			shape_id,
-			ctp_class
-		),
-		by = join_by(SHAPE_ID == shape_id)
-	) %>%
-	rename(
-		id = SHAPE_ID,
-		install_year_orig = YEAR_ORIG,
-		install_year = INST_YR,
-		install_type = INST_MIN_HTYPE,
-		upgrade1_year = UPGR1_YR,
-		upgrade1_type = UPGR1_MIN_HTYPE,
-		upgrade2_year = UPGR2_YR,
-		upgrade2_type = UPGR2_MIN_HTYPE,
-		segment_len = ATR_SEGMENT_LENGTH,
-		segment_type = ctp_class
-	) %>%
-	mutate(
-		segment_len = segment_len / 1000,
-		road_type = case_when( # create road types
-	        segment_type %in% c( # arterial equiv
-	        	"Arterial Street",
-	        	"Industrial Arterial",
-	        	"Local Arterial",
-	        	"Parkway",
-	        	"Urban Boulevard"
-	        ) ~ "Arterial",
-	        segment_type %in% c( # collector equiv
-	        	"Neighbourhood Boulevard",
-	        	"Collector",
-	        	"Primary Collector",
-	        	"Skeletal Road"
-	        ) ~ "Collector",
-	        segment_type %in% c( # local equiv
-	        	"Access Route",
-	        	"Residential Street",
-	        	"Activity Center Street",
-	        	"Historic Road Allowance",
-	        	"Lanes (Alleys)",
-	        	"Industrial Street"
-	        ) ~ "Local",
-	        .default = segment_type
-	    )
-	)
-calg
+```{r}
+calg_raw <- read_sf("../data/raw/calgary/Calgary Export.shp")
 ```
 
 ### Map
@@ -2477,21 +2415,21 @@ calg
 **Note**: Only segments with verified installations are shown (n = `calg_raw %>% filter(!is.na(INST_TMIN)) %>% nrow` of `calg_raw %>% nrow`).
 
 ```{r out.width = "100%"}
-# tmap_mode("view")
-# tm_shape(calg_raw %>% filter(!is.na(INST_TMIN))) +
-# 	tm_lines(col = "INST_TMIN", popup.vars = TRUE)
+tmap_mode("view")
+tm_shape(calg_raw %>% filter(!is.na(INST_TMIN))) +
+	tm_lines(col = "INST_TMIN", popup.vars = TRUE)
 ```
 
 ### Data
 
 ```{r}
-# calg_raw %>% as_tibble
+calg_raw %>% as_tibble
 ```
 
 ### Details
 
 ```{r}
-# print(calg_raw)
+print(calg_raw)
 ```
 
 ### Files
@@ -2501,8 +2439,8 @@ Save [calgary-bikeways-raw-v1.geojson](https://github.com/rrwen/recovr-infracycl
 ```{r}
 
 # Save geojson
-# calg_raw %>%
-# 	write_sf("../data/calgary-bikeways-raw-v1.geojson", delete_dsn = TRUE)
+calg_raw %>%
+	write_sf("../data/calgary-bikeways-raw-v1.geojson", delete_dsn = TRUE)
 ```
 
 Save [calgary-bikeways-raw-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-raw-v1.csv) file:
@@ -2510,14 +2448,14 @@ Save [calgary-bikeways-raw-v1.csv](https://github.com/rrwen/recovr-infracycle/bl
 ```{r}
 
 # Save csv
-# st_read("../data/calgary-bikeways-raw-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
-# calg_raw %>%
-# 	mutate(
-# 		geometry = st_as_text(geometry),
-# 		geometry_crs = st_crs(calg_raw)$proj4string,
-# 		.before = geometry
-# 	) %>%
-# 	write_csv("../data/calgary-bikeways-raw-v1.csv", na = "")
+#st_read("../data/calgary-bikeways-raw-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
+calg_raw %>%
+	mutate(
+		geometry = st_as_text(geometry),
+		geometry_crs = st_crs(calg_raw)$proj4string,
+		.before = geometry
+	) %>%
+	write_csv("../data/calgary-bikeways-raw-v1.csv", na = "")
 ```
 
 ## Toronto Raw Data {.tabset}
@@ -2744,113 +2682,96 @@ vanc_preprocess %>%
 ```{r warning = FALSE}
 
 # Preprocess data
-# calg_preprocess <- calg_raw %>%
-# 	select( # select and rename
-# 		id = object_id,
-# 		street = street_nam,
-# 		status = status,
-# 		road_type = street_seg,
-# 		#install_year = INSTALL4,
-# 		install_type = bikeway_ty,
-# 		verify_install_year = INST_YR,
-# 		verify_install_date = INST_DATE,
-# 		verify_install_type = INST_TMIN,
-# 		verify_install_comment = INST_COMM,
-# 		verify_upgrade1_year = UPGR1_YR,
-# 		verify_upgrade1_date = UPGR1_DATE,
-# 		verify_upgrade1_type = UPGR1_TMIN,
-# 		verify_upgrade1_comment = UPGR1_COMM,
-# 		verify_upgrade2_year = UPGR2_YR,
-# 		verify_upgrade2_date = UPGR2_DATE,
-# 		verify_upgrade2_type = UPGR2_TMIN,
-# 		verify_upgrade2_comment = UPGR2_COMM,
-# 		verify_misclass = EXCL_REAS
-# 	) %>%
-# 	mutate( # data types
-# 		id = as.character(id),
-# 		street = as.character(street),
-# 		road_type = as.character(road_type),
-# 		#install_year = as.numeric(install_year),
-# 		install_type = as.character(install_type),
-# 		verify_install_year = as.numeric(verify_install_year),
-# 		verify_install_date = as.character(verify_install_date),
-# 		verify_install_type = as.character(verify_install_type),
-# 		verify_install_comment = as.character(verify_install_comment),
-# 		verify_upgrade1_year = as.numeric(verify_upgrade1_year),
-# 		verify_upgrade1_date = as.character(verify_upgrade1_date),
-# 		verify_upgrade1_type = as.character(verify_upgrade1_type),
-# 		verify_upgrade1_comment = as.character(verify_upgrade1_comment),
-# 		verify_upgrade2_year = as.numeric(verify_upgrade2_year),
-# 		verify_upgrade2_date = as.character(verify_upgrade2_date),
-# 		verify_upgrade2_type = as.character(verify_upgrade2_type),
-# 		verify_upgrade2_comment = as.character(verify_upgrade2_comment),
-# 		verify_misclass = as.character(verify_misclass)
-# 	) %>%
-# 	mutate( # clean values
-# 		#install_year = na_if(install_year, 0),
-# 		verify_install_year = na_if(verify_install_year, 0),
-# 		verify_install_date = na_if(verify_install_date, "NA"),
-# 		verify_install_type = na_if(verify_install_type, "NA") %>%
-# 			str_replace_all("[^[:alpha:]]|\\s", ""),
-# 		verify_install_comment = na_if(verify_install_comment, "NA"),
-# 		verify_upgrade1_year = na_if(verify_upgrade1_year, 0),
-# 		verify_upgrade1_date = na_if(verify_upgrade1_date, "NA"),
-# 		verify_upgrade1_type = na_if(verify_upgrade1_type, "NA") %>%
-# 			str_replace_all("[^[:alpha:]]|\\s", ""),
-# 		verify_upgrade1_comment = na_if(verify_upgrade1_comment, "NA"),
-# 		verify_upgrade2_year = na_if(verify_upgrade2_year, 0),
-# 		verify_upgrade2_date = na_if(verify_upgrade2_date, "NA"),
-# 		verify_upgrade2_type = na_if(verify_upgrade2_type, "NA") %>%
-# 			str_replace_all("[^[:alpha:]]|\\s", ""),
-# 		verify_upgrade2_comment = na_if(verify_upgrade2_comment, "NA"),
-# 		verify_misclass =  na_if(verify_misclass, "NA") %>%
-# 			str_trim %>%
-# 			str_to_title
-# 	) %>%
-# 	mutate( # add column for non-verified infra types
-# 		no_verify_install_type = if_else(
-# 			is.na(verify_install_type) & install_type == "Local Street",
-# 			"Local Street",
-# 			NA
-# 		),
-# 		.after = verify_misclass
-# 	) %>%
-# 	mutate( # add local street as non-verified LSB
-# 		verify_install_type = if_else(
-# 			is.na(verify_install_type) & install_type == "Local Street",
-# 			"LSB",
-# 			verify_install_type
-# 		)
-# 		# verify_install_year = if_else(
-# 		# 	is.na(verify_install_type) & install_type == "Local Street",
-# 		# 	install_year,
-# 		# 	verify_install_year
-# 		# )
-# 	) %>%
-# 	mutate( # create col for recoded road types
-# 		road_type_recode = case_when( # create road types
-# 	        road_type %in% c( # arterial equiv
-# 	        	"Arterial"
-# 	        ) ~ "Arterial",
-# 	        road_type %in% c( # collector equiv
-# 	        	"Collector",
-# 	        	"Secondary Arterial",
-# 	        	"Sec Arterial"
-# 	        ) ~ "Collector",
-# 	        road_type %in% c( # local equiv
-# 	        	"Lane",
-# 	        	"Residential",
-# 	        	"Leased",
-# 	        	"Recreational"
-# 	        ) ~ "Local",
-# 	        .default = road_type
-# 	    ),
-# 		.after = road_type
-# 	) %>%
-# 	mutate( # create col for segment lengths in km
-# 		geometry_len_km = as.numeric(st_length(geometry)) / 1000,
-# 		.before = geometry
-# 	)
+calg_preprocess <- calg_raw %>%
+	select( # select and rename
+		id = shape_id,
+		street = STREET,
+		status = STATUS,
+		road_type = CENTL_TYPE,
+		install_year = date_creat,
+		install_type = BICYCLE_CL,
+		verify_install_year = INST_YR,
+		verify_install_date = INST_DATE,
+		verify_install_type = INST_TMIN,
+		verify_install_comment = INST_COMM,
+		verify_upgrade1_year = UPGR1_YR,
+		verify_upgrade1_date = UPGR1_DATE,
+		verify_upgrade1_type = UPGR1_TMIN,
+		verify_upgrade1_comment = UPGR1_COMM,
+		verify_upgrade2_year = UPGR2_YR,
+		verify_upgrade2_date = UPGR2_DATE,
+		verify_upgrade2_type = UPGR2_TMIN,
+		verify_upgrade2_comment = UPGR2_COMM,
+		verify_misclass = EXCL_REAS
+	) %>%
+	mutate( # data types
+		id = as.character(id),
+		street = as.character(street),
+		road_type = as.character(road_type),
+		install_year = as.numeric(year(install_year)),
+		install_type = as.character(install_type),
+		verify_install_year = as.numeric(verify_install_year),
+		verify_install_date = as.character(verify_install_date),
+		verify_install_type = as.character(verify_install_type),
+		verify_install_comment = as.character(verify_install_comment),
+		verify_upgrade1_year = as.numeric(verify_upgrade1_year),
+		verify_upgrade1_date = as.character(verify_upgrade1_date),
+		verify_upgrade1_type = as.character(verify_upgrade1_type),
+		verify_upgrade1_comment = as.character(verify_upgrade1_comment),
+		verify_upgrade2_year = as.numeric(verify_upgrade2_year),
+		verify_upgrade2_date = as.character(verify_upgrade2_date),
+		verify_upgrade2_type = as.character(verify_upgrade2_type),
+		verify_upgrade2_comment = as.character(verify_upgrade2_comment),
+		verify_misclass = as.character(verify_misclass)
+	) %>%
+	mutate( # clean values
+		install_year = na_if(install_year, 0),
+		verify_install_year = na_if(verify_install_year, 0),
+		verify_install_date = na_if(verify_install_date, "NA"),
+		verify_install_type = na_if(verify_install_type, "NA") %>%
+			str_replace_all("[^[:alpha:]]|\\s", ""),
+		verify_install_comment = na_if(verify_install_comment, "NA"),
+		verify_upgrade1_year = na_if(verify_upgrade1_year, 0),
+		verify_upgrade1_date = na_if(verify_upgrade1_date, "NA"),
+		verify_upgrade1_type = na_if(verify_upgrade1_type, "NA") %>%
+			str_replace_all("[^[:alpha:]]|\\s", ""),
+		verify_upgrade1_comment = na_if(verify_upgrade1_comment, "NA"),
+		verify_upgrade2_year = na_if(verify_upgrade2_year, 0),
+		verify_upgrade2_date = na_if(verify_upgrade2_date, "NA"),
+		verify_upgrade2_type = na_if(verify_upgrade2_type, "NA") %>%
+			str_replace_all("[^[:alpha:]]|\\s", ""),
+		verify_upgrade2_comment = na_if(verify_upgrade2_comment, "NA"),
+		verify_misclass =  na_if(verify_misclass, "NA") %>%
+			str_trim %>%
+			str_to_title
+	) %>%
+	mutate( # create col for recoded road types
+		road_type_recode = case_when( # create road types
+	        road_type %in% c( # arterial equiv
+	        	"Arterial"
+	        ) ~ "Arterial",
+	        road_type %in% c( # collector equiv
+	        	"Collector",
+	        	"Secondary Arterial",
+	        	"Sec Arterial",
+	        	"Other",
+	        	NA
+	        ) ~ "Collector",
+	        road_type %in% c( # local equiv
+	        	"Lane",
+	        	"Residential",
+	        	"Leased",
+	        	"Recreational"
+	        ) ~ "Local",
+	        .default = road_type
+	    ),
+		.after = road_type
+	) %>%
+	mutate( # create col for segment lengths in km
+		geometry_len_km = as.numeric(st_length(geometry)) / 1000,
+		.before = geometry
+	) %>%
+	st_transform(4326) # reproject to WGS84
 ```
 
 ### Map
@@ -2858,21 +2779,21 @@ vanc_preprocess %>%
 **Note**: Only the first 1000 records are shown as a sample.
 
 ```{r out.width = "100%"}
-# tmap_mode("view")
-# tm_shape(calg_preprocess %>% head(1000)) +
-# 	tm_lines(col = "verify_install_type", popup.vars = TRUE)
+tmap_mode("view")
+tm_shape(calg_preprocess %>% head(1000)) +
+	tm_lines(col = "verify_install_type", popup.vars = TRUE)
 ```
 
 ### Data
 
 ```{r}
-# calg_preprocess %>% as_tibble
+calg_preprocess %>% as_tibble
 ```
 
 ### Details
 
 ```{r}
-# print(calg_preprocess)
+print(calg_preprocess)
 ```
 
 ### Files
@@ -2882,8 +2803,8 @@ Save [calgary-bikeways-preprocess-v1.geojson](https://github.com/rrwen/recovr-in
 ```{r}
 
 # Save geojson
-# calg_preprocess %>%
-# 	write_sf("../data/calgary-bikeways-preprocess-v1.geojson", delete_dsn = TRUE)
+calg_preprocess %>%
+	write_sf("../data/calgary-bikeways-preprocess-v1.geojson", delete_dsn = TRUE)
 ```
 
 Save [calgary-bikeways-preprocess-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v1.csv) file:
@@ -2892,13 +2813,13 @@ Save [calgary-bikeways-preprocess-v1.csv](https://github.com/rrwen/recovr-infrac
 
 # Save csv
 # st_read("../data/calgary-bikeways-preprocess-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
-# calg_preprocess %>%
-# 	mutate(
-# 		geometry = st_as_text(geometry),
-# 		geometry_crs = st_crs(calg_preprocess)$proj4string,
-# 		.before = geometry
-# 	) %>%
-# 	write_csv("../data/calgary-bikeways-preprocess-v1.csv", na = "")
+calg_preprocess %>%
+	mutate(
+		geometry = st_as_text(geometry),
+		geometry_crs = st_crs(calg_preprocess)$proj4string,
+		.before = geometry
+	) %>%
+	write_csv("../data/calgary-bikeways-preprocess-v1.csv", na = "")
 ```
 
 ## Toronto Preprocessed Data {.tabset}
@@ -3069,21 +2990,21 @@ cities_criteria <- list(
 		noverify_col = "no_verify_install_type",
 		noverify_filter = c("Local Street")
 	),
-	# list(
-	# 	city = "calgary",
-	# 	data = calg_preprocess,
-	# 	data_date = "January 2023",
-	# 	data_url = "https://data.calgary.ca/Transportation-Transit/Calgary-Bikeways/jjqk-9b73",
-	# 	infra_col = "install_type",
-	# 	infra_filter = c("Bicycle Lane", "Cycle Track"),
-	# 	status_col = "install_status",
-	# 	status_filter = c("INACTIVE", "PLANNED"),
-	# 	geom_col = "geometry",
-	# 	geom_unit = "km",
-	# 	geom_filter = TRUE,
-	# 	misclass_col = "verify_misclass",
-	# 	misclass_filter = c(NA, "NA")
-	# ),
+	calgary = list(
+		city = "calgary",
+		data = calg_preprocess,
+		data_date = "January 2023",
+		data_url = "https://data.calgary.ca/Transportation-Transit/Calgary-Bikeways/jjqk-9b73",
+		infra_col = "install_type",
+		infra_filter = c("Bicycle Lane", "Cycle Track"),
+		status_col = "status",
+		status_filter = c("INACTIVE", "PLANNED"),
+		geom_col = "geometry",
+		geom_unit = "km",
+		geom_filter = TRUE,
+		misclass_col = "verify_misclass",
+		misclass_filter = c(NA, "NA")
+	),
 	toronto = list(
 		city = "toronto",
 		data = toron_preprocess,
@@ -3134,7 +3055,7 @@ print(vanc)
 ## Calgary Filtered Data {.tabset}
 
 ```{r}
-#calg<- criteria_data$calgary$data_filter
+calg<- criteria_data$calgary$data_filter
 ```
 
 ### Map
@@ -3142,21 +3063,21 @@ print(vanc)
 **Note**: Only the first 1000 records are shown as a sample.
 
 ```{r out.width = "100%"}
-#tmap_mode("view")
-#tm_shape(calg %>% head(1000)) +
-#	tm_lines(col = "verify_install_type", popup.vars = TRUE)
+tmap_mode("view")
+tm_shape(calg %>% head(1000)) +
+	tm_lines(col = "verify_install_type", popup.vars = TRUE)
 ```
 
 ### Data
 
 ```{r}
-#calg %>% as_tibble
+calg %>% as_tibble
 ```
 
 ### Details
 
 ```{r}
-#print(calg)
+print(calg)
 ```
 
 ## Toronto Filtered Data {.tabset}
@@ -3203,16 +3124,16 @@ map_data <- list(
 			ymax = 49.296229
 		)
 	),
-	# calgary = list(
-	# 	title = "Calgary, CA",
-	# 	data = calg,
-	# 	downtown_bbox = c(
-	# 		xmin = -114.127909,
-	#		ymin = 51.006626,
-	# 		xmax = -113.975817,
-	# 		ymax = 51.081312,
-	# 	)
-	# ),
+	calgary = list(
+		title = "Calgary, CA",
+		data = calg,
+		downtown_bbox = c(
+			xmin = -114.127909,
+			ymin = 51.006626,
+			xmax = -113.975817,
+			ymax = 51.081312
+		)
+	),
 	toronto = list(
 		title = "Toronto, CA",
 		data = toron,
@@ -3255,12 +3176,20 @@ fig1 %>%
 
 Assessed using roadway centreline-km, with infrastructure classifications determined by the most protective element present along each road segment.
 
-```{r fig.width=8.5, fig.height=11}
+```{r fig.width=8.5, fig.height=18}
 plot_yearly_len_infra(list(
 	"Vancouver, CA" = vanc,
-	#"Calgary, CA" = calg %>% as_tibble,
+	"Vancouver, CA (without Local Street Bikeways)" = vanc %>% 
+		filter(verify_install_type != "LSB"),
+	"Calgary, CA" = calg,
 	"Toronto, CA" = toron
 ))
+```
+## Figure 3: Yearly net change in cycle route infrastructure by municipality, standardized per 1000 centerline-km of roadway.
+
+The net change considers both the installation of new facilities, and the removal of existing infrastructure, such as when an existing facility is upgraded. Cycle route infrastructure is defined by the most protective element along a street centreline. This reflects the overall modifications made within each municipality over the course of the study period (2009-2022).
+
+```{r}
 ```
 
 ## Figure 4: Changes in Dedicated On-Street Infrastructure Since January 2020 for Vancouver, Calgary, and Toronto.
@@ -3268,7 +3197,7 @@ plot_yearly_len_infra(list(
 New installations of dedicated infrastructure are denoted in green, upgrades from a previous dedicated infrastructure type are denoted in orange.  Basemap from OpenStreetMap and Carto (Positron).
 
 
-```{r warning = FALSE, message = FALSE}
+```{r fig.width=9, fig.height=11}
 map_infra(map_data) %>% print
 ```
 
@@ -3278,10 +3207,29 @@ map_infra(map_data) %>% print
 
 New installations of dedicated infrastructure are denoted in green, upgrades from a previous dedicated infrastructure type are denoted in orange. Basemap from OpenStreetMap and Carto (Positron).
 
-```{r warning = FALSE, message = FALSE}
+```{r fig.width = 8, fig.height = 6}
 map_infra_detail(
     map_data,
     "vancouver",
+    map_inset_position = c(
+        left = -0.9,
+        bottom = 0.65,
+        right = 1.2125,
+        top = 0.99
+    ),
+    map_ratio = 1.5,
+    map_inset_ratio = 1.2
+) %>% print
+```
+
+## Supplementary Figure 2: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2022 for the Municipality of Calgary, CA.
+
+New installations of dedicated infrastructure are denoted in green, upgrades of dedicated infrastructure are denoted in orange. Basemap from OpenStreetMap and Carto (Positron).
+
+```{r fig.width = 8, fig.height = 6}
+map_infra_detail(
+    map_data,
+    "calgary",
     map_inset_position = c(
         left = -0.85,
         bottom = 0.65,
@@ -3293,30 +3241,11 @@ map_infra_detail(
 ) %>% print
 ```
 
-## Supplementary Figure 2: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2022 for the Municipality of Calgary, CA.
-
-New installations of dedicated infrastructure are denoted in green, upgrades of dedicated infrastructure are denoted in orange. Basemap from OpenStreetMap and Carto (Positron).
-
-```{r warning = FALSE, message = FALSE}
-# map_infra_detail(
-#     map_data,
-#     "calgary",
-#     map_inset_position = c(
-#         left = -0.85,
-#         bottom = 0.65,
-#         right = 1.2125,
-#         top = 0.99
-#     ),
-#     map_ratio = 1.25,
-#     map_inset_ratio = 1.2
-# ) %>% print
-```
-
 ## Supplementary Figure 3: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2022 for the Municipality of Toronto, CA.
 
 New installations of dedicated infrastructure are denoted in green, upgrades of dedicated infrastructure are denoted in orange. Basemap from OpenStreetMap and Carto (Positron).
 
-```{r warning = FALSE, message = FALSE}
+```{r fig.width = 8, fig.height = 6}
 map_infra_detail(
     map_data,
     "toronto",
@@ -3348,10 +3277,10 @@ plot_yearly_len_road(
 By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
 
 ```{r fig.width=18, fig.height=10}
-# plot_yearly_len_road(
-# 	calg,
-# 	title = "Roadways with Dedicated Cycling Infrastructure (Calgary, CA)"
-# )
+plot_yearly_len_road(
+	calg,
+	title = "Roadways with Dedicated Cycling Infrastructure (Calgary, CA)"
+)
 ```
 
 ## Supplementary Figure 6: Changes in dedicated cycling infrastructure between 2009 and 2022 for the Municipality of Toronto, CA.
@@ -3400,30 +3329,30 @@ sfig7$plot
 
 ```{r}
 
-# # Create the plot
-# sfig8 <- plot_yearly_diff(
-# 	calg,
-# 	title = "Difference in Installation Years, Comparing City Data and Verified Data: Calgary, CA",
-# 	out_data = TRUE
-# )
-# 
-# # Calc metrics for description
-# sfig8_n <- sum(sfig8$data$n)
-# sfig8_0 <- sfig8$data %>%  # perc correct
-# 	filter(year_diff == 0) %>%
-# 	pull(n_perc) %>%
-# 	round(1)
-# sfig8_pm1 <- sfig8$data %>% # perc plus/minus 1
-# 	filter(year_diff >= -1 & year_diff <= 1) %>%
-# 	pull(n_perc) %>%
-# 	sum %>%
-# 	round(1)
+# Create the plot
+sfig8 <- plot_yearly_diff(
+	calg,
+	title = "Difference in Installation Years, Comparing City Data and Verified Data: Calgary, CA",
+	out_data = TRUE
+)
+
+# Calc metrics for description
+sfig8_n <- sum(sfig8$data$n)
+sfig8_0 <- sfig8$data %>%  # perc correct
+	filter(year_diff == 0) %>%
+	pull(n_perc) %>%
+	round(1)
+sfig8_pm1 <- sfig8$data %>% # perc plus/minus 1
+	filter(year_diff >= -1 & year_diff <= 1) %>%
+	pull(n_perc) %>%
+	sum %>%
+	round(1)
 ```
 
 Any data where a city provided and verified installation years were missing or the verified year occurred earlier or equal to the start of the study period (2009) has been excluded from analysis, yielding n=` sfig8_n` segments. The graph shows that ` sfig8_0`% of the included segments had the correct installation year as per the city's data, and ` sfig8_pm1`% were accurate within a range of ±1 year.
 
 ```{r fig.width = 8, fig.height = 5}
-#sfig8$plot
+sfig8$plot
 ```
 
 ## Supplementary Figure 9: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Toronto, CA. {.tabset}
@@ -3467,7 +3396,7 @@ diag_criteria_details(criteria_data, "vancouver")
 ## Segment Inclusion Criteria for Calgary
 
 ```{r}
-#diag_criteria_details(criteria_data, "calgary")
+diag_criteria_details(criteria_data, "calgary")
 ```
 
 ## Segment Inclusion Criteria for Toronto
