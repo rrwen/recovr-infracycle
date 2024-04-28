@@ -3185,6 +3185,7 @@ plot_yearly_len_infra(list(
 	"Toronto, CA" = toron
 ))
 ```
+
 ## Figure 3: Yearly net change in cycle route infrastructure by municipality, standardized per 1000 centerline-km of roadway.
 
 The net change considers both the installation of new facilities, and the removal of existing infrastructure, such as when an existing facility is upgraded. Cycle route infrastructure is defined by the most protective element along a street centreline. This reflects the overall modifications made within each municipality over the course of the study period (2009-2022).
@@ -3349,7 +3350,7 @@ sfig8_pm1 <- sfig8$data %>% # perc plus/minus 1
 	round(1)
 ```
 
-Any data where a city provided and verified installation years were missing or the verified year occurred earlier or equal to the start of the study period (2009) has been excluded from analysis, yielding n=` sfig8_n` segments. The graph shows that ` sfig8_0`% of the included segments had the correct installation year as per the city's data, and ` sfig8_pm1`% were accurate within a range of ±1 year.
+Any data where a city provided and verified installation years were missing or the verified year occurred earlier or equal to the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig8_n` segments. The graph shows that `r sfig8_0`% of the included segments had the correct installation year as per the city's data, and `r sfig8_pm1`% were accurate within a range of ±1 year.
 
 ```{r fig.width = 8, fig.height = 5}
 sfig8$plot
