@@ -723,7 +723,7 @@ plot_yearly_len_infra <- function(df_list, len_per = NULL) {
 			geom = "text",
 			x = 1,
 			y = 1,
-			label = "Total Length (Centreline km)",
+			label = if (!is.null(len_per)) glue("Length {len_per}") else "Total Length (Centreline km)",
 			angle = 90,
 			size = 5
 		) +
@@ -2688,7 +2688,7 @@ calg_preprocess <- calg_raw %>%
 		id = shape_id,
 		street = STREET,
 		status = STATUS,
-		road_type = CENTL_TYPE,
+		road_type = CENTL_CLAS,
 		install_year = date_creat,
 		install_type = BICYCLE_CL,
 		verify_install_year = INST_YR,
@@ -2749,20 +2749,24 @@ calg_preprocess <- calg_raw %>%
 	mutate( # create col for recoded road types
 		road_type_recode = case_when( # create road types
 	        road_type %in% c( # arterial equiv
-	        	"Arterial"
+	        	 "Arterial Street",
+	        	 "Industrial Arterial",
+	        	 "Local Arterial",
+	        	 "Parkway",
+	        	 "Urban Boulevard"
 	        ) ~ "Arterial",
 	        road_type %in% c( # collector equiv
+	        	"Neighbourhood Boulevard",
 	        	"Collector",
-	        	"Secondary Arterial",
-	        	"Sec Arterial",
-	        	"Other",
-	        	NA
+	        	"Primary Collector"
 	        ) ~ "Collector",
 	        road_type %in% c( # local equiv
-	        	"Lane",
-	        	"Residential",
-	        	"Leased",
-	        	"Recreational"
+	        	"Access Route",
+	        	"Residential Street",
+	        	"Activity Center Street",
+	        	"Historic Road Allowance",
+	        	"Lanes (Alleys)",
+	        	"Industrial Street"
 	        ) ~ "Local",
 	        .default = road_type
 	    ),
