@@ -687,24 +687,62 @@ This uses the `plot_yearly_len` function.
 #' 
 #' Creates area plots of road lengths by infrastructure type.
 #'
-#' @param df_list A list of data.frame containing the install and change years, type, and road segment lengths.
-#' @param len_per Units of road length (numeric) to normalize by (e.g. 1000 means per 1000 km of roadway). Set to `NULL` to disable normalization of road lengths.
+#' @param df_list A list of lists, where each key is the title and each value contains a list with the following structure:
+#' \itemize{
+#'   \item \code{data}: data.frame containing the install and change years, type, and road segment lengths.
+#'   \item \code{roadway_total}: the total roadway length if `rodway_per` is given. This is used as the denominator to normalize road lengths. 
+#'.  \item \code{roadway_per}: Number of units of total roadway length (numeric) to normalize by (e.g. 1000 means per 1000 km of roadway). Set to `NULL` or omit to disable normalization of road lengths.
+#' }
+#' @param len_title The title (char) for the road lengths.
+#' @param line_50km Set to `TRUE` to add a 50km reference line.
+#' @param ... Additional arguments passed to `plot_yearly_len`.
+#'
 #' @return Multiple area ggplots of the cumulative yearly road lengths by infrastructure type combined with patchwork.
 #' @export
 #'
-plot_yearly_len_infra <- function(df_list, len_per = NULL) {
+plot_yearly_len_infra <- function(
+		df_list,
+		len_title = "Total Length (Centreline km)",
+		line_50km = TRUE,
+		...
+	) {
 	
 	# Create infra plots from data
 	p <- list()
 	for (i in 1:length(df_list)) {
 		
 		# Get data and plot title
-		df <- df_list[[i]]
+		df <- df_list[[i]]$data
 		ptitle <- names(df_list)[[i]]
 		
-		# Create and add infra plot to list
-		p[[i]] <- calc_yearly_adj_len(df, type_col = settings$type_col_infra) %>%
-		    plot_yearly_len(
+		# Get roadway vars if exists
+		roadway_per <- NULL
+		roadway_total <- NULL
+		if ("roadway_per" %in% names(df_list[[i]])) {
+			roadway_per <- df_list[[i]]$roadway_per
+		}
+		if ("roadway_total" %in% names(df_list[[i]])) {
+			roadway_total <- df_list[[i]]$roadway_total
+		}
+		
+		# Calc infra per year
+		p[[i]] <- calc_yearly_adj_len(
+			df,
+			type_col = settings$type_col_infra
+		)
+		
+		# Norm len if needed
+		len_col <- "adj_len"
+		if (!is.null(roadway_per)) {
+			p[[i]] <- p[[i]] %>% mutate(
+				adj_len_norm = 
+					(adj_len / roadway_total) * roadway_per
+			)
+			len_col = "adj_len_norm"
+		}
+		
+		# Add infra plot
+		p[[i]] <- p[[i]] %>% plot_yearly_len(
 		    	title = ptitle,
 		    	year_min = settings$year_min,
 		        year_max = settings$year_max,
@@ -712,8 +750,10 @@ plot_yearly_len_infra <- function(df_list, len_per = NULL) {
 				type_filter = settings$type_filter_infra,
 		        type_recode = settings$type_recode_infra,
 				legend_title = "Infrastructure Type",
-				line_50km = TRUE,
-		        line_year = settings$line_year
+				line_50km = line_50km,
+		        line_year = settings$line_year,
+				len_col = len_col,
+				...
 		    )
 	}
 	
@@ -723,7 +763,7 @@ plot_yearly_len_infra <- function(df_list, len_per = NULL) {
 			geom = "text",
 			x = 1,
 			y = 1,
-			label = if (!is.null(len_per)) glue("Length {len_per}") else "Total Length (Centreline km)",
+			label = len_title,
 			angle = 90,
 			size = 5
 		) +
@@ -3182,13 +3222,32 @@ fig1 %>%
 Assessed using roadway centreline-km, with infrastructure classifications determined by the most protective element present along each road segment.
 
 ```{r fig.width=8.5, fig.height=18}
-plot_yearly_len_infra(list(
-	"Vancouver, CA" = vanc,
-	"Vancouver, CA (without Local Street Bikeways)" = vanc %>% 
-		filter(verify_install_type != "LSB"),
-	"Calgary, CA" = calg,
-	"Toronto, CA" = toron
-))
+plot_yearly_len_infra(
+	df_list = list(
+		"Vancouver, CA (~2223.7 km Total Roadway)" = list(
+			data = vanc,
+			roadway_per = 1000,
+			roadway_total = 2223.7
+		),
+		"Vancouver, CA (without Local Street Bikeways)" = list(
+			data = vanc %>% filter(verify_install_type != "LSB"),
+			roadway_per = 1000,
+			roadway_total = 2223.7
+		),
+		"Calgary, CA (~7931.2 km Total Roadway)" = list(
+			data = calg,
+			roadway_per = 1000,
+			roadway_total = 7931.2
+		),
+		"Toronto, CA (~5579.4 km Total Roadway)" = list(
+			data = toron,
+			roadway_per = 1000,
+			roadway_total = 5579.4
+		)
+	),
+	line_50km = FALSE,
+	len_title = "Length per 1000 Centreline km of Total Roadway"
+)
 ```
 
 ## Figure 3: Yearly net change in cycle route infrastructure by municipality, standardized per 1000 centerline-km of roadway.
