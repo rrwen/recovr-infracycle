@@ -702,7 +702,7 @@ This uses the `plot_yearly_len` function.
 #'
 plot_yearly_len_infra <- function(
 		df_list,
-		len_title = "Total Length (Centreline km)",
+		len_title = "Total length per 1000 centreline-km of roadway",
 		line_50km = TRUE,
 		...
 	) {
@@ -1333,7 +1333,7 @@ This function draws a flow diagram of overall methods for segment inclusion crit
 #'
 diag_criteria <- function(
 		criteria_data,
-		note = "*Denotes segments misclassified as an ineligible type (off-street path, shared road, or inactive temporary infrastructure)<br/>**Local Street Bikeways (LSB) were included but not screened or verified as they did not fit the Can-BICS definitions"
+		note = "*Denotes segments misclassified as an ineligible type (off-street path, shared road, or inactive temporary infrastructure)<br/>**Local Street Bikeways (LSB) were included but not screened or verified"
 ) {
 	
 	# Diag settings
@@ -2387,6 +2387,260 @@ map_infra_detail <- function(
 }
 ```
 
+## Function 7: plot_yearly_change
+
+Plot yearly adjusted road length changes by infrastructure type.
+
+This function plots line charts of yearly road length changes by infrastructure types for a list of data.
+
+```{r}
+
+#' Plot Yearly Road Length Changes By Infrastructure Type
+#' 
+#' Creates line plots of road length changes by infrastructure type.
+#'
+#' @param df_list A list of lists, where each key is the title and each value contains a list with the following structure:
+#' \itemize{
+#'   \item \code{city}: the name (char) of the city
+#'   \item \code{data}: data.frame containing the install and change years, type, and road segment lengths.
+#'   \item \code{roadway_total}: the total roadway length if `rodway_per` is given. This is used as the denominator to normalize road lengths.
+#'.  \item \code{roadway_per}: Number of units of total roadway length (numeric) to normalize by (e.g. 1000 means per 1000 km of roadway). Set to `NULL` or omit to disable normalization of road lengths.
+#' }
+#' @param len_title The title (char) for the road lengths.
+#'
+#' @return Multiple line ggplots of the cumulative yearly road length changes by infrastructure type combined with patchwork.
+#' @export
+#'
+plot_yearly_change <- function(
+		df_list,
+		len_title = "Change in Infrastructure (per 1000 centreline-km of roadway)"
+	) {
+	
+	# Process plot data for adj len including total
+	pdata <- list()
+	for (i in 1:length(df_list)) {
+		
+		# Get data and vars
+		df <- df_list[[i]]$data
+		city <- df_list[[i]]$city
+		
+		# Get roadway vars if exists
+		roadway_per <- NULL
+		roadway_total <- NULL
+		if ("roadway_per" %in% names(df_list[[i]])) {
+			roadway_per <- df_list[[i]]$roadway_per
+		}
+		if ("roadway_total" %in% names(df_list[[i]])) {
+			roadway_total <- df_list[[i]]$roadway_total
+		}
+		
+		# Filter for study year period
+		df <- df %>% filter(
+			verify_install_year >= settings$year_min &
+			verify_install_year <= settings$year_max
+		)
+		
+		# Filter for types
+		df <- df %>% filter(
+			verify_install_type %in% c("PL", "BUF", "PBL") |
+			verify_upgrade1_type %in% c("PL", "BUF", "PBL") |
+			verify_upgrade2_type %in% c("PL", "BUF", "PBL")
+		)
+		
+		# Calc infra per year
+		pdata[[i]] <- calc_yearly_adj_len(
+			df,
+			type_col = settings$type_col_infra
+		)
+		
+		# Calc total infra per year
+		pdata[[i]] <- pdata[[i]] %>% add_row(
+			pdata[[i]] %>% group_by(
+				year
+			) %>% summarize(
+				adj_len = sum(adj_len)
+			) %>% mutate(
+				verify_install_type = "TOTAL"
+			)
+		) %>% mutate(
+			city = city
+		)
+		
+		# Norm len if needed
+		if (!is.null(roadway_per)) {
+			pdata[[i]] <- pdata[[i]] %>% mutate(
+				adj_len_norm = 
+					(adj_len / roadway_total) * roadway_per
+			)
+		}
+	}
+	
+	# Combine plot data for each city
+	pdata <- bind_rows(pdata)
+	
+	# Create infra line plots
+	p <- list()
+	
+	# Create total infra line plot
+	p[[1]] <- pdata %>% filter(
+		verify_install_type == "TOTAL"
+	) %>% group_by(year, city) %>% summarize(
+		adj_len_norm = sum(adj_len_norm, na.rm = TRUE)
+	) %>% group_by(city) %>% arrange(year) %>% mutate(
+		change = adj_len_norm - lag(adj_len_norm)
+	) %>% ggplot(aes(
+		x = year,
+		y = change,
+		color = factor(city, levels = c(
+			"Vancouver", "Calgary", "Toronto"
+		))
+	)) + geom_line(
+		size = 0.75
+	) + geom_point() + geom_vline(
+		xintercept = 2019,
+		linetype = "dashed",
+		color = "gray25",
+		size = 0.5
+	) + ggtitle(
+		bquote(underline(.("Total On-Street Cycling Infrastructure")))
+	) + scale_y_continuous(
+		label = scales::label_number(suffix = " km")
+	) + scale_fill_discrete(
+		breaks = rev(c("Vancouver", "Calgary", "Toronto"))
+	) + scale_colour_manual(
+		values = c("#546ca9", "#c5a43d", "#719d71")
+	) + scale_x_continuous(
+		breaks = seq(
+			settings$year_min + 1,
+			settings$year_max,
+			by = 1
+		),
+		limits = c(
+			settings$year_min + 1,
+			settings$year_max
+		)
+	) + theme(
+		axis.title.y = element_blank(),
+		axis.title.x = element_blank(),
+		legend.title = element_blank()
+	)
+	
+	# Create cyc tracks infra line plot
+	p[[2]] <- pdata %>% filter(
+		verify_install_type == "PBL"
+	) %>% group_by(year, city) %>% summarize(
+		adj_len_norm = sum(adj_len_norm, na.rm = TRUE)
+	) %>% group_by(city) %>% arrange(year) %>% mutate(
+		change = adj_len_norm - lag(adj_len_norm)
+	) %>% ggplot(aes(
+		x = year,
+		y = change,
+		color = factor(city, levels = c(
+			"Vancouver", "Calgary", "Toronto"
+		))
+	)) + geom_line(
+		size = 0.75
+	) + geom_point() + geom_vline(
+		xintercept = 2019,
+		linetype = "dashed",
+		color = "gray25",
+		size = 0.5
+	) + ggtitle(
+		bquote(underline(.("Cycle Tracks")))
+	) + scale_y_continuous(
+		label = scales::label_number(suffix = " km")
+	) + scale_colour_manual(
+		values = c("#546ca9", "#c5a43d", "#719d71")
+	) + scale_x_continuous(
+		breaks = seq(
+			settings$year_min + 1,
+			settings$year_max,
+			by = 1
+		),
+		limits = c(
+			settings$year_min + 1,
+			settings$year_max
+		)
+	) + theme(
+		axis.title.y = element_blank(),
+		axis.title.x = element_blank(),
+		legend.title = element_blank()
+	)
+	
+	# Create painted lanes infra line plot
+	p[[3]] <- pdata %>% filter(
+		verify_install_type %in% c("PL", "BUF")
+	) %>% group_by(year, city) %>% summarize(
+		adj_len_norm = sum(adj_len_norm, na.rm = TRUE)
+	) %>% group_by(city) %>% arrange(year) %>% mutate(
+		change = adj_len_norm - lag(adj_len_norm)
+	) %>% ggplot(aes(
+		x = year,
+		y = change,
+		color = factor(city, levels = c(
+			"Vancouver", "Calgary", "Toronto"
+		))
+	)) + geom_line(
+		size = 0.75
+	) + geom_point() + geom_vline(
+		xintercept = 2019,
+		linetype = "dashed",
+		color = "gray25",
+		size = 0.5
+	) + geom_hline(
+		yintercept = 0,
+		color = "gray20",
+		size = 0.5
+	) + ggtitle(
+		bquote(underline(.("Painted Lanes")))
+	) + scale_y_continuous(
+		label = scales::label_number(suffix = " km")
+	) + scale_colour_manual(
+		values = c("#546ca9", "#c5a43d", "#719d71")
+	) + scale_x_continuous(
+		breaks = seq(
+			settings$year_min + 1,
+			settings$year_max,
+			by = 1
+		),
+		limits = c(
+			settings$year_min + 1,
+			settings$year_max
+		)
+	) + theme(
+		axis.title.y = element_blank(),
+		axis.title.x = element_blank(),
+		legend.title = element_blank()
+	)
+	
+	# Y-axis title
+	y_title <- ggplot() +
+		annotate(
+			geom = "text",
+			x = 1,
+			y = 1,
+			label = len_title,
+			angle = 90,
+			size = 5
+		) +
+		coord_cartesian(clip = "off")+
+		theme_void()
+	
+	# Combine all infra plots together
+	out <- (y_title | wrap_plots(p, nrow = length(p))) +
+		plot_annotation(
+			title = "Yearly Net Change in Cycling Infrastructure\n(per 1000 centreline-km of roadway)",
+			caption = sprintf("Years (%s-%s)", settings$year_min + 1, settings$year_max),
+			theme = theme(
+				plot.title = element_text(hjust = 0.5, size = 16),
+				plot.caption = element_text(hjust = 0.5, size = 14)
+			)
+		) +
+		plot_layout(widths = c(0.05, 1))
+	return(out)
+}
+```
+
 # Data
 
 Load raw data provided by Konrad Samsel.
@@ -3254,7 +3508,30 @@ plot_yearly_len_infra(
 
 The net change considers both the installation of new facilities, and the removal of existing infrastructure, such as when an existing facility is upgraded. Cycle route infrastructure is defined by the most protective element along a street centreline. This reflects the overall modifications made within each municipality over the course of the study period (2009-2022).
 
-```{r}
+```{r fig.width = 8, fig.height = 12}
+plot_yearly_change(
+	df_list = list(
+		"Vancouver, CA" = list(
+			city = "Vancouver",
+			data = vanc,
+			roadway_per = 1000,
+			roadway_total = 2223.7
+		),
+		"Calgary, CA" = list(
+			city = "Calgary",
+			data = calg,
+			roadway_per = 1000,
+			roadway_total = 7931.2
+		),
+		"Toronto, CA" = list(
+			city = "Toronto",
+			data = toron,
+			roadway_per = 1000,
+			roadway_total = 5579.4
+		)
+	),
+	len_title = "Length per 1000 Centreline km of Total Roadway"
+)
 ```
 
 ## Figure 4: Changes in Dedicated On-Street Infrastructure Since January 2020 for Vancouver, Calgary, and Toronto.
