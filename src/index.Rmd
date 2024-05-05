@@ -3910,8 +3910,8 @@ save_kable(stab1$table, "../manuscript/figures/tab-yearly-len.pdf")
 save_kable(stab1$table, "../manuscript/figures/tab-yearly-len.png", zoom = 2)
 ```
 
-* [manuscript/figures/table-yearly-len.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/table-yearly-len.pdf)
-* [manuscript/figures/table-yearly-len.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/table-yearly-len.png)
+* [manuscript/figures/tab-yearly-len.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-yearly-len.pdf)
+* [manuscript/figures/tab-yearly-len.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-yearly-len.png)
 
 ## Supplementary Figure 4: Changes in dedicated cycling infrastructure between 2009 and 2021 for the Municipality of Vancouver, CA. {.tabset}
 
