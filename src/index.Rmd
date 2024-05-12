@@ -2444,29 +2444,44 @@ plot_yearly_change <- function(
 		
 		# Filter for types
 		df <- df %>% filter(
-			verify_install_type %in% c("PL", "BUF", "PBL") |
-			verify_upgrade1_type %in% c("PL", "BUF", "PBL") |
-			verify_upgrade2_type %in% c("PL", "BUF", "PBL")
+			verify_install_type %in% c("PL", "BUF", "PBL", "LSB") |
+			verify_upgrade1_type %in% c("PL", "BUF", "PBL", "LSB") |
+			verify_upgrade2_type %in% c("PL", "BUF", "PBL", "LSB")
 		)
 		
 		# Calc infra per year
-		pdata[[i]] <- calc_yearly_adj_len(
-			df,
-			type_col = settings$type_col_infra
-		)
-		
-		# Calc total infra per year
-		pdata[[i]] <- pdata[[i]] %>% add_row(
-			pdata[[i]] %>% group_by(
-				year
-			) %>% summarize(
-				adj_len = sum(adj_len)
-			) %>% mutate(
-				verify_install_type = "TOTAL"
+		pdata[[i]] <- calc_yearly_adj_len(df) %>%
+			mutate(
+				city = city
 			)
+		
+		# Calc total without lsb infra per year
+		pdata_nolsb <- pdata[[i]] %>% filter(
+			type != "LSB"
+		) %>% group_by(
+			year
+		) %>% summarize(
+			adj_len = sum(adj_len, na.rm = TRUE)
+		) %>% mutate(
+			type = "TOTAL"
 		) %>% mutate(
 			city = city
 		)
+		
+		# Calc total with lsb infra per year
+		pdata_lsb <- pdata[[i]] %>% group_by(
+			year
+		) %>% summarize(
+			adj_len = sum(adj_len, na.rm = TRUE)
+		) %>% mutate(
+			type = "TOTAL_LSB"
+		) %>% mutate(
+			city = city
+		)
+		
+		# Add totals as rows
+		pdata[[i]] <- pdata[[i]] %>% add_row(pdata_nolsb)
+		pdata[[i]] <- pdata[[i]] %>% add_row(pdata_lsb)
 		
 		# Norm len if needed
 		if (!is.null(roadway_per)) {
@@ -2483,9 +2498,9 @@ plot_yearly_change <- function(
 	# Create infra line plots
 	p <- list()
 	
-	# Create total infra line plot
+		# Create total with lsb infra line plot
 	p[[1]] <- pdata %>% filter(
-		verify_install_type == "TOTAL"
+		type == "TOTAL_LSB"
 	) %>% group_by(year, city) %>% summarize(
 		adj_len_norm = sum(adj_len_norm, na.rm = TRUE)
 	) %>% group_by(city) %>% arrange(year) %>% mutate(
@@ -2527,9 +2542,53 @@ plot_yearly_change <- function(
 		legend.title = element_blank()
 	)
 	
-	# Create cyc tracks infra line plot
+	# Create total without lsb infra line plot
 	p[[2]] <- pdata %>% filter(
-		verify_install_type == "PBL"
+		type == "TOTAL"
+	) %>% group_by(year, city) %>% summarize(
+		adj_len_norm = sum(adj_len_norm, na.rm = TRUE)
+	) %>% group_by(city) %>% arrange(year) %>% mutate(
+		change = adj_len_norm - lag(adj_len_norm)
+	) %>% ggplot(aes(
+		x = year,
+		y = change,
+		color = factor(city, levels = c(
+			"Vancouver", "Calgary", "Toronto"
+		))
+	)) + geom_line(
+		size = 0.75
+	) + geom_point() + geom_vline(
+		xintercept = 2019,
+		linetype = "dashed",
+		color = "gray25",
+		size = 0.5
+	) + ggtitle(
+		bquote(underline(.("Total On-Street Cycling Infrastructure (without Local Street Bikeways)")))
+	) + scale_y_continuous(
+		label = scales::label_number(suffix = " km")
+	) + scale_fill_discrete(
+		breaks = rev(c("Vancouver", "Calgary", "Toronto"))
+	) + scale_colour_manual(
+		values = c("#546ca9", "#c5a43d", "#719d71")
+	) + scale_x_continuous(
+		breaks = seq(
+			settings$year_min + 1,
+			settings$year_max,
+			by = 1
+		),
+		limits = c(
+			settings$year_min + 1,
+			settings$year_max
+		)
+	) + theme(
+		axis.title.y = element_blank(),
+		axis.title.x = element_blank(),
+		legend.title = element_blank()
+	)
+	
+	# Create cyc tracks infra line plot
+	p[[3]] <- pdata %>% filter(
+		type == "PBL"
 	) %>% group_by(year, city) %>% summarize(
 		adj_len_norm = sum(adj_len_norm, na.rm = TRUE)
 	) %>% group_by(city) %>% arrange(year) %>% mutate(
@@ -2570,8 +2629,8 @@ plot_yearly_change <- function(
 	)
 	
 	# Create painted lanes infra line plot
-	p[[3]] <- pdata %>% filter(
-		verify_install_type %in% c("PL", "BUF")
+	p[[4]] <- pdata %>% filter(
+		type %in% c("PL", "BUF")
 	) %>% group_by(year, city) %>% summarize(
 		adj_len_norm = sum(adj_len_norm, na.rm = TRUE)
 	) %>% group_by(city) %>% arrange(year) %>% mutate(
@@ -2594,7 +2653,7 @@ plot_yearly_change <- function(
 		color = "gray20",
 		size = 0.5
 	) + ggtitle(
-		bquote(underline(.("Painted Lanes")))
+		bquote(underline(.("Painted and Buffered Lanes")))
 	) + scale_y_continuous(
 		label = scales::label_number(suffix = " km")
 	) + scale_colour_manual(
