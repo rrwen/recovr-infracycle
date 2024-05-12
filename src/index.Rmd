@@ -474,6 +474,7 @@ This is a generic function for user-defined types such as infrastructure or road
 #' @param x_title The title (char) of the x-axis.
 #' @param y_title The title (char) of the y-axis.
 #' @param y_suffix The suffix (char) to add to the end of y axis values.
+#' @param y_lim Minimum and maximum road length (numeric) as a vector of length 2 to limit the range of the y-axis. Set to `NULL` for auto.
 #' @param legend_title The title (char) of the legend.
 #' @param legend Set to TRUE to include a legend.
 #' @param year_col The name (char) or index (int) of the column containing the years.
@@ -498,6 +499,7 @@ plot_yearly_len <- function(
         x_title = "",
         y_title = "",
         y_suffix = " km",
+        y_lim = NULL,
         legend_title = "Type",
         legend = TRUE,
         year_col = "year",
@@ -592,6 +594,11 @@ plot_yearly_len <- function(
 	theme(
 		plot.margin = unit(c(5,5,5,5), "points")
 	)
+	
+	# Scale road length axis y
+	if (!is.null(y_lim)) {
+		out <- out + ylim(y_lim)
+	}
 	
 	# Add title
 	if (title_underline) {
