@@ -482,6 +482,7 @@ This is a generic function for user-defined types such as infrastructure or road
 #' @param year_max The maximum year (int) to display.
 #' @param year_int The year intervals (int) to display. For example, 1 displays every year, and 2 displays every two years.
 #' @param len_col The name (char) or index (int) of the column containing the road lengths.
+#' @param len_per Set to `TRUE` to add final percentages at the ending year or `FALSE` to omit this.
 #' @param type_col The name (char) or index (int) of the column containing the type.
 #' @param type_filter A vector (char) of types to remove fomr the plot.
 #' @param type_recode A named vector (char) of names representing types and values representing the values to replace each type with.
@@ -507,6 +508,7 @@ plot_yearly_len <- function(
         year_max = FALSE,
         year_int = 1,
         len_col = "adj_len",
+        len_per = FALSE,
         type_col = "type",
         type_filter = c(),
         type_recode = c(),
@@ -619,6 +621,27 @@ plot_yearly_len <- function(
 				shape = NA
 			)
 		))
+	}
+	
+	# Add percentages
+	if (len_per) {
+		df_perc <-  df %>% filter(
+			.data[[year_col]] == year_max
+		) %>% arrange(desc(.data[[type_col]])) %>% mutate(
+			len = cumsum(.data[[len_col]]),
+			perc = .data[[len_col]] / sum(.data[[len_col]], na.rm = T),
+			perc = paste0(round(perc * 100, 1), "%")
+		)
+		out <- out + geom_text(
+			data = df_perc,
+			x = year_max,
+			size = 2,
+			hjust = -0.225,
+			aes(
+				y = len,
+				label = perc
+			)
+		)
 	}
 	
 	# Add dotted year ref line
@@ -3581,7 +3604,8 @@ fig2$plot <- plot_yearly_len_infra(
 		)
 	),
 	line_50km = FALSE,
-	len_title = "Length per 1000 Centreline km of Total Roadway"
+	len_title = "Length per 1000 Centreline km of Total Roadway",
+	len_per = TRUE
 )
 ```
 
