@@ -587,7 +587,7 @@ plot_yearly_len <- function(
 	scale_x_continuous(
 		breaks = seq(year_min, year_max, by = year_int),
 		labels = seq(year_min, year_max, by = year_int),
-		limits = c(year_min, year_max)
+		limits = c(year_min, if (len_per) year_max + 1 else year_max)
 	) +
 	scale_y_continuous(
 		label = scales::label_number(suffix = y_suffix)
@@ -628,14 +628,14 @@ plot_yearly_len <- function(
 		df_perc <-  df %>% filter(
 			.data[[year_col]] == year_max
 		) %>% arrange(desc(.data[[type_col]])) %>% mutate(
-			len = cumsum(.data[[len_col]]),
+			len = cumsum(.data[[len_col]]) - (.data[[len_col]] / 2),
 			perc = .data[[len_col]] / sum(.data[[len_col]], na.rm = T),
 			perc = paste0(round(perc * 100, 1), "%")
 		)
 		out <- out + geom_text(
 			data = df_perc,
 			x = year_max,
-			size = 2,
+			size = 2.75,
 			hjust = -0.225,
 			aes(
 				y = len,
@@ -3611,7 +3611,7 @@ fig2$plot <- plot_yearly_len_infra(
 
 ### Figure
 
-```{r fig.width = 8.5, fig.height = 18}
+```{r fig.width = 8.5, fig.height = 12.5}
 fig2$plot
 ```
 
@@ -3624,7 +3624,7 @@ ggsave(
 	"../manuscript/figures/fig-yearly-len.pdf",
 	fig2$plot,
 	width = 8.5,
-	height = 18
+	height = 12.5
 )
 
 # Save png
@@ -3632,7 +3632,7 @@ ggsave(
 	"../manuscript/figures/fig-yearly-len.png",
 	fig2$plot,
 	width = 8.5,
-	height = 18
+	height = 12.5
 )
 ```
 
