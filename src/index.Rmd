@@ -1303,7 +1303,7 @@ filter_criteria <- function(
 		
 		# Count/len eligible
 		out[[city]]$elig_n <- nrow(df) - out[[city]]$noverify_filter_nx
-		out[[city]]$elig_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE)) - out[[city]]$noverify_filter_lenx
+		out[[city]]$elig_len <- len_func(sum(st_length(df[[x$geom_col]]), na.rm = TRUE))
 		
 		# Filter for misclass
 		if (all(c("misclass_col", "misclass_filter") %in% names(x))) {
