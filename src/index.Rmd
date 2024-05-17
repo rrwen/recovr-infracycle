@@ -48,7 +48,7 @@ For more details, see [Software and Package Versions](#software-and-package-vers
 4. Then, open the [src/index.Rmd](https://github.com/rrwen/recovr-infracycle/blob/main/src/index.Rmd) file
 6. In RStudio:
 	* Run all code: Click the `Run` drop down (top right of the code pane) and click `Run All`
-	* Generate HTML version: Click `knit` (top left of code pane) and a file will be generated in `docs/index.html`
+	* Generate HTML version: Click `knit` (top left of code pane) and a file will be generated in `docs/index.html` (you may have to try a couple times to succeed due to `webshot2` timeouts)
 
 # Libraries
 
