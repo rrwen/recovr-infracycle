@@ -3366,7 +3366,7 @@ cities_criteria <- list(
 	vancouver = list(
 		city = "vancouver",
 		data = vanc_preprocess,
-		data_date = "January 2023",
+		data_date = "May 2023",
 		data_url = "https://opendata.vancouver.ca/explore/dataset/bikeways/information",
 		infra_col = "install_type",
 		infra_filter = c("Painted Lanes", "Protected Bike Lanes", "Local Street"),
