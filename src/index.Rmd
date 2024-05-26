@@ -486,7 +486,8 @@ This is a generic function for user-defined types such as infrastructure or road
 #' @param type_col The name (char) or index (int) of the column containing the type.
 #' @param type_filter A vector (char) of types to remove fomr the plot.
 #' @param type_recode A named vector (char) of names representing types and values representing the values to replace each type with.
-#' @param line_50km Set to TRUE to draw the 50 km red reference line.
+#' @param line_km The km (numeric) of the red reference line.
+#' @param line_show Set to TRUE to draw the km red reference line.
 #' @param line_year Set to a year (int) to draw a reference line for a year. If FALSE, a line will not be drawn.
 #' @param color_low The bottom color (char) of the type.
 #' @param color_high The top color (char) of the type.
@@ -512,7 +513,8 @@ plot_yearly_len <- function(
         type_col = "type",
         type_filter = c(),
         type_recode = c(),
-        line_50km = FALSE,
+        line_km = 10,
+        line_show = FALSE,
         line_year = FALSE,
         color_low = "#DFEBF7",
         color_high = "#3683BB"
@@ -654,22 +656,22 @@ plot_yearly_len <- function(
 	}
 	
 	# Add red 50km ref line
-	if (line_50km) {
+	if (line_show) {
 		out <- out + geom_segment( # 50km red line
 			aes(
 				x = 2009,
 				y = 0,
 				xend = 2009,
-				yend = 50,
+				yend = line_km,
 				color = "#bb0000"
 			)
 		) +
 		geom_segment( # 50km red triangle point down
 			aes(
 				x = 2009,
-				y = 50.01 - (len_max * 0.05),
+				y = (line_km + 0.01) - (len_max * 0.05),
 				xend = 2009,
-				yend = 50 - (len_max * 0.05),
+				yend = line_km - (len_max * 0.05),
 				color = "#bb0000"
 			),
 			arrow = arrow(
@@ -695,8 +697,8 @@ plot_yearly_len <- function(
 		annotate(
 			"text",
 			x = 2009,
-			y = 50,
-			label = "50km",
+			y = line_km,
+			label = paste0(line_km, "km"),
 			color = "#bb0000",
 			hjust = -0.225
 		)
@@ -726,7 +728,7 @@ This uses the `plot_yearly_len` function.
 #'.  \item \code{roadway_per}: Number of units of total roadway length (numeric) to normalize by (e.g. 1000 means per 1000 km of roadway). Set to `NULL` or omit to disable normalization of road lengths.
 #' }
 #' @param len_title The title (char) for the road lengths.
-#' @param line_50km Set to `TRUE` to add a 50km reference line.
+#' @param line_show Set to `TRUE` to add a 50km reference line.
 #' @param ... Additional arguments passed to `plot_yearly_len`.
 #'
 #' @return Multiple area ggplots of the cumulative yearly road lengths by infrastructure type combined with patchwork.
@@ -735,7 +737,8 @@ This uses the `plot_yearly_len` function.
 plot_yearly_len_infra <- function(
 		df_list,
 		len_title = "Total length per 1000 centreline-km of roadway",
-		line_50km = TRUE,
+		line_km = 10,
+		line_show = TRUE,
 		...
 	) {
 	
@@ -782,7 +785,8 @@ plot_yearly_len_infra <- function(
 				type_filter = settings$type_filter_infra,
 		        type_recode = settings$type_recode_infra,
 				legend_title = "Infrastructure Type",
-				line_50km = line_50km,
+				line_km = line_km,
+				line_show = line_show,
 		        line_year = settings$line_year,
 				len_col = len_col,
 				...
@@ -858,7 +862,7 @@ plot_yearly_len_road <- function(df, title = "Roadways with Dedicated Cycling In
 			type_col = settings$type_col_road,
 			type_recode = settings$type_recode_road,
 			len_col = "len",
-			line_50km = FALSE,
+			line_show = FALSE,
 			line_year = settings$line_year,
 	        color_low = "#C1DDB3",
 	        color_high = "#297A22"
@@ -883,7 +887,7 @@ plot_yearly_len_road <- function(df, title = "Roadways with Dedicated Cycling In
 			plot_yearly_len(
 			    title = sprintf("%s Roadways", r),
 			    title_underline = FALSE,
-			    line_50km = FALSE,
+			    line_show = FALSE,
 			    line_year = settings$line_year,
 			    year_int = 2,
 			    x_title = sprintf("Years (%s-%s)", settings$year_min, settings$year_max),
@@ -2202,7 +2206,8 @@ Creates maps of infrastructure changes since a certain year for each city and th
 #'
 map_infra <- function(
 		map_list,
-		year_since = settings$infra_changes_year
+		year_since = settings$infra_changes_year,
+		scale_prop = 0.35
 ) {
 	
 	# Prepare data for maps
@@ -2230,7 +2235,8 @@ map_infra <- function(
 			) +
 			annotation_scale(
 				location = "bl",
-				style = "ticks"
+				style = "ticks",
+				width_hint = scale_prop
 			) +
 			scale_color_manual(values = city$map_colors) +
 			fixed_plot_aspect(ratio = 1.5) +
@@ -3603,9 +3609,9 @@ fig2$plot <- plot_yearly_len_infra(
 			roadway_total = 5579.4
 		)
 	),
-	line_50km = FALSE,
 	len_title = "Length per 1000 Centreline km of Total Roadway",
-	len_per = TRUE
+	len_per = TRUE,
+	line_km = 10
 )
 ```
 
@@ -3707,7 +3713,7 @@ New installations of dedicated infrastructure are denoted in green, upgrades fro
 
 ```{r}
 fig4 <- list()
-fig4$plot <- map_infra(map_data)
+fig4$plot <- map_infra(map_data, scale_prop = 0.35)
 ```
 
 ### Figure
