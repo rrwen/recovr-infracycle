@@ -1369,7 +1369,7 @@ This function draws a flow diagram of overall methods for segment inclusion crit
 #'
 diag_criteria <- function(
 		criteria_data,
-		note = "*Denotes segments misclassified as eligible after screening<br/>**Local Street Bikeways (LSB) were included but not screened"
+		note = "*Denotes previously eligible segments that were verified to be ineligible after screening<br/>**Local Street Bikeways (LSB) were included but not screened"
 ) {
 	
 	# Diag settings
