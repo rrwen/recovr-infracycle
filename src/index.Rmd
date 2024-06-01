@@ -2109,7 +2109,7 @@ prep_infra <- function(
 ) {
 	
 	# Create color palette
-	colors <- c("green", "orange", "gray")
+	colors <- c("green", "orange", "gray50")
 	names(colors) <- c(
 		glue("New Infrastructure Since Jan. {year}", year = year_since), # green
 		glue("Upgraded Infrastructure Since Jan. {year}", year = year_since), # orange
