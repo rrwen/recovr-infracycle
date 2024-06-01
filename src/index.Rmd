@@ -482,7 +482,8 @@ This is a generic function for user-defined types such as infrastructure or road
 #' @param year_max The maximum year (int) to display.
 #' @param year_int The year intervals (int) to display. For example, 1 displays every year, and 2 displays every two years.
 #' @param len_col The name (char) or index (int) of the column containing the road lengths.
-#' @param len_per Set to `TRUE` to add final percentages at the ending year or `FALSE` to omit this.
+#' @param len_per_start Set to `TRUE` to add final percentages at the starting year or `FALSE` to omit this.
+#' @param len_per_end Set to `TRUE` to add final percentages at the ending year or `FALSE` to omit this.
 #' @param type_col The name (char) or index (int) of the column containing the type.
 #' @param type_filter A vector (char) of types to remove fomr the plot.
 #' @param type_recode A named vector (char) of names representing types and values representing the values to replace each type with.
@@ -509,7 +510,8 @@ plot_yearly_len <- function(
         year_max = FALSE,
         year_int = 1,
         len_col = "adj_len",
-        len_per = FALSE,
+        len_per_start = FALSE,
+        len_per_end = FALSE,
         type_col = "type",
         type_filter = c(),
         type_recode = c(),
@@ -589,7 +591,7 @@ plot_yearly_len <- function(
 	scale_x_continuous(
 		breaks = seq(year_min, year_max, by = year_int),
 		labels = seq(year_min, year_max, by = year_int),
-		limits = c(year_min, if (len_per) year_max + 1 else year_max)
+		limits = c(if (len_per_start) year_min - 1 else year_min, if (len_per_end) year_max + 1 else year_max)
 	) +
 	scale_y_continuous(
 		label = scales::label_number(suffix = y_suffix)
@@ -625,17 +627,44 @@ plot_yearly_len <- function(
 		))
 	}
 	
-	# Add percentages
-	if (len_per) {
-		df_perc <-  df %>% filter(
+	# Add percentages to start
+	if (len_per_start) {
+		df_perc_start <-  df %>% filter(
+			.data[[year_col]] == year_min
+		) %>% arrange(desc(.data[[type_col]])) %>% mutate(
+			len = cumsum(.data[[len_col]]) - (.data[[len_col]] / 2),
+			perc = .data[[len_col]] / sum(.data[[len_col]], na.rm = T)
+		) %>% filter(
+			perc > 0
+		) %>% mutate(
+			perc = paste0(round(perc * 100, 1), "%")
+		)
+		out <- out + geom_text(
+			data = df_perc_start,
+			x = year_min,
+			size = 2.75,
+			hjust = 1.225,
+			aes(
+				y = len,
+				label = perc
+			)
+		)
+	}
+	
+	# Add percentages to end
+	if (len_per_end) {
+		df_perc_end <-  df %>% filter(
 			.data[[year_col]] == year_max
 		) %>% arrange(desc(.data[[type_col]])) %>% mutate(
 			len = cumsum(.data[[len_col]]) - (.data[[len_col]] / 2),
 			perc = .data[[len_col]] / sum(.data[[len_col]], na.rm = T),
+		) %>% filter(
+			perc > 0
+		) %>% mutate(
 			perc = paste0(round(perc * 100, 1), "%")
 		)
 		out <- out + geom_text(
-			data = df_perc,
+			data = df_perc_end,
 			x = year_max,
 			size = 2.75,
 			hjust = -0.225,
@@ -3593,7 +3622,7 @@ fig2$plot <- plot_yearly_len_infra(
 			roadway_per = 1000,
 			roadway_total = 2223.7
 		),
-		"Vancouver, CA (without Local Street Bikeways)" = list(
+		"Vancouver, CA (~2223.7 km, without Local Street Bikeways)" = list(
 			data = vanc %>% filter(verify_install_type != "LSB"),
 			roadway_per = 1000,
 			roadway_total = 2223.7
@@ -3610,7 +3639,8 @@ fig2$plot <- plot_yearly_len_infra(
 		)
 	),
 	len_title = "Length per 1000 Centreline km of Total Roadway",
-	len_per = TRUE,
+	len_per_start = TRUE,
+	len_per_end = TRUE,
 	line_km = 10
 )
 ```
