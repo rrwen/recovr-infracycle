@@ -3597,13 +3597,19 @@ fig1$plot
 fig1$plot %>%
     export_svg %>%
     charToRaw %>%
-    rsvg_pdf("../manuscript/figures/fig-methods.pdf")
+    rsvg_pdf(
+    	"../manuscript/figures/fig-methods.pdf",
+    	width = 1920
+    )
 
 # Save png
 fig1$plot %>%
     export_svg %>%
     charToRaw %>%
-    rsvg_png("../manuscript/figures/fig-methods.png")
+    rsvg_png(
+    	"../manuscript/figures/fig-methods.png",
+    	width = 1920
+    )
 ```
 
 * [manuscript/figures/fig-methods.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-methods.pdf)
@@ -3660,7 +3666,7 @@ ggsave(
 	"../manuscript/figures/fig-yearly-len.pdf",
 	fig2$plot,
 	width = 8.5,
-	height = 12.5
+	height = 12
 )
 
 # Save png
@@ -3668,7 +3674,7 @@ ggsave(
 	"../manuscript/figures/fig-yearly-len.png",
 	fig2$plot,
 	width = 8.5,
-	height = 12.5
+	height = 12
 )
 ```
 
@@ -3720,7 +3726,6 @@ fig3$plot
 ggsave(
 	"../manuscript/figures/fig-yearly-change.pdf",
 	fig3$plot,
-	width = 8,
 	height = 12
 )
 
@@ -3728,7 +3733,6 @@ ggsave(
 ggsave(
 	"../manuscript/figures/fig-yearly-change.png",
 	fig3$plot,
-	width = 8,
 	height = 12
 )
 ```
@@ -3760,7 +3764,6 @@ fig4$plot %>% print
 ggsave(
 	"../manuscript/figures/fig-maps.pdf",
 	fig4$plot,
-	width = 8,
 	height = 12
 )
 
@@ -3768,7 +3771,6 @@ ggsave(
 ggsave(
 	"../manuscript/figures/fig-maps.png",
 	fig4$plot,
-	width = 8,
 	height = 12
 )
 ```
@@ -3812,16 +3814,14 @@ sfig1$plot %>% print
 ggsave(
 	"../manuscript/figures/sfig-map-vanc.pdf",
 	sfig1$plot,
-	width = 8,
-	height = 6
+	width = 11
 )
 
 # Save png
 ggsave(
 	"../manuscript/figures/sfig-map-vanc.png",
 	sfig1$plot,
-	width = 8,
-	height = 6
+	width = 11
 )
 ```
 
@@ -3862,16 +3862,14 @@ sfig2$plot %>% print
 ggsave(
 	"../manuscript/figures/sfig-map-calg.pdf",
 	sfig2$plot,
-	width = 8,
-	height = 6
+	width = 11
 )
 
 # Save png
 ggsave(
 	"../manuscript/figures/sfig-map-calg.png",
 	sfig2$plot,
-	width = 8,
-	height = 6
+	width = 11
 )
 ```
 
@@ -3912,16 +3910,14 @@ sfig3$plot %>% print
 ggsave(
 	"../manuscript/figures/sfig-map-toron.pdf",
 	sfig3$plot,
-	width = 8,
-	height = 6
+	width = 11
 )
 
 # Save png
 ggsave(
 	"../manuscript/figures/sfig-map-toron.png",
 	sfig3$plot,
-	width = 8,
-	height = 6
+	width = 11
 )
 ```
 
@@ -4032,8 +4028,12 @@ stab1$table
 ### Files
 
 ```{r}
-save_kable(stab1$table, "../manuscript/figures/tab-yearly-len.pdf")
-save_kable(stab1$table, "../manuscript/figures/tab-yearly-len.png", zoom = 2)
+if (!file.exists("../manuscript/figures/tab-yearly-len.pdf")) {
+	save_kable(stab1$table, "../manuscript/figures/tab-yearly-len.pdf")
+}
+if (!file.exists("../manuscript/figures/tab-yearly-len.png")) {
+	save_kable(stab1$table, "../manuscript/figures/tab-yearly-len.png", zoom = 2)
+}
 ```
 
 * [manuscript/figures/tab-yearly-len.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-yearly-len.pdf)
@@ -4065,16 +4065,14 @@ sfig4$plot
 ggsave(
 	"../manuscript/figures/sfig-change-vanc.pdf",
 	sfig4$plot,
-	width = 18,
-	height = 10
+	width = 11
 )
 
 # Save png
 ggsave(
 	"../manuscript/figures/sfig-change-vanc.png",
 	sfig4$plot,
-	width = 18,
-	height = 10
+	width = 11
 )
 ```
 
@@ -4107,16 +4105,14 @@ sfig5$plot
 ggsave(
 	"../manuscript/figures/sfig-change-calg.pdf",
 	sfig5$plot,
-	width = 18,
-	height = 10
+	width = 11
 )
 
 # Save png
 ggsave(
 	"../manuscript/figures/sfig-change-calg.png",
 	sfig5$plot,
-	width = 18,
-	height = 10
+	width = 11
 )
 ```
 
@@ -4149,16 +4145,14 @@ sfig6$plot
 ggsave(
 	"../manuscript/figures/sfig-change-toron.pdf",
 	sfig6$plot,
-	width = 18,
-	height = 10
+	width = 11
 )
 
 # Save png
 ggsave(
 	"../manuscript/figures/sfig-change-toron.png",
 	sfig6$plot,
-	width = 18,
-	height = 10
+	width = 11
 )
 ```
 
@@ -4206,16 +4200,14 @@ sfig7$plot
 ggsave(
 	"../manuscript/figures/sfig-compare-vanc.pdf",
 	sfig7$plot,
-	width = 18,
-	height = 10
+	width = 11
 )
 
 # Save png
 ggsave(
 	"../manuscript/figures/sfig-compare-vanc.png",
 	sfig7$plot,
-	width = 18,
-	height = 10
+	width = 11
 )
 ```
 
@@ -4262,16 +4254,14 @@ sfig8$plot
 ggsave(
 	"../manuscript/figures/sfig-compare-calg.pdf",
 	sfig8$plot,
-	width = 18,
-	height = 10
+	width = 11
 )
 
 # Save png
 ggsave(
 	"../manuscript/figures/sfig-compare-calg.png",
 	sfig8$plot,
-	width = 18,
-	height = 10
+	width = 11
 )
 ```
 
@@ -4318,16 +4308,14 @@ sfig9$plot
 ggsave(
 	"../manuscript/figures/sfig-compare-toron.pdf",
 	sfig9$plot,
-	width = 18,
-	height = 10
+	width = 11
 )
 
 # Save png
 ggsave(
 	"../manuscript/figures/sfig-compare-toron.png",
 	sfig9$plot,
-	width = 18,
-	height = 10
+	width = 11
 )
 ```
 
@@ -4357,13 +4345,19 @@ sfig10$plot
 sfig10$plot %>%
     export_svg %>%
     charToRaw %>%
-    rsvg_pdf("../manuscript/figures/sfig-criteria-vanc.pdf")
+    rsvg_pdf(
+    	"../manuscript/figures/sfig-criteria-vanc.pdf",
+    	width = 1080
+    )
 
 # Save png
 sfig10$plot %>%
     export_svg %>%
     charToRaw %>%
-    rsvg_png("../manuscript/figures/sfig-criteria-vanc.png")
+    rsvg_png(
+    	"../manuscript/figures/sfig-criteria-vanc.png",
+    	width = 1080
+    )
 ```
 
 * [manuscript/figures/sfig-criteria-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-vanc.pdf)
@@ -4390,13 +4384,19 @@ sfig11$plot
 sfig11$plot %>%
     export_svg %>%
     charToRaw %>%
-    rsvg_pdf("../manuscript/figures/sfig-criteria-calg.pdf")
+    rsvg_pdf(
+    	"../manuscript/figures/sfig-criteria-calg.pdf",
+    	width = 1080
+    )
 
 # Save png
 sfig11$plot %>%
     export_svg %>%
     charToRaw %>%
-    rsvg_png("../manuscript/figures/sfig-criteria-calg.png")
+    rsvg_png(
+    	"../manuscript/figures/sfig-criteria-calg.png",
+    	width = 1080
+    )
 ```
 
 * [manuscript/figures/sfig-criteria-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-calg.pdf)
@@ -4423,13 +4423,19 @@ sfig12$plot
 sfig12$plot %>%
     export_svg %>%
     charToRaw %>%
-    rsvg_pdf("../manuscript/figures/sfig-criteria-toron.pdf")
+    rsvg_pdf(
+    	"../manuscript/figures/sfig-criteria-toron.pdf",
+    	width = 1080
+    )
 
 # Save png
 sfig12$plot %>%
     export_svg %>%
     charToRaw %>%
-    rsvg_png("../manuscript/figures/sfig-criteria-toron.png")
+    rsvg_png(
+    	"../manuscript/figures/sfig-criteria-toron.png",
+    	width = 1080
+    )
 ```
 
 * [manuscript/figures/sfig-criteria-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-toron.pdf)
