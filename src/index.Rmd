@@ -1043,7 +1043,7 @@ plot_yearly_diff <- function(
 		y_title = "Proportion of Total Segments",
 		x_breaks = 15,
 		x_perc = TRUE,
-		out_data = FALSE
+		out_data = TRUE
 ) {
 	
 	# Filter for comparable rows only
@@ -1118,7 +1118,7 @@ plot_yearly_diff <- function(
 	# Returns ggplot obj or list
 	if (out_data) {
 		out <- list(
-			data = pdata,
+			data = pdata %>% as_tibble %>% select(-geometry, -y),
 			plot = out
 		)
 	}
@@ -4279,6 +4279,20 @@ ggsave(
 )
 ```
 
+### Data
+
+* [data/plot/sfig-compare-vanc.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/sfig-compare-vanc.csv)
+
+```{r}
+
+# Save data
+write_csv(sfig7$data, "../data/plot/sfig-compare-vanc.csv", na = "")
+
+# Display data
+sfig7$data
+
+```
+
 ## Supplementary Figure 8: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Calgary, CA. {.tabset}
 
 ```{r}
@@ -4333,6 +4347,20 @@ ggsave(
 )
 ```
 
+### Data
+
+* [data/plot/sfig-compare-calg.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/sfig-compare-calg.csv)
+
+```{r}
+
+# Save data
+write_csv(sfig8$data, "../data/plot/sfig-compare-calg.csv", na = "")
+
+# Display data
+sfig8$data
+
+```
+
 ## Supplementary Figure 9: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Toronto, CA. {.tabset}
 
 ```{r}
@@ -4385,6 +4413,20 @@ ggsave(
 	sfig9$plot,
 	width = 11
 )
+```
+
+### Data
+
+* [data/plot/sfig-compare-toron.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/sfig-compare-toron.csv)
+
+```{r}
+
+# Save data
+write_csv(sfig9$data, "../data/plot/sfig-compare-toron.csv", na = "")
+
+# Display data
+sfig9$data
+
 ```
 
 # Appendix 2 - Methodology
