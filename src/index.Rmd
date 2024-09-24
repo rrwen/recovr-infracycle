@@ -16,7 +16,6 @@ knit: |
             toc_float = TRUE,
             highlight = "zenburn",
             code_folding = "hide",
-            df_print = "paged",
             self_contained = FALSE
         ),
         output_dir = "../docs",
@@ -78,7 +77,8 @@ required_packages <- c(
 	"prettymapr",
 	"units",
 	"lubridate",
-	"kableExtra"
+	"kableExtra",
+	"DT"
 )
 
 # Try to install packages if not installed
@@ -175,6 +175,18 @@ tmap_options(basemaps = settings$basemaps)
 ```
 
 # Functions
+
+## Function 0: datatable
+
+Modify the default `datatable` function from `DT` library to generate interactive tables:
+
+```{r}
+datatable <- function(...) {
+	args <- list(...)
+	args$filter <- if (!"filter" %in% args) "top" else args$filter
+	return(do.call(DT::datatable, args))
+}
+```
 
 ## Function 1: calc_yearly_len
 
@@ -2617,14 +2629,16 @@ plot_yearly_change <- function(
 	# Create infra line plots
 	p <- list()
 	
-		# Create total with lsb infra line plot
-	p[[1]] <- pdata %>% filter(
+	# Create total with lsb infra line plot
+	pdata1 <- pdata %>% filter(
 		type == "TOTAL_LSB"
 	) %>% group_by(year, city) %>% summarize(
 		adj_len_norm = sum(adj_len_norm, na.rm = TRUE)
 	) %>% group_by(city) %>% arrange(year) %>% mutate(
-		change = adj_len_norm - lag(adj_len_norm)
-	) %>% ggplot(aes(
+		change = adj_len_norm - lag(adj_len_norm),
+		title = "Total On-Street Cycling Infrastructure"
+	)
+	p[[1]] <- pdata1 %>% ggplot(aes(
 		x = year,
 		y = change,
 		color = factor(city, levels = c(
@@ -2662,13 +2676,15 @@ plot_yearly_change <- function(
 	)
 	
 	# Create total without lsb infra line plot
-	p[[2]] <- pdata %>% filter(
+	pdata2 <- pdata %>% filter(
 		type == "TOTAL"
 	) %>% group_by(year, city) %>% summarize(
 		adj_len_norm = sum(adj_len_norm, na.rm = TRUE)
 	) %>% group_by(city) %>% arrange(year) %>% mutate(
-		change = adj_len_norm - lag(adj_len_norm)
-	) %>% ggplot(aes(
+		change = adj_len_norm - lag(adj_len_norm),
+		title = "Total On-Street Cycling Infrastructure (without Local Street Bikeways)"
+	)
+	p[[2]] <- pdata2 %>% ggplot(aes(
 		x = year,
 		y = change,
 		color = factor(city, levels = c(
@@ -2706,13 +2722,15 @@ plot_yearly_change <- function(
 	)
 	
 	# Create cyc tracks infra line plot
-	p[[3]] <- pdata %>% filter(
+	pdata3 <- pdata %>% filter(
 		type == "PBL"
 	) %>% group_by(year, city) %>% summarize(
 		adj_len_norm = sum(adj_len_norm, na.rm = TRUE)
 	) %>% group_by(city) %>% arrange(year) %>% mutate(
-		change = adj_len_norm - lag(adj_len_norm)
-	) %>% ggplot(aes(
+		change = adj_len_norm - lag(adj_len_norm),
+		title = "Cycle Tracks"
+	)
+	p[[3]] <- pdata3 %>% ggplot(aes(
 		x = year,
 		y = change,
 		color = factor(city, levels = c(
@@ -2748,13 +2766,19 @@ plot_yearly_change <- function(
 	)
 	
 	# Create painted lanes infra line plot
-	p[[4]] <- pdata %>% filter(
-		type %in% c("PL", "BUF")
-	) %>% group_by(year, city) %>% summarize(
-		adj_len_norm = sum(adj_len_norm, na.rm = TRUE)
-	) %>% group_by(city) %>% arrange(year) %>% mutate(
-		change = adj_len_norm - lag(adj_len_norm)
-	) %>% ggplot(aes(
+	pdata4 <- pdata %>%
+		filter(type %in% c("PL", "BUF")) %>%
+		group_by(year, city) %>%
+		summarize(
+			adj_len_norm = sum(adj_len_norm, na.rm = TRUE)
+		) %>%
+		group_by(city) %>%
+		arrange(year) %>%
+		mutate(
+			change = adj_len_norm - lag(adj_len_norm),
+			title = "Painted and Buffered Lanes"
+		)
+	p[[4]] <- pdata4 %>% ggplot(aes(
 		x = year,
 		y = change,
 		color = factor(city, levels = c(
@@ -2808,7 +2832,9 @@ plot_yearly_change <- function(
 	
 	# Combine all infra plots together
 	out <- list()
-	out$data <- pdata
+	out$data <- list(pdata1, pdata2, pdata3, pdata4) %>%
+		bind_rows %>%
+		select(title, everything())
 	out$plot <- (y_title | wrap_plots(p, nrow = length(p))) +
 		plot_annotation(
 			title = "Yearly Net Change in Cycling Infrastructure\n(per 1000 centreline-km of roadway)",
@@ -2846,7 +2872,10 @@ tm_shape(vanc_raw %>% filter(!is.na(INST_TMIN))) +
 ### Data
 
 ```{r}
-vanc_raw %>% as_tibble
+vanc_raw %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable
 ```
 
 ### Details
@@ -2900,7 +2929,10 @@ tm_shape(calg_raw %>% filter(!is.na(INST_TMIN))) +
 ### Data
 
 ```{r}
-calg_raw %>% as_tibble
+calg_raw %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable
 ```
 
 ### Details
@@ -2954,7 +2986,10 @@ tm_shape(toron_raw %>% filter(!is.na(INST_TMIN))) +
 ### Data
 
 ```{r}
-toron_raw %>% as_tibble
+toron_raw %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable
 ```
 
 ### Details
@@ -3119,7 +3154,10 @@ tm_shape(
 ### Data
 
 ```{r}
-vanc_preprocess %>% as_tibble
+vanc_preprocess %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable
 ```
 
 ### Details
@@ -3268,7 +3306,10 @@ tm_shape(calg_preprocess %>% head(1000)) +
 ### Data
 
 ```{r}
-calg_preprocess %>% as_tibble
+calg_preprocess %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable
 ```
 
 ### Details
@@ -3411,7 +3452,10 @@ tm_shape(toron_preprocess %>% head(1000)) +
 ### Data
 
 ```{r}
-toron_preprocess %>% as_tibble
+toron_preprocess %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable
 ```
 
 ### Details
@@ -3524,7 +3568,10 @@ tm_shape(vanc %>% head(1000)) +
 ### Data
 
 ```{r}
-vanc %>% as_tibble
+vanc %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable
 ```
 
 ### Details
@@ -3552,7 +3599,10 @@ tm_shape(calg %>% head(1000)) +
 ### Data
 
 ```{r}
-calg %>% as_tibble
+calg %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable
 ```
 
 ### Details
@@ -3580,7 +3630,10 @@ tm_shape(toron %>% head(1000)) +
 ### Data
 
 ```{r}
-toron %>% as_tibble
+toron %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable
 ```
 
 ### Details
@@ -3752,7 +3805,8 @@ ggsave(
 write_csv(fig2$data, "../data/plot/fig-yearly-len.csv", na = "")
 
 # Display data
-fig2$data
+fig2$data %>%
+	datatable
 
 ```
 
@@ -3824,7 +3878,8 @@ ggsave(
 write_csv(fig3$data, "../data/plot/fig-yearly-change.csv", na = "")
 
 # Display data
-fig3$data
+fig3$data %>%
+	datatable
 
 ```
 
@@ -4138,7 +4193,8 @@ if (!file.exists("../manuscript/figures/tab-yearly-len.png")) {
 write_csv(stab1$data, "../data/plot/tab-yearly-len.csv", na = "")
 
 # Display data
-stab1$data
+stab1$data %>%
+	datatable
 
 ```
 
@@ -4192,7 +4248,8 @@ ggsave(
 write_csv(sfig4$data, "../data/plot/sfig-change-vanc.csv", na = "")
 
 # Display data
-sfig4$data
+sfig4$data %>%
+	datatable
 
 ```
 
@@ -4246,7 +4303,8 @@ ggsave(
 write_csv(sfig5$data, "../data/plot/sfig-change-calg.csv", na = "")
 
 # Display data
-sfig5$data
+sfig5$data %>%
+	datatable
 
 ```
 
@@ -4300,7 +4358,8 @@ ggsave(
 write_csv(sfig6$data, "../data/plot/sfig-change-toron.csv", na = "")
 
 # Display data
-sfig6$data
+sfig6$data %>%
+	datatable
 
 ```
 
@@ -4369,7 +4428,8 @@ ggsave(
 write_csv(sfig7$data, "../data/plot/sfig-compare-vanc.csv", na = "")
 
 # Display data
-sfig7$data
+sfig7$data %>%
+	datatable
 
 ```
 
@@ -4437,7 +4497,8 @@ ggsave(
 write_csv(sfig8$data, "../data/plot/sfig-compare-calg.csv", na = "")
 
 # Display data
-sfig8$data
+sfig8$data %>%
+	datatable
 
 ```
 
@@ -4505,7 +4566,8 @@ ggsave(
 write_csv(sfig9$data, "../data/plot/sfig-compare-toron.csv", na = "")
 
 # Display data
-sfig9$data
+sfig9$data %>%
+	datatable
 
 ```
 
