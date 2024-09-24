@@ -492,6 +492,7 @@ This is a generic function for user-defined types such as infrastructure or road
 #' @param line_year Set to a year (int) to draw a reference line for a year. If FALSE, a line will not be drawn.
 #' @param color_low The bottom color (char) of the type.
 #' @param color_high The top color (char) of the type.
+#' @param color_manual A set of manual colors to use for the areas. The default `NULL` uses `color_low` and `color_high` instead.
 #' @return An area ggplot of the cumulative yearly road lengths by type.
 #' @export
 #'
@@ -519,7 +520,8 @@ plot_yearly_len <- function(
         line_show = FALSE,
         line_year = FALSE,
         color_low = "#DFEBF7",
-        color_high = "#3683BB"
+        color_high = "#3683BB",
+        color_manual = NULL
 ) {
 	
 	# Filter to start and end years
@@ -556,10 +558,15 @@ plot_yearly_len <- function(
 	
 	# Create fill colors
 	type_n <- length(type_uniq)
-	type_colors <- scales::seq_gradient_pal(
-		color_low,
-		color_high
-	)(seq(0, 1, length.out = type_n))
+	if (is.null(color_manual)) {
+		type_colors <- scales::seq_gradient_pal(
+			color_low,
+			color_high
+		)(seq(0, 1, length.out = type_n))
+	} else {
+		type_colors <- color_manual
+	}
+	
 	
 	# Create base area plot with legend and labels
 	len_max <- max(df[[len_col]], na.rm = TRUE)
@@ -754,7 +761,8 @@ This uses the `plot_yearly_len` function.
 #' \itemize{
 #'   \item \code{data}: data.frame containing the install and change years, type, and road segment lengths.
 #'   \item \code{roadway_total}: the total roadway length if `rodway_per` is given. This is used as the denominator to normalize road lengths. 
-#'.  \item \code{roadway_per}: Number of units of total roadway length (numeric) to normalize by (e.g. 1000 means per 1000 km of roadway). Set to `NULL` or omit to disable normalization of road lengths.
+#'   \item \code{roadway_per}: Number of units of total roadway length (numeric) to normalize by (e.g. 1000 means per 1000 km of roadway). Set to `NULL` or omit to disable normalization of road lengths.
+#'   \item \code{color_manual}: Optional color of the area polygons to be set manually.
 #' }
 #' @param len_title The title (char) for the road lengths.
 #' @param line_show Set to `TRUE` to add a 50km reference line.
@@ -830,6 +838,7 @@ plot_yearly_len_infra <- function(
 				line_show = line_show,
 		        line_year = settings$line_year,
 				len_col = len_col,
+				color_manual = df_list[[i]]$color_manual,
 				...
 		)
 	}
@@ -1482,17 +1491,17 @@ diag_criteria <- function(
 	# Create template for row addition
 	row_temp <- "
 		open{i}[
-			label = <<b>{city}</b><br/>N = {open_n} Segments<br/><i>({open_len})<br/>Downloaded: {open_date}</i>>,
+			label = <<b>{city}</b><br/>{open_len}<br/>(n = {open_n} Segments)<br/><i>Downloaded: {open_date}</i>>,
 			pos = '0,{y}!'
 		]
 		
 		elig{i}[
-			label = <n = {elig_n} Segments<br/>({elig_len})<i><br/><b>Exclusions</b>{elig_inelig}{elig_dup}{elig_poly}</i>>,
+			label = <{elig_len}<br/>(n = {elig_n} Segments)<i><br/><b>Exclusions</b>{elig_inelig}{elig_dup}{elig_poly}</i>>,
 			pos = '3.25,{y}!'
 		]
 		
 		incl{i}[
-			label = <n = {incl_n} Segments<br/><i>({incl_len}){noverify}<br/><b>Exclusions</b>{incl_miss}{incl_dup}</i>>,
+			label = <{incl_len}<br/>(n = {incl_n} Segments)<i>{noverify}<br/><b>Exclusions</b>{incl_miss}{incl_dup}</i>>,
 			pos = '6.5,{y}!'
 		]
 		
@@ -3672,7 +3681,13 @@ fig2 <- plot_yearly_len_infra(
 		"Vancouver, CA (~2223.7 km Total Roadway)" = list(
 			data = vanc,
 			roadway_per = 1000,
-			roadway_total = 2223.7
+			roadway_total = 2223.7,
+			color_manual = c(
+				 "#DFEBF7",
+				 "#bbcbe3",
+				 "#3683BB",
+				 "#256180"
+			)
 		),
 		"Vancouver, CA (~2223.7 km, without Local Street Bikeways)" = list(
 			data = vanc %>% filter(verify_install_type != "LSB"),
