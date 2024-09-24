@@ -884,15 +884,21 @@ This uses the `plot_yearly_len` function.
 #'
 plot_yearly_len_road <- function(df, title = "Roadways with Dedicated Cycling Infrastructure") {
 	
-	# Create list to store plots
+	# Create list to store plots and data
 	p <- list()
-
-	# Plot overall road types
-	p[[1]] <- calc_yearly_len(
+	pdata <- list()
+	
+	# Format plot data
+	pdata[[1]] <- calc_yearly_len(
 		df,
 		year_col = settings$year_col_road,
 		type_col = settings$type_col_road
-	) %>%
+	) %>% mutate(
+		road_type = "All"
+	)
+	
+	# Plot overall road types
+	p[[1]] <- pdata[[1]] %>%
 	    plot_yearly_len(
 	    	title = title,
 	    	title_underline = FALSE,
@@ -922,11 +928,17 @@ plot_yearly_len_road <- function(df, title = "Roadways with Dedicated Cycling In
 		# Get road type
 		r <- rtypes[i]
 		
-		# Create infra plot for road type
-		p[[i + 1]] <- calc_yearly_adj_len(
+		# Format infra data for road type
+		pdata[[i + 1]] <- calc_yearly_adj_len(
 			df %>% filter(.data[[settings$type_col_road]] == r),
 			type_col = settings$type_col_infra
 		) %>%
+			mutate(
+				road_type = r
+			)
+		
+		# Create infra plot for road type
+		p[[i + 1]] <- pdata[[i + 1]] %>%
 			plot_yearly_len(
 			    title = sprintf("%s Roadways", r),
 			    title_underline = FALSE,
@@ -963,7 +975,18 @@ plot_yearly_len_road <- function(df, title = "Roadways with Dedicated Cycling In
 		)
 	
 	# Plot overall and road type plots together
-	out <- ( # overall plot
+	out <- list()
+	out$data <- pdata %>%
+		bind_rows %>%
+		select(
+			road_type,
+			year,
+			verify_install_year,
+			len,
+			adj_len,
+			everything()
+		)
+	out$plot <- ( # overall plot
 		plot_spacer() +
 		p[[1]] +
 		plot_spacer() +
@@ -3615,9 +3638,6 @@ fig1$plot
 
 ### Files
 
-* [manuscript/figures/fig-methods.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-methods.pdf)
-* [manuscript/figures/fig-methods.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-methods.png)
-
 ```{r}      
 
 # Save pdf
@@ -3638,6 +3658,9 @@ fig1$plot %>%
     	width = 1920
     )
 ```
+
+* [manuscript/figures/fig-methods.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-methods.pdf)
+* [manuscript/figures/fig-methods.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-methods.png)
 
 ## Figure 2: Changes in dedicated cycling infrastructure between 2009 and 2022 for Vancouver, Calgary, and Toronto by infrastructure category. {.tabset}
 
@@ -3682,9 +3705,6 @@ fig2$plot
 
 ### Files
 
-* [manuscript/figures/fig-yearly-len.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-len.pdf)
-* [manuscript/figures/fig-yearly-len.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-len.png)
-
 ```{r}
 
 # Save pdf
@@ -3703,6 +3723,9 @@ ggsave(
 	height = 12
 )
 ```
+
+* [manuscript/figures/fig-yearly-len.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-len.pdf)
+* [manuscript/figures/fig-yearly-len.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-len.png)
 
 ### Data
 
@@ -3756,9 +3779,6 @@ fig3$plot
 
 ### Files
 
-* [manuscript/figures/fig-yearly-change.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-change.pdf)
-* [manuscript/figures/fig-yearly-change.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-change.png)
-
 ```{r}
 
 # Save pdf
@@ -3775,6 +3795,9 @@ ggsave(
 	height = 12
 )
 ```
+
+* [manuscript/figures/fig-yearly-change.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-change.pdf)
+* [manuscript/figures/fig-yearly-change.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-change.png)
 
 ### Data
 
@@ -3808,9 +3831,6 @@ fig4$plot %>% print
 
 ### Files
 
-* [manuscript/figures/fig-maps.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-maps.pdf)
-* [manuscript/figures/fig-maps.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-maps.png)
-
 ```{r}
 
 # Save pdf
@@ -3827,6 +3847,9 @@ ggsave(
 	height = 12
 )
 ```
+
+* [manuscript/figures/fig-maps.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-maps.pdf)
+* [manuscript/figures/fig-maps.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-maps.png)
 
 # Appendix 1 - Supplementary Results
 
@@ -3858,9 +3881,6 @@ sfig1$plot %>% print
 
 ### Files
 
-* [manuscript/figures/sfig-map-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-vanc.pdf)
-* [manuscript/figures/sfig-map-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-vanc.png)
-
 ```{r}
 
 # Save pdf
@@ -3877,6 +3897,9 @@ ggsave(
 	width = 11
 )
 ```
+
+* [manuscript/figures/sfig-map-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-vanc.pdf)
+* [manuscript/figures/sfig-map-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-vanc.png)
 
 ## Supplementary Figure 2: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2022 for the Municipality of Calgary, CA. {.tabset}
 
@@ -3906,9 +3929,6 @@ sfig2$plot %>% print
 
 ### Files
 
-* [manuscript/figures/sfig-map-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-calg.pdf)
-* [manuscript/figures/sfig-map-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-calg.png)
-
 ```{r}
 
 # Save pdf
@@ -3925,6 +3945,9 @@ ggsave(
 	width = 11
 )
 ```
+
+* [manuscript/figures/sfig-map-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-calg.pdf)
+* [manuscript/figures/sfig-map-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-calg.png)
 
 ## Supplementary Figure 3: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2022 for the Municipality of Toronto, CA. {.tabset}
 
@@ -3954,9 +3977,6 @@ sfig3$plot %>% print
 
 ### Files
 
-* [manuscript/figures/sfig-map-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-toron.pdf)
-* [manuscript/figures/sfig-map-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-toron.png)
-
 ```{r}
 
 # Save pdf
@@ -3973,6 +3993,9 @@ ggsave(
 	width = 11
 )
 ```
+
+* [manuscript/figures/sfig-map-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-toron.pdf)
+* [manuscript/figures/sfig-map-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-toron.png)
 
 ## Supplementary Table 1: Total Length of Dedicated On-Street Cycling Infrastructure between 2009 and 2022, for Vancouver, Calgary, and Toronto (Canada). {.tabset}
 
@@ -4078,9 +4101,6 @@ stab1$table
 
 ### Files
 
-* [manuscript/figures/tab-yearly-len.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-yearly-len.pdf)
-* [manuscript/figures/tab-yearly-len.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-yearly-len.png)
-
 ```{r}
 if (!file.exists("../manuscript/figures/tab-yearly-len.pdf")) {
 	save_kable(stab1$table, "../manuscript/figures/tab-yearly-len.pdf")
@@ -4089,6 +4109,9 @@ if (!file.exists("../manuscript/figures/tab-yearly-len.png")) {
 	save_kable(stab1$table, "../manuscript/figures/tab-yearly-len.png", zoom = 2)
 }
 ```
+
+* [manuscript/figures/tab-yearly-len.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-yearly-len.pdf)
+* [manuscript/figures/tab-yearly-len.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-yearly-len.png)
 
 ### Data
 
@@ -4110,7 +4133,7 @@ By (A) roadway classification, and (B) infrastructure distribution within each r
 
 ```{r}
 sfig4 <- list()
-sfig4$plot <- plot_yearly_len_road(
+sfig4 <- plot_yearly_len_road(
 	vanc,
 	title = "Roadways with Dedicated Cycling Infrastructure (Vancouver, CA)"
 )
@@ -4123,9 +4146,6 @@ sfig4$plot
 ```
 
 ### Files
-
-* [manuscript/figures/sfig-change-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-vanc.pdf)
-* [manuscript/figures/sfig-change-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-vanc.png)
 
 ```{r}
 
@@ -4144,13 +4164,30 @@ ggsave(
 )
 ```
 
+* [manuscript/figures/sfig-change-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-vanc.pdf)
+* [manuscript/figures/sfig-change-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-vanc.png)
+
+### Data
+
+* [data/plot/sfig-change-vanc.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/sfig-change-vanc.csv)
+
+```{r}
+
+# Save data
+write_csv(sfig4$data, "../data/plot/sfig-change-vanc.csv", na = "")
+
+# Display data
+sfig4$data
+
+```
+
 ## Supplementary Figure 5: Changes in dedicated cycling infrastructure between 2009 and 2022 for the Municipality of Calgary, CA. {.tabset}
 
 By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
 
 ```{r}
 sfig5 <- list()
-sfig5$plot <- plot_yearly_len_road(
+sfig5 <- plot_yearly_len_road(
 	calg,
 	title = "Roadways with Dedicated Cycling Infrastructure (Calgary, CA)"
 )
@@ -4163,9 +4200,6 @@ sfig5$plot
 ```
 
 ### Files
-
-* [manuscript/figures/sfig-change-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-calg.pdf)
-* [manuscript/figures/sfig-change-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-calg.png)
 
 ```{r}
 
@@ -4184,13 +4218,30 @@ ggsave(
 )
 ```
 
+* [manuscript/figures/sfig-change-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-calg.pdf)
+* [manuscript/figures/sfig-change-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-calg.png)
+
+### Data
+
+* [data/plot/sfig-change-calg.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/sfig-change-calg.csv)
+
+```{r}
+
+# Save data
+write_csv(sfig5$data, "../data/plot/sfig-change-calg.csv", na = "")
+
+# Display data
+sfig5$data
+
+```
+
 ## Supplementary Figure 6: Changes in dedicated cycling infrastructure between 2009 and 2022 for the Municipality of Toronto, CA. {.tabset}
 
 By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
 
 ```{r}
 sfig6 <- list()
-sfig6$plot <- plot_yearly_len_road(
+sfig6 <- plot_yearly_len_road(
 	toron,
 	title = "Roadways with Dedicated Cycling Infrastructure (Toronto, CA)"
 )
@@ -4203,9 +4254,6 @@ sfig6$plot
 ```
 
 ### Files
-
-* [manuscript/figures/sfig-change-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-toron.pdf)
-* [manuscript/figures/sfig-change-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-toron.png)
 
 ```{r}
 
@@ -4222,6 +4270,23 @@ ggsave(
 	sfig6$plot,
 	width = 11
 )
+```
+
+* [manuscript/figures/sfig-change-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-toron.pdf)
+* [manuscript/figures/sfig-change-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-toron.png)
+
+### Data
+
+* [data/plot/sfig-change-toron.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/sfig-change-toron.csv)
+
+```{r}
+
+# Save data
+write_csv(sfig6$data, "../data/plot/sfig-change-toron.csv", na = "")
+
+# Display data
+sfig6$data
+
 ```
 
 ## Supplementary Figure 7: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Vancouver, CA. {.tabset}
@@ -4259,9 +4324,6 @@ sfig7$plot
 
 ### Files
 
-* [manuscript/figures/sfig-compare-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-vanc.pdf)
-* [manuscript/figures/sfig-compare-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-vanc.png)
-
 ```{r}
 
 # Save pdf
@@ -4278,6 +4340,9 @@ ggsave(
 	width = 11
 )
 ```
+
+* [manuscript/figures/sfig-compare-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-vanc.pdf)
+* [manuscript/figures/sfig-compare-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-vanc.png)
 
 ### Data
 
@@ -4327,9 +4392,6 @@ sfig8$plot
 
 ### Files
 
-* [manuscript/figures/sfig-compare-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-calg.pdf)
-* [manuscript/figures/sfig-compare-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-calg.png)
-
 ```{r}
 
 # Save pdf
@@ -4346,6 +4408,9 @@ ggsave(
 	width = 11
 )
 ```
+
+* [manuscript/figures/sfig-compare-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-calg.pdf)
+* [manuscript/figures/sfig-compare-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-calg.png)
 
 ### Data
 
@@ -4395,9 +4460,6 @@ sfig9$plot
 
 ### Files
 
-* [manuscript/figures/sfig-compare-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-toron.pdf)
-* [manuscript/figures/sfig-compare-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-toron.png)
-
 ```{r}
 
 # Save pdf
@@ -4414,6 +4476,9 @@ ggsave(
 	width = 11
 )
 ```
+
+* [manuscript/figures/sfig-compare-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-toron.pdf)
+* [manuscript/figures/sfig-compare-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-toron.png)
 
 ### Data
 
