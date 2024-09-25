@@ -184,6 +184,7 @@ Modify the default `datatable` function from `DT` library to generate interactiv
 datatable <- function(...) {
 	args <- list(...)
 	args$filter <- if (!"filter" %in% args) "top" else args$filter
+	args$fillContainer <- if (!"fillContainer" %in% args) T else args$fillContainer
 	return(do.call(DT::datatable, args))
 }
 ```
