@@ -1,0 +1,32 @@
+city,upgrade,n,n_perc,n_upgrade,n_upgrade1,n_upgrade2
+calgary,PBL -> PBL,18,33.9622641509434,53,39,14
+calgary,PBL -> None -> PBL,14,26.41509433962264,53,39,14
+calgary,PBL -> None,9,16.9811320754717,53,39,14
+calgary,None -> PBL,4,7.547169811320755,53,39,14
+calgary,PL -> PBL,4,7.547169811320755,53,39,14
+calgary,BUF -> PBL,1,1.8867924528301887,53,39,14
+calgary,None -> PL,1,1.8867924528301887,53,39,14
+calgary,PL -> BUF,1,1.8867924528301887,53,39,14
+calgary,PL -> PL,1,1.8867924528301887,53,39,14
+toronto,PL -> PBL,34,42.5,80,74,6
+toronto,PL -> PL,18,22.5,80,74,6
+toronto,BUF -> PBL,8,10,80,74,6
+toronto,PBL -> PBL,5,6.25,80,74,6
+toronto,PL -> BUF -> PBL,5,6.25,80,74,6
+toronto,None -> PL,3,3.75,80,74,6
+toronto,BUF -> BUF,2,2.5,80,74,6
+toronto,PL -> BUF,2,2.5,80,74,6
+toronto,SR -> PBL,2,2.5,80,74,6
+toronto,BUF -> PBL -> PBL,1,1.25,80,74,6
+vancouver,PL -> PBL,116,36.25,320,320,0
+vancouver,PL -> BUF,59,18.4375,320,320,0
+vancouver,PL -> PL,48,15,320,320,0
+vancouver,None -> PBL,29,9.0625,320,320,0
+vancouver,N -> PBL,20,6.25,320,320,0
+vancouver,None -> PL,15,4.6875,320,320,0
+vancouver,PL -> None,10,3.125,320,320,0
+vancouver,PBL -> PBL,9,2.8125,320,320,0
+vancouver,LSB -> PBL,8,2.5,320,320,0
+vancouver,PBL -> PL,4,1.25,320,320,0
+vancouver,LSB -> PL,1,0.3125,320,320,0
+vancouver,None -> BUF,1,0.3125,320,320,0
