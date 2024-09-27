@@ -30,6 +30,8 @@ knitr::opts_chunk$set(
 )
 ```
 
+**NOTE: Please allow ~30 seconds for the page to load completely.**
+
 # Installation
 
 1. Install [R](https://www.r-project.org/)
@@ -183,8 +185,10 @@ Modify the default `datatable` function from `DT` library to generate interactiv
 ```{r}
 datatable <- function(...) {
 	args <- list(...)
+	args$extensions <- if (!"extensions" %in% args) "Buttons" else args$extensions
 	args$filter <- if (!"filter" %in% args) "top" else args$filter
 	args$fillContainer <- if (!"fillContainer" %in% args) T else args$fillContainer
+	args$options <- if (!"options" %in% args) list(scrollY = "350px", buttons = c("copy", "csv", "excel"), dom = "Bfrtip") else args$options
 	return(do.call(DT::datatable, args))
 }
 ```
@@ -1174,7 +1178,7 @@ plot_yearly_diff <- function(
 
 ## Function 5: filter_criteria
 
-Fitler for segment inclusion criteria
+Filter for segment inclusion criteria.
 
 This function applies segment inclusion critieria to a list of data.frames. Optionally creates a data.frame of counts, segment lengths, and other exclusions (duplicates, misclassifications) per inclusion criteria step along with a list of the data.frames after applying the inclusion criteria.
 
