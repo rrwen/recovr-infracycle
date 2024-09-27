@@ -184,11 +184,47 @@ Modify the default `datatable` function from `DT` library to generate interactiv
 
 ```{r}
 datatable <- function(...) {
+	
+	# Build arg list
 	args <- list(...)
-	args$extensions <- if (!"extensions" %in% args) "Buttons" else args$extensions
-	args$filter <- if (!"filter" %in% args) "top" else args$filter
-	args$fillContainer <- if (!"fillContainer" %in% args) T else args$fillContainer
-	args$options <- if (!"options" %in% args) list(scrollY = "350px", buttons = c("copy", "csv", "excel"), dom = "Bfrtip") else args$options
+	
+	# Default custom filename
+	filename <- if (!"filename" %in% names(args)) "data" else args$filename
+	args[["filename"]] <- NULL
+	
+	# Add default extensions
+	args$extensions <- if (!"extensions" %in% names(args)) "Buttons" else args$extensions
+	
+	# Add default args
+	args$filter <- if (!"filter" %in% names(args)) "top" else args$filter
+	args$fillContainer <- if (!"fillContainer" %in% names(args)) T else args$fillContainer
+	
+	# Add default options
+	if (!"options" %in% names(args)) {
+		args$options <-  list(
+			scrollY = "350px",
+			buttons = list(
+				list(
+					extend = "csv",
+					filename = filename,
+					exportOptions = list(columns = ":not(.rownames)")
+				),
+				list(
+					extend = "excel",
+					filename = filename,
+					exportOptions = list(columns = ":not(.rownames)"),
+					title = ""
+				)
+			),
+			columnDefs = list(
+				list(
+					targets = 0,
+					className = "rownames"
+				)
+			),
+			dom = "Bfrtip"
+		)
+	}
 	return(do.call(DT::datatable, args))
 }
 ```
@@ -2866,43 +2902,18 @@ vanc_raw <- read_sf("../data/raw/vancouver/Vancouver AS KS Mar26.shp")
 
 ### Map
 
+Full spatial data available at:
+
+* [vancouver-bikeways-raw-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-raw-v1.geojson)
+* [vancouver-bikeways-raw-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-raw-v1.csv)
+
 **Note**: Only segments with verified installations are shown (n = `r vanc_raw %>% filter(!is.na(INST_TMIN)) %>% nrow` of `r vanc_raw %>% nrow`).
 
 ```{r out.width = "100%"}
-tmap_mode("view")
-tm_shape(vanc_raw %>% filter(!is.na(INST_TMIN))) +
-	tm_lines(col = "INST_TMIN", popup.vars = TRUE)
-```
-
-### Data
-
-```{r}
-vanc_raw %>%
-	as.data.frame %>%
-	select(-geometry) %>%
-	datatable
-```
-
-### Details
-
-```{r}
-print(vanc_raw)
-```
-
-### Files
-
-Save [vancouver-bikeways-raw-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-raw-v1.geojson) file:
-
-```{r}
 
 # Save geojson
 vanc_raw %>%
 	write_sf("../data/vancouver-bikeways-raw-v1.geojson", delete_dsn = TRUE)
-```
-
-Save [vancouver-bikeways-raw-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-raw-v1.csv) file:
-
-```{r}
 
 # Save csv
 # st_read("../data/vancouver-bikeways-raw-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
@@ -2913,6 +2924,27 @@ vanc_raw %>%
 		.before = geometry
 	) %>%
 	write_csv("../data/vancouver-bikeways-raw-v1.csv", na = "")
+
+# Display map
+tmap_mode("view")
+tm_shape(vanc_raw %>% filter(!is.na(INST_TMIN))) +
+	tm_lines(col = "INST_TMIN", popup.vars = TRUE)
+
+```
+
+### Data
+
+```{r}
+vanc_raw %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable(filename = "vancouver-bikeways-raw-nonspatial-v1")
+```
+
+### Details
+
+```{r}
+print(vanc_raw)
 ```
 
 ## Calgary Raw Data {.tabset}
@@ -2923,43 +2955,18 @@ calg_raw <- read_sf("../data/raw/calgary/Calgary Export.shp")
 
 ### Map
 
+Full spatial data available at:
+
+* [calgary-bikeways-raw-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-raw-v1.geojson)
+* [calgary-bikeways-raw-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-raw-v1.csv)
+
 **Note**: Only segments with verified installations are shown (n = `calg_raw %>% filter(!is.na(INST_TMIN)) %>% nrow` of `calg_raw %>% nrow`).
 
 ```{r out.width = "100%"}
-tmap_mode("view")
-tm_shape(calg_raw %>% filter(!is.na(INST_TMIN))) +
-	tm_lines(col = "INST_TMIN", popup.vars = TRUE)
-```
-
-### Data
-
-```{r}
-calg_raw %>%
-	as.data.frame %>%
-	select(-geometry) %>%
-	datatable
-```
-
-### Details
-
-```{r}
-print(calg_raw)
-```
-
-### Files
-
-Save [calgary-bikeways-raw-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-raw-v1.geojson) file:
-
-```{r}
 
 # Save geojson
 calg_raw %>%
 	write_sf("../data/calgary-bikeways-raw-v1.geojson", delete_dsn = TRUE)
-```
-
-Save [calgary-bikeways-raw-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-raw-v1.csv) file:
-
-```{r}
 
 # Save csv
 #st_read("../data/calgary-bikeways-raw-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
@@ -2970,6 +2977,29 @@ calg_raw %>%
 		.before = geometry
 	) %>%
 	write_csv("../data/calgary-bikeways-raw-v1.csv", na = "")
+
+# Display map
+tmap_mode("view")
+tm_shape(calg_raw %>% filter(!is.na(INST_TMIN))) +
+	tm_lines(col = "INST_TMIN", popup.vars = TRUE)
+
+```
+
+### Data
+
+Non-spatial data:
+
+```{r}
+calg_raw %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable(filename = "calgary-bikeways-raw-nonspatial-v1")
+```
+
+### Details
+
+```{r}
+print(calg_raw)
 ```
 
 ## Toronto Raw Data {.tabset}
@@ -2980,43 +3010,18 @@ toron_raw <- read_sf("../data/raw/toronto/Toronto AS 1323 V3.shp")
 
 ### Map
 
+Full spatial data available at:
+
+* [toronto-bikeways-raw-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-raw-v1.geojson)
+* [toronto-bikeways-raw-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-raw-v1.csv)
+
 **Note**: Only segments with verified installations are shown (n = `r toron_raw %>% filter(!is.na(INST_TMIN)) %>% nrow` of `r toron_raw %>% nrow`).
 
 ```{r out.width = "100%"}
-tmap_mode("view")
-tm_shape(toron_raw %>% filter(!is.na(INST_TMIN))) +
-	tm_lines(col = "INST_TMIN", popup.vars = TRUE)
-```
-
-### Data
-
-```{r}
-toron_raw %>%
-	as.data.frame %>%
-	select(-geometry) %>%
-	datatable
-```
-
-### Details
-
-```{r}
-print(toron_raw)
-```
-
-### Files
-
-Save [toronto-bikeways-raw-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-raw-v1.geojson) file:
-
-```{r}
 
 # Save geojson
 toron_raw %>%
 	write_sf("../data/toronto-bikeways-raw-v1.geojson", delete_dsn = TRUE)
-```
-
-Save [toronto-bikeways-raw-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-raw-v1.csv) file:
-
-```{r}
 
 # Save csv
 # st_read("../data/toronto-bikeways-raw-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
@@ -3027,6 +3032,29 @@ toron_raw %>%
 		.before = geometry
 	) %>%
 	write_csv("../data/toronto-bikeways-raw-v1.csv", na = "")
+
+# Generate map
+tmap_mode("view")
+tm_shape(toron_raw %>% filter(!is.na(INST_TMIN))) +
+	tm_lines(col = "INST_TMIN", popup.vars = TRUE)
+
+```
+
+### Data
+
+Non-spatial data:
+
+```{r}
+toron_raw %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable(filename = "toronto-bikeways-raw-nonspatial-v1")
+```
+
+### Details
+
+```{r}
+print(toron_raw)
 ```
 
 # Preprocessing
@@ -3147,44 +3175,18 @@ vanc_preprocess <- vanc_raw %>%
 
 ### Map
 
+Full spatial data available at:
+
+* [vancouver-bikeways-preprocess-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-preprocess-v1.geojson)
+* [vancouver-bikeways-preprocess-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-preprocess-v1.csv)
+
 **Note**: Only the first 1000 records are shown as a sample.
 
 ```{r out.width = "100%"}
-tmap_mode("view")
-tm_shape(
-	vanc_preprocess %>% head(1000)) +
-	tm_lines(col = "verify_install_type", popup.vars = TRUE)
-```
-
-### Data
-
-```{r}
-vanc_preprocess %>%
-	as.data.frame %>%
-	select(-geometry) %>%
-	datatable
-```
-
-### Details
-
-```{r}
-print(vanc_preprocess)
-```
-
-### Files
-
-Save [vancouver-bikeways-preprocess-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-preprocess-v1.geojson) file:
-
-```{r}
 
 # Save geojson
 vanc_preprocess %>%
 	write_sf("../data/vancouver-bikeways-preprocess-v1.geojson", delete_dsn = TRUE)
-```
-
-Save [vancouver-bikeways-preprocess-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-preprocess-v1.csv) file:
-
-```{r}
 
 # Save csv
 # st_read("../data/vancouver-bikeways-preprocess-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
@@ -3195,6 +3197,28 @@ vanc_preprocess %>%
 		.before = geometry
 	) %>%
 	write_csv("../data/vancouver-bikeways-preprocess-v1.csv", na = "")
+
+# Display map
+tmap_mode("view")
+tm_shape(
+	vanc_preprocess %>% head(1000)) +
+	tm_lines(col = "verify_install_type", popup.vars = TRUE)
+
+```
+
+### Data
+
+```{r}
+vanc_preprocess %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable(filename = "vancouver-bikeways-preprocess-nonspatial-v1")
+```
+
+### Details
+
+```{r}
+print(vanc_preprocess)
 ```
 
 ## Calgary Preprocessed Data {.tabset}
@@ -3300,43 +3324,18 @@ calg_preprocess <- calg_raw %>%
 
 ### Map
 
+Full spatial data available at:
+
+* [calgary-bikeways-preprocess-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v1.geojson)
+* [calgary-bikeways-preprocess-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v1.csv)
+
 **Note**: Only the first 1000 records are shown as a sample.
 
 ```{r out.width = "100%"}
-tmap_mode("view")
-tm_shape(calg_preprocess %>% head(1000)) +
-	tm_lines(col = "verify_install_type", popup.vars = TRUE)
-```
-
-### Data
-
-```{r}
-calg_preprocess %>%
-	as.data.frame %>%
-	select(-geometry) %>%
-	datatable
-```
-
-### Details
-
-```{r}
-print(calg_preprocess)
-```
-
-### Files
-
-Save [calgary-bikeways-preprocess-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v1.geojson) file:
-
-```{r}
 
 # Save geojson
 calg_preprocess %>%
 	write_sf("../data/calgary-bikeways-preprocess-v1.geojson", delete_dsn = TRUE)
-```
-
-Save [calgary-bikeways-preprocess-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v1.csv) file:
-
-```{r}
 
 # Save csv
 # st_read("../data/calgary-bikeways-preprocess-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
@@ -3347,6 +3346,27 @@ calg_preprocess %>%
 		.before = geometry
 	) %>%
 	write_csv("../data/calgary-bikeways-preprocess-v1.csv", na = "")
+
+# Display map
+tmap_mode("view")
+tm_shape(calg_preprocess %>% head(1000)) +
+	tm_lines(col = "verify_install_type", popup.vars = TRUE)
+
+```
+
+### Data
+
+```{r}
+calg_preprocess %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable(filename = "calgary-bikeways-preprocess-nonspatial-v1")
+```
+
+### Details
+
+```{r}
+print(calg_preprocess)
 ```
 
 ## Toronto Preprocessed Data {.tabset}
@@ -3446,43 +3466,18 @@ toron_preprocess <- toron_raw %>%
 
 ### Map
 
+Full spatial data available at:
+
+* [toronto-bikeways-preprocess-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-preprocess-v1.geojson)
+* [toronto-bikeways-preprocess-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-preprocess-v1.csv)
+
 **Note**: Only the first 1000 records are shown as a sample.
 
 ```{r out.width = "100%"}
-tmap_mode("view")
-tm_shape(toron_preprocess %>% head(1000)) +
-	tm_lines(col = "verify_install_type", popup.vars = TRUE)
-```
-
-### Data
-
-```{r}
-toron_preprocess %>%
-	as.data.frame %>%
-	select(-geometry) %>%
-	datatable
-```
-
-### Details
-
-```{r}
-print(toron_preprocess)
-```
-
-### Files
-
-Save [toronto-bikeways-preprocess-v1.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-preprocess-v1.geojson) file:
-
-```{r}
 
 # Save geojson
 toron_preprocess %>%
 	write_sf("../data/toronto-bikeways-preprocess-v1.geojson", delete_dsn = TRUE)
-```
-
-Save [toronto-bikeways-preprocess-v1.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-preprocess-v1.csv) file:
-
-```{r}
 
 # Save csv
 # st_read("../data/toronto-bikeways-preprocess-v1.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
@@ -3493,6 +3488,27 @@ toron_preprocess %>%
 		.before = geometry
 	) %>%
 	write_csv("../data/toronto-bikeways-preprocess-v1.csv", na = "")
+
+# Display map
+tmap_mode("view")
+tm_shape(toron_preprocess %>% head(1000)) +
+	tm_lines(col = "verify_install_type", popup.vars = TRUE)
+
+```
+
+### Data
+
+```{r}
+toron_preprocess %>%
+	as.data.frame %>%
+	select(-geometry) %>%
+	datatable(filename = "toronto-bikeways-preprocess-nonspatial-v1")
+```
+
+### Details
+
+```{r}
+print(toron_preprocess)
 ```
 
 # Inclusion and Exclusion Criteria
@@ -3576,7 +3592,7 @@ tm_shape(vanc %>% head(1000)) +
 vanc %>%
 	as.data.frame %>%
 	select(-geometry) %>%
-	datatable
+	datatable(filename = "vancouver-bikeways-preprocess-filter-v1")
 ```
 
 ### Details
@@ -3607,7 +3623,7 @@ tm_shape(calg %>% head(1000)) +
 calg %>%
 	as.data.frame %>%
 	select(-geometry) %>%
-	datatable
+	datatable(filename = "calgary-bikeways-preprocess-filter-v1")
 ```
 
 ### Details
@@ -3638,7 +3654,7 @@ tm_shape(toron %>% head(1000)) +
 toron %>%
 	as.data.frame %>%
 	select(-geometry) %>%
-	datatable
+	datatable("filename = toronto-bikeways-preprocess-filter-v1")
 ```
 
 ### Details
@@ -3697,15 +3713,12 @@ fig1 <- list()
 fig1$plot <- diag_criteria(criteria_data)
 ```
 
-### Figure
+Figure files available at:
+
+* [manuscript/figures/fig-methods.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-methods.pdf)
+* [manuscript/figures/fig-methods.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-methods.png)
 
 ```{r}
-fig1$plot
-```
-
-### Files
-
-```{r}      
 
 # Save pdf
 fig1$plot %>%
@@ -3724,10 +3737,10 @@ fig1$plot %>%
     	"../manuscript/figures/fig-methods.png",
     	width = 1920
     )
-```
 
-* [manuscript/figures/fig-methods.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-methods.pdf)
-* [manuscript/figures/fig-methods.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-methods.png)
+# Display figure
+fig1$plot
+```
 
 ## Figure 2: Changes in dedicated cycling infrastructure between 2009 and 2022 for Vancouver, Calgary, and Toronto by infrastructure category. {.tabset}
 
@@ -3772,13 +3785,12 @@ fig2 <- plot_yearly_len_infra(
 
 ### Figure
 
+Figure files available at:
+
+* [manuscript/figures/fig-yearly-len.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-len.pdf)
+* [manuscript/figures/fig-yearly-len.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-len.png)
+
 ```{r fig.width = 8.5, fig.height = 12.5}
-fig2$plot
-```
-
-### Files
-
-```{r}
 
 # Save pdf
 ggsave(
@@ -3795,14 +3807,13 @@ ggsave(
 	width = 8.5,
 	height = 12
 )
+
+# Display figure
+fig2$plot
+
 ```
 
-* [manuscript/figures/fig-yearly-len.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-len.pdf)
-* [manuscript/figures/fig-yearly-len.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-len.png)
-
 ### Data
-
-* [data/plot/fig-yearly-len.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/fig-yearly-len.csv)
 
 ```{r}
 
@@ -3811,7 +3822,7 @@ write_csv(fig2$data, "../data/plot/fig-yearly-len.csv", na = "")
 
 # Display data
 fig2$data %>%
-	datatable
+	datatable(filename = "fig-yearly-len")
 
 ```
 
@@ -3847,13 +3858,12 @@ fig3 <- plot_yearly_change(
 
 ### Figure
 
+Figure files available at:
+
+* [manuscript/figures/fig-yearly-change.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-change.pdf)
+* [manuscript/figures/fig-yearly-change.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-change.png)
+
 ```{r fig.width = 8, fig.height = 12}
-fig3$plot
-```
-
-### Files
-
-```{r}
 
 # Save pdf
 ggsave(
@@ -3868,14 +3878,13 @@ ggsave(
 	fig3$plot,
 	height = 12
 )
+
+# Display figure
+fig3$plot
+
 ```
 
-* [manuscript/figures/fig-yearly-change.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-change.pdf)
-* [manuscript/figures/fig-yearly-change.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-yearly-change.png)
-
 ### Data
-
-* [data/plot/fig-yearly-change.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/fig-yearly-change.csv)
 
 ```{r}
 
@@ -3884,7 +3893,7 @@ write_csv(fig3$data, "../data/plot/fig-yearly-change.csv", na = "")
 
 # Display data
 fig3$data %>%
-	datatable
+	datatable(filename = "fig-yearly-change")
 
 ```
 
@@ -3898,15 +3907,12 @@ fig4 <- list()
 fig4$plot <- map_infra(map_data, scale_prop = 0.35)
 ```
 
-### Figure
+Figure files available at:
+
+* [manuscript/figures/fig-maps.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-maps.pdf)
+* [manuscript/figures/fig-maps.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-maps.png)
 
 ```{r fig.width=9, fig.height=11}
-fig4$plot %>% print
-```
-
-### Files
-
-```{r}
 
 # Save pdf
 ggsave(
@@ -3921,10 +3927,11 @@ ggsave(
 	fig4$plot,
 	height = 12
 )
-```
 
-* [manuscript/figures/fig-maps.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-maps.pdf)
-* [manuscript/figures/fig-maps.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/fig-maps.png)
+# Display figure
+fig4$plot %>% print
+
+```
 
 # Appendix 1 - Supplementary Results
 
@@ -3948,15 +3955,12 @@ sfig1$plot <- map_infra_detail(
 )
 ```
 
-### Figure
+Figure files available at:
+
+* [manuscript/figures/sfig-map-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-vanc.pdf)
+* [manuscript/figures/sfig-map-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-vanc.png)
 
 ```{r fig.width = 8, fig.height = 6}
-sfig1$plot %>% print
-```
-
-### Files
-
-```{r}
 
 # Save pdf
 ggsave(
@@ -3971,10 +3975,11 @@ ggsave(
 	sfig1$plot,
 	width = 11
 )
-```
 
-* [manuscript/figures/sfig-map-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-vanc.pdf)
-* [manuscript/figures/sfig-map-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-vanc.png)
+# Display figure
+sfig1$plot %>% print
+
+```
 
 ## Supplementary Figure 2: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2022 for the Municipality of Calgary, CA. {.tabset}
 
@@ -3996,15 +4001,12 @@ sfig2$plot <- map_infra_detail(
 )
 ```
 
-### Figure
+Figure files available at:
+
+* [manuscript/figures/sfig-map-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-calg.pdf)
+* [manuscript/figures/sfig-map-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-calg.png)
 
 ```{r fig.width = 8, fig.height = 6}
-sfig2$plot %>% print
-```
-
-### Files
-
-```{r}
 
 # Save pdf
 ggsave(
@@ -4019,10 +4021,11 @@ ggsave(
 	sfig2$plot,
 	width = 11
 )
-```
 
-* [manuscript/figures/sfig-map-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-calg.pdf)
-* [manuscript/figures/sfig-map-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-calg.png)
+# Display figure
+sfig2$plot %>% print
+
+```
 
 ## Supplementary Figure 3: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2022 for the Municipality of Toronto, CA. {.tabset}
 
@@ -4044,15 +4047,12 @@ sfig3$plot <- map_infra_detail(
 )
 ```
 
-### Figure
+Figure files available at:
+
+* [manuscript/figures/sfig-map-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-toron.pdf)
+* [manuscript/figures/sfig-map-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-toron.png)
 
 ```{r fig.width = 8, fig.height = 6}
-sfig3$plot %>% print
-```
-
-### Files
-
-```{r}
 
 # Save pdf
 ggsave(
@@ -4067,10 +4067,11 @@ ggsave(
 	sfig3$plot,
 	width = 11
 )
-```
 
-* [manuscript/figures/sfig-map-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-toron.pdf)
-* [manuscript/figures/sfig-map-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-map-toron.png)
+# Display figure
+sfig3$plot %>% print
+
+```
 
 ## Supplementary Table 1: Total Length of Dedicated On-Street Cycling Infrastructure between 2009 and 2022, for Vancouver, Calgary, and Toronto (Canada). {.tabset}
 
@@ -4170,27 +4171,29 @@ stab1$table <- stab1$data %>%
 
 ### Table
 
-```{r}
-stab1$table
-```
-
-### Files
-
-```{r}
-if (!file.exists("../manuscript/figures/tab-yearly-len.pdf")) {
-	save_kable(stab1$table, "../manuscript/figures/tab-yearly-len.pdf")
-}
-if (!file.exists("../manuscript/figures/tab-yearly-len.png")) {
-	save_kable(stab1$table, "../manuscript/figures/tab-yearly-len.png", zoom = 2)
-}
-```
+Table files available at:
 
 * [manuscript/figures/tab-yearly-len.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-yearly-len.pdf)
 * [manuscript/figures/tab-yearly-len.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-yearly-len.png)
 
-### Data
+```{r}
 
-* [data/plot/tab-yearly-len.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/tab-yearly-len.csv)
+# Save pdf
+if (!file.exists("../manuscript/figures/tab-yearly-len.pdf")) {
+	save_kable(stab1$table, "../manuscript/figures/tab-yearly-len.pdf")
+}
+
+# Save png
+if (!file.exists("../manuscript/figures/tab-yearly-len.png")) {
+	save_kable(stab1$table, "../manuscript/figures/tab-yearly-len.png", zoom = 2)
+}
+
+# Display table
+stab1$table
+
+```
+
+### Data
 
 ```{r}
 
@@ -4199,7 +4202,7 @@ write_csv(stab1$data, "../data/plot/tab-yearly-len.csv", na = "")
 
 # Display data
 stab1$data %>%
-	datatable
+	datatable(filename = "tab-yearly-len")
 
 ```
 
@@ -4217,13 +4220,12 @@ sfig4 <- plot_yearly_len_road(
 
 ### Figure
 
+Figure files available at:
+
+* [manuscript/figures/sfig-change-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-vanc.pdf)
+* [manuscript/figures/sfig-change-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-vanc.png)
+
 ```{r fig.width=18, fig.height=10}
-sfig4$plot
-```
-
-### Files
-
-```{r}
 
 # Save pdf
 ggsave(
@@ -4238,14 +4240,13 @@ ggsave(
 	sfig4$plot,
 	width = 11
 )
+
+# Display figure
+sfig4$plot
+
 ```
 
-* [manuscript/figures/sfig-change-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-vanc.pdf)
-* [manuscript/figures/sfig-change-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-vanc.png)
-
 ### Data
-
-* [data/plot/sfig-change-vanc.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/sfig-change-vanc.csv)
 
 ```{r}
 
@@ -4254,7 +4255,7 @@ write_csv(sfig4$data, "../data/plot/sfig-change-vanc.csv", na = "")
 
 # Display data
 sfig4$data %>%
-	datatable
+	datatable(filename = "sfig-change-vanc")
 
 ```
 
@@ -4272,13 +4273,12 @@ sfig5 <- plot_yearly_len_road(
 
 ### Figure
 
+Figure files available at:
+
+* [manuscript/figures/sfig-change-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-calg.pdf)
+* [manuscript/figures/sfig-change-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-calg.png)
+
 ```{r fig.width=18, fig.height=10}
-sfig5$plot
-```
-
-### Files
-
-```{r}
 
 # Save pdf
 ggsave(
@@ -4293,14 +4293,13 @@ ggsave(
 	sfig5$plot,
 	width = 11
 )
+
+# Display figure
+sfig5$plot
+
 ```
 
-* [manuscript/figures/sfig-change-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-calg.pdf)
-* [manuscript/figures/sfig-change-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-calg.png)
-
 ### Data
-
-* [data/plot/sfig-change-calg.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/sfig-change-calg.csv)
 
 ```{r}
 
@@ -4309,7 +4308,7 @@ write_csv(sfig5$data, "../data/plot/sfig-change-calg.csv", na = "")
 
 # Display data
 sfig5$data %>%
-	datatable
+	datatable(filename = "sfig-change-calg")
 
 ```
 
@@ -4327,13 +4326,12 @@ sfig6 <- plot_yearly_len_road(
 
 ### Figure
 
+Figure files available at:
+
+* [manuscript/figures/sfig-change-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-toron.pdf)
+* [manuscript/figures/sfig-change-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-toron.png)
+
 ```{r fig.width=18, fig.height=10}
-sfig6$plot
-```
-
-### Files
-
-```{r}
 
 # Save pdf
 ggsave(
@@ -4348,14 +4346,13 @@ ggsave(
 	sfig6$plot,
 	width = 11
 )
+
+# Display figure
+sfig6$plot
+
 ```
 
-* [manuscript/figures/sfig-change-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-toron.pdf)
-* [manuscript/figures/sfig-change-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-toron.png)
-
 ### Data
-
-* [data/plot/sfig-change-toron.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/sfig-change-toron.csv)
 
 ```{r}
 
@@ -4364,7 +4361,7 @@ write_csv(sfig6$data, "../data/plot/sfig-change-toron.csv", na = "")
 
 # Display data
 sfig6$data %>%
-	datatable
+	datatable(filename = "sfig-change-toron")
 
 ```
 
@@ -4397,13 +4394,12 @@ Any data where a city provided and verified installation years were missing or t
 
 ### Figure
 
+Figure files available at:
+
+* [manuscript/figures/sfig-compare-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-vanc.pdf)
+* [manuscript/figures/sfig-compare-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-vanc.png)
+
 ```{r fig.width = 8, fig.height = 5}
-sfig7$plot
-```
-
-### Files
-
-```{r}
 
 # Save pdf
 ggsave(
@@ -4418,14 +4414,13 @@ ggsave(
 	sfig7$plot,
 	width = 11
 )
+
+# Display figure
+sfig7$plot
+
 ```
 
-* [manuscript/figures/sfig-compare-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-vanc.pdf)
-* [manuscript/figures/sfig-compare-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-vanc.png)
-
 ### Data
-
-* [data/plot/sfig-compare-vanc.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/sfig-compare-vanc.csv)
 
 ```{r}
 
@@ -4434,7 +4429,7 @@ write_csv(sfig7$data, "../data/plot/sfig-compare-vanc.csv", na = "")
 
 # Display data
 sfig7$data %>%
-	datatable
+	datatable(filename = "sfig-compare-vanc")
 
 ```
 
@@ -4460,19 +4455,19 @@ sfig8_pm1 <- sfig8$data %>% # perc plus/minus 1
 	pull(n_perc) %>%
 	sum %>%
 	round(1)
+
 ```
 
 Any data where a city provided and verified installation years were missing or the verified year occurred earlier or equal to the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig8_n` segments. The graph shows that `r sfig8_0`% of the included segments had the correct installation year as per the city's data, and `r sfig8_pm1`% were accurate within a range of ±1 year.
 
 ### Figure
 
+Figure files available at:
+
+* [manuscript/figures/sfig-compare-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-calg.pdf)
+* [manuscript/figures/sfig-compare-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-calg.png)
+
 ```{r fig.width = 8, fig.height = 5}
-sfig8$plot
-```
-
-### Files
-
-```{r}
 
 # Save pdf
 ggsave(
@@ -4487,14 +4482,13 @@ ggsave(
 	sfig8$plot,
 	width = 11
 )
+
+# Display figure
+sfig8$plot
+
 ```
 
-* [manuscript/figures/sfig-compare-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-calg.pdf)
-* [manuscript/figures/sfig-compare-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-calg.png)
-
 ### Data
-
-* [data/plot/sfig-compare-calg.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/sfig-compare-calg.csv)
 
 ```{r}
 
@@ -4503,7 +4497,7 @@ write_csv(sfig8$data, "../data/plot/sfig-compare-calg.csv", na = "")
 
 # Display data
 sfig8$data %>%
-	datatable
+	datatable(filename = "sfig-compare-calg")
 
 ```
 
@@ -4529,19 +4523,19 @@ sfig9_pm1 <- sfig9$data %>% # perc plus/minus 1
 	pull(n_perc) %>%
 	sum %>%
 	round(1)
+
 ```
 
 Any data where a city provided and verified installation years were missing or the verified year occurred earlier or equal to the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig9_n` segments. The graph shows that `r sfig9_0`% of the included segments had the correct installation year as per the city's data, and `r sfig9_pm1`% were accurate within a range of ±1 year.
 
 ### Figure
 
+Figure files available at:
+
+* [manuscript/figures/sfig-compare-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-toron.pdf)
+* [manuscript/figures/sfig-compare-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-toron.png)
+
 ```{r fig.width = 8, fig.height = 5}
-sfig9$plot
-```
-
-### Files
-
-```{r}
 
 # Save pdf
 ggsave(
@@ -4556,14 +4550,13 @@ ggsave(
 	sfig9$plot,
 	width = 11
 )
+
+# Display figure
+sfig9$plot
+
 ```
 
-* [manuscript/figures/sfig-compare-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-toron.pdf)
-* [manuscript/figures/sfig-compare-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-toron.png)
-
 ### Data
-
-* [data/plot/sfig-compare-toron.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/plot/sfig-compare-toron.csv)
 
 ```{r}
 
@@ -4572,7 +4565,7 @@ write_csv(sfig9$data, "../data/plot/sfig-compare-toron.csv", na = "")
 
 # Display data
 sfig9$data %>%
-	datatable
+	datatable(filename = "sfig-compare-toron")
 
 ```
 
@@ -4585,18 +4578,12 @@ sfig10 <- list()
 sfig10$plot <- diag_criteria_details(criteria_data, "vancouver")
 ```
 
-### Figure
-
-```{r}
-sfig10$plot
-```
-
-### Files
+Figure files available at:
 
 * [manuscript/figures/sfig-criteria-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-vanc.pdf)
 * [manuscript/figures/sfig-criteria-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-vanc.png)
 
-```{r}      
+```{r}
 
 # Save pdf
 sfig10$plot %>%
@@ -4615,6 +4602,10 @@ sfig10$plot %>%
     	"../manuscript/figures/sfig-criteria-vanc.png",
     	width = 1080
     )
+
+# Display figure
+sfig10$plot
+
 ```
 
 ## Segment Inclusion Criteria for Calgary {.tabset}
@@ -4624,18 +4615,12 @@ sfig11 <- list()
 sfig11$plot <- diag_criteria_details(criteria_data, "calgary")
 ```
 
-### Figure
-
-```{r}
-sfig11$plot
-```
-
-### Files
+Figure files available at:
 
 * [manuscript/figures/sfig-criteria-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-calg.pdf)
 * [manuscript/figures/sfig-criteria-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-calg.png)
 
-```{r}      
+```{r}
 
 # Save pdf
 sfig11$plot %>%
@@ -4654,6 +4639,10 @@ sfig11$plot %>%
     	"../manuscript/figures/sfig-criteria-calg.png",
     	width = 1080
     )
+
+# Display figure
+sfig11$plot
+
 ```
 
 ## Segment Inclusion Criteria for Toronto {.tabset}
@@ -4663,18 +4652,12 @@ sfig12 <- list()
 sfig12$plot <- diag_criteria_details(criteria_data, "toronto")
 ```
 
-### Figure
-
-```{r}
-sfig12$plot
-```
-
-### Files
+Figure files available at:
 
 * [manuscript/figures/sfig-criteria-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-toron.pdf)
 * [manuscript/figures/sfig-criteria-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-toron.png)
 
-```{r}      
+```{r}
 
 # Save pdf
 sfig12$plot %>%
@@ -4693,6 +4676,10 @@ sfig12$plot %>%
     	"../manuscript/figures/sfig-criteria-toron.png",
     	width = 1080
     )
+
+# Display figure
+sfig12$plot
+
 ```
 
 # Contributions
