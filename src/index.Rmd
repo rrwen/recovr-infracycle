@@ -2897,7 +2897,22 @@ Load raw data provided by Konrad Samsel.
 ## Vancouver Raw Data {.tabset}
 
 ```{r}
-vanc_raw <- read_sf("../data/raw/vancouver/Vancouver AS KS Mar26.shp")
+vanc_raw <- read_sf("../data/raw/vancouver/Vancouver AS KS Mar26.shp") %>%
+	left_join( # Add corrections for verified bikeways
+		read_csv("../data/raw/check-verify-filled-2024-09-27.csv") %>%
+			filter(city == "vancouver") %>%
+			mutate(id = as.character(id)),
+		by = join_by(object_id == id),
+		keep = T
+	) %>%
+	mutate( # Correct for missing verified bikeways
+		FROM_STR = if_else(!is.na(id), street_from, FROM_STR),
+		TO_STR = if_else(!is.na(id), street_to, TO_STR),
+		INST_YR = if_else(!is.na(id), verify_install_year, INST_YR),
+		INST_TMIN = if_else(!is.na(id), verify_install_type, INST_TMIN),
+		INST_COMM = if_else(!is.na(id), verify_install_comment, INST_COMM),
+		EXCL_REAS = if_else(!is.na(id), verify_misclass, EXCL_REAS)
+	)
 ```
 
 ### Map
@@ -2950,7 +2965,22 @@ print(vanc_raw)
 ## Calgary Raw Data {.tabset}
 
 ```{r}
-calg_raw <- read_sf("../data/raw/calgary/Calgary Export.shp")
+calg_raw <- read_sf("../data/raw/calgary/Calgary Export.shp") %>%
+	left_join( # Add corrections for verified bikeways
+		read_csv("../data/raw/check-verify-filled-2024-09-27.csv") %>%
+			filter(city == "calgary") %>%
+			mutate(id = as.double(id)),
+		by = join_by(shape_id == id),
+		keep = T
+	) %>%
+	mutate( # Correct for missing verified bikeways
+		FROM_STR = if_else(!is.na(id), street_from, FROM_STR),
+		TO_STR = if_else(!is.na(id), street_to, TO_STR),
+		INST_YR = if_else(!is.na(id), verify_install_year, INST_YR),
+		INST_TMIN = if_else(!is.na(id), verify_install_type, INST_TMIN),
+		INST_COMM = if_else(!is.na(id), verify_install_comment, INST_COMM),
+		EXCL_REAS = if_else(!is.na(id), verify_misclass, EXCL_REAS)
+	)
 ```
 
 ### Map
