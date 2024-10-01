@@ -1,88 +1,88 @@
 title,year,city,adj_len_norm,change
-Total On-Street Cycling Infrastructure,2009,Calgary,0.7238597647684406,
+Total On-Street Cycling Infrastructure,2009,Calgary,0.7290444506625207,
 Total On-Street Cycling Infrastructure,2009,Toronto,11.202909545832185,
 Total On-Street Cycling Infrastructure,2009,Vancouver,12.580541674471771,
-Total On-Street Cycling Infrastructure,2010,Calgary,1.3083467564816411,0.5844869917132005
+Total On-Street Cycling Infrastructure,2010,Calgary,1.3135314423757214,0.5844869917132007
 Total On-Street Cycling Infrastructure,2010,Toronto,12.026710411990035,0.8238008661578498
 Total On-Street Cycling Infrastructure,2010,Vancouver,14.538354042051505,1.9578123675797343
-Total On-Street Cycling Infrastructure,2011,Calgary,2.3081986782483135,0.9998519217666724
+Total On-Street Cycling Infrastructure,2011,Calgary,2.3133833641423935,0.9998519217666721
 Total On-Street Cycling Infrastructure,2011,Toronto,12.418272740465582,0.3915623284755476
 Total On-Street Cycling Infrastructure,2011,Vancouver,18.080348903053913,3.541994861002408
-Total On-Street Cycling Infrastructure,2012,Calgary,2.991025335526282,0.6828266572779684
+Total On-Street Cycling Infrastructure,2012,Calgary,2.9962100214203615,0.682826657277968
 Total On-Street Cycling Infrastructure,2012,Toronto,12.552681938708904,0.13440919824332198
 Total On-Street Cycling Infrastructure,2012,Vancouver,24.515235983791165,6.434887080737251
-Total On-Street Cycling Infrastructure,2013,Calgary,3.387098909337633,0.3960735738113512
+Total On-Street Cycling Infrastructure,2013,Calgary,3.3922835952317136,0.3960735738113521
 Total On-Street Cycling Infrastructure,2013,Toronto,12.99827911602402,0.4455971773151166
 Total On-Street Cycling Infrastructure,2013,Vancouver,31.667705398242507,7.1524694144513425
-Total On-Street Cycling Infrastructure,2014,Calgary,4.506536333857504,1.1194374245198708
+Total On-Street Cycling Infrastructure,2014,Calgary,4.511721019751584,1.1194374245198704
 Total On-Street Cycling Infrastructure,2014,Toronto,14.658224369034288,1.6599452530102674
 Total On-Street Cycling Infrastructure,2014,Vancouver,33.43781272445686,1.7701073262143545
-Total On-Street Cycling Infrastructure,2015,Calgary,5.201267866636698,0.6947315327791941
+Total On-Street Cycling Infrastructure,2015,Calgary,5.206452552530778,0.6947315327791941
 Total On-Street Cycling Infrastructure,2015,Toronto,16.542787305794025,1.8845629367597372
 Total On-Street Cycling Infrastructure,2015,Vancouver,34.764650920772866,1.3268381963160039
-Total On-Street Cycling Infrastructure,2016,Calgary,6.06658432129444,0.8653164546577417
+Total On-Street Cycling Infrastructure,2016,Calgary,6.073466556892258,0.8670140043614802
 Total On-Street Cycling Infrastructure,2016,Toronto,17.592208213717477,1.0494209079234516
 Total On-Street Cycling Infrastructure,2016,Vancouver,35.71584242088444,0.9511915001115767
-Total On-Street Cycling Infrastructure,2017,Calgary,7.270227606049227,1.2036432847547873
+Total On-Street Cycling Infrastructure,2017,Calgary,7.277109841647046,1.2036432847547873
 Total On-Street Cycling Infrastructure,2017,Toronto,19.085095770265607,1.4928875565481299
 Total On-Street Cycling Infrastructure,2017,Vancouver,38.39381273480778,2.677970313923339
-Total On-Street Cycling Infrastructure,2018,Calgary,7.891491705296159,0.6212640992469316
+Total On-Street Cycling Infrastructure,2018,Calgary,7.898373940893979,0.6212640992469334
 Total On-Street Cycling Infrastructure,2018,Toronto,20.7335744005315,1.6484786302658918
 Total On-Street Cycling Infrastructure,2018,Vancouver,41.086992142124295,2.6931794073165136
-Total On-Street Cycling Infrastructure,2019,Calgary,8.128110979921212,0.2366192746250535
+Total On-Street Cycling Infrastructure,2019,Calgary,8.134993215519032,0.2366192746250526
 Total On-Street Cycling Infrastructure,2019,Toronto,21.269385234667958,0.5358108341364591
 Total On-Street Cycling Infrastructure,2019,Vancouver,42.10268439038126,1.0156922482569684
-Total On-Street Cycling Infrastructure,2020,Calgary,8.865565624932715,0.7374546450115034
+Total On-Street Cycling Infrastructure,2020,Calgary,8.872447860530537,0.7374546450115051
 Total On-Street Cycling Infrastructure,2020,Toronto,27.86386442988727,6.594479195219311
 Total On-Street Cycling Infrastructure,2020,Vancouver,44.43846053961265,2.3357761492313855
-Total On-Street Cycling Infrastructure,2021,Calgary,10.543325796712343,1.677760171779628
+Total On-Street Cycling Infrastructure,2021,Calgary,10.550208032310161,1.6777601717796244
 Total On-Street Cycling Infrastructure,2021,Toronto,30.834086064257047,2.9702216343697785
 Total On-Street Cycling Infrastructure,2021,Vancouver,46.503242299553165,2.064781759940516
-Total On-Street Cycling Infrastructure,2022,Calgary,10.991026563078256,0.4477007663659123
+Total On-Street Cycling Infrastructure,2022,Calgary,10.997908798676074,0.4477007663659123
 Total On-Street Cycling Infrastructure,2022,Toronto,31.046816249255663,0.21273018499861607
-Total On-Street Cycling Infrastructure,2022,Vancouver,46.55009976080923,0.04685746125606727
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2009,Calgary,0.7238597647684406,
+Total On-Street Cycling Infrastructure,2022,Vancouver,46.7726080702664,0.269365770713236
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2009,Calgary,0.7290444506625207,
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2009,Toronto,11.202909545832185,
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2009,Vancouver,4.669528581926339,
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2010,Calgary,1.3083467564816411,0.5844869917132005
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2010,Calgary,1.3135314423757214,0.5844869917132007
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2010,Toronto,12.026710411990035,0.8238008661578498
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2010,Vancouver,6.0527266898282,1.383198107901861
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2011,Calgary,2.3081986782483135,0.9998519217666724
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2011,Calgary,2.3133833641423935,0.9998519217666721
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2011,Toronto,12.418272740465582,0.3915623284755476
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2011,Vancouver,6.217514683641379,0.16478799381317888
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2012,Calgary,2.991025335526282,0.6828266572779684
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2012,Calgary,2.9962100214203615,0.682826657277968
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2012,Toronto,12.552681938708904,0.13440919824332198
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2012,Vancouver,6.7765625821964885,0.55904789855511
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2013,Calgary,3.387098909337633,0.3960735738113512
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2013,Calgary,3.3922835952317136,0.3960735738113521
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2013,Toronto,12.99827911602402,0.4455971773151166
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2013,Vancouver,7.5073923689192155,0.7308297867227269
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2014,Calgary,4.506536333857504,1.1194374245198708
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2014,Calgary,4.511721019751584,1.1194374245198704
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2014,Toronto,14.658224369034288,1.6599452530102674
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2014,Vancouver,8.195479674023016,0.6880873051038003
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2015,Calgary,5.201267866636698,0.6947315327791941
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2015,Calgary,5.206452552530778,0.6947315327791941
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2015,Toronto,16.542787305794025,1.8845629367597372
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2015,Vancouver,9.421263374034371,1.2257837000113554
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2016,Calgary,6.06658432129444,0.8653164546577417
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2016,Calgary,6.073466556892258,0.8670140043614802
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2016,Toronto,17.592208213717477,1.0494209079234516
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2016,Vancouver,10.37245487414595,0.9511915001115785
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2017,Calgary,7.270227606049227,1.2036432847547873
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2017,Calgary,7.277109841647046,1.2036432847547873
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2017,Toronto,19.085095770265607,1.4928875565481299
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2017,Vancouver,11.11073935928979,0.7382844851438399
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2018,Calgary,7.891491705296159,0.6212640992469316
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2018,Calgary,7.898373940893979,0.6212640992469334
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2018,Toronto,20.7335744005315,1.6484786302658918
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2018,Vancouver,12.325469479843745,1.2147301205539556
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2019,Calgary,8.128110979921212,0.2366192746250535
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2019,Calgary,8.134993215519032,0.2366192746250526
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2019,Toronto,21.269385234667958,0.5358108341364591
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2019,Vancouver,12.558578878128634,0.23310939828488841
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2020,Calgary,8.865565624932715,0.7374546450115034
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2020,Calgary,8.872447860530537,0.7374546450115051
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2020,Toronto,27.86386442988727,6.594479195219311
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2020,Vancouver,13.96579401896119,1.407215140832557
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2021,Calgary,10.543325796712343,1.677760171779628
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2021,Calgary,10.550208032310161,1.6777601717796244
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2021,Toronto,30.834086064257047,2.9702216343697785
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2021,Vancouver,14.999068914053934,1.0332748950927435
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2022,Calgary,10.991026563078256,0.4477007663659123
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2022,Calgary,10.997908798676074,0.4477007663659123
 Total On-Street Cycling Infrastructure (without Local Street Bikeways),2022,Toronto,31.046816249255663,0.21273018499861607
-Total On-Street Cycling Infrastructure (without Local Street Bikeways),2022,Vancouver,15.045926375310003,0.046857461256069044
+Total On-Street Cycling Infrastructure (without Local Street Bikeways),2022,Vancouver,15.268434684767165,0.26936577071323065
 Cycle Tracks,2009,Calgary,0,
 Cycle Tracks,2009,Toronto,0,
 Cycle Tracks,2009,Vancouver,0.4837885536072071,
@@ -125,45 +125,45 @@ Cycle Tracks,2021,Vancouver,6.081570684518628,1.3613087136421713
 Cycle Tracks,2022,Calgary,3.3955475270242523,0.4319990354203358
 Cycle Tracks,2022,Toronto,10.670460276220934,0.2535510076695946
 Cycle Tracks,2022,Vancouver,6.128428145774696,0.046857461256068156
-Painted and Buffered Lanes,2009,Calgary,0.7023192262102692,
+Painted and Buffered Lanes,2009,Calgary,0.7075039121043493,
 Painted and Buffered Lanes,2009,Toronto,11.037923402461018,
 Painted and Buffered Lanes,2009,Vancouver,4.013566851004857,
-Painted and Buffered Lanes,2010,Calgary,1.2868062179234698,0.5844869917132006
+Painted and Buffered Lanes,2010,Calgary,1.2919909038175499,0.5844869917132006
 Painted and Buffered Lanes,2010,Toronto,11.86172426861887,0.8238008661578515
 Painted and Buffered Lanes,2010,Vancouver,5.133654087994289,1.1200872369894324
-Painted and Buffered Lanes,2011,Calgary,2.2245948258937944,0.9377886079703246
+Painted and Buffered Lanes,2011,Calgary,2.229779511787874,0.9377886079703242
 Painted and Buffered Lanes,2011,Toronto,12.234561880186835,0.3728376115679648
 Painted and Buffered Lanes,2011,Vancouver,5.158964009327489,0.02530992133319998
-Painted and Buffered Lanes,2012,Calgary,2.819194190651381,0.5945993647575865
+Painted and Buffered Lanes,2012,Calgary,2.824378876545461,0.5945993647575869
 Painted and Buffered Lanes,2012,Toronto,12.368971078430157,0.13440919824332198
 Painted and Buffered Lanes,2012,Vancouver,5.644916375593534,0.4859523662660452
-Painted and Buffered Lanes,2013,Calgary,3.126601916839089,0.3074077261877082
+Painted and Buffered Lanes,2013,Calgary,3.131786602733169,0.3074077261877082
 Painted and Buffered Lanes,2013,Toronto,12.3580350349839,-0.010936043446257315
 Painted and Buffered Lanes,2013,Vancouver,6.058719708655109,0.41380333306157446
-Painted and Buffered Lanes,2014,Calgary,4.176857261597381,1.050255344758292
+Painted and Buffered Lanes,2014,Calgary,4.182041947491461,1.050255344758292
 Painted and Buffered Lanes,2014,Toronto,13.285248577281024,0.9272135422971246
 Painted and Buffered Lanes,2014,Vancouver,6.058719708655109,0
-Painted and Buffered Lanes,2015,Calgary,4.214110794787201,0.037253533189820054
+Painted and Buffered Lanes,2015,Calgary,4.219295480681281,0.037253533189820054
 Painted and Buffered Lanes,2015,Toronto,14.177920621684402,0.892672044403378
 Painted and Buffered Lanes,2015,Vancouver,7.018023361787874,0.959303653132765
-Painted and Buffered Lanes,2016,Calgary,4.918985199287516,0.7048744045003152
+Painted and Buffered Lanes,2016,Calgary,4.925867434885335,0.7065719542040538
 Painted and Buffered Lanes,2016,Toronto,14.712081884185395,0.5341612625009926
 Painted and Buffered Lanes,2016,Vancouver,7.08261926377543,0.06459590198755638
-Painted and Buffered Lanes,2017,Calgary,6.104032594669479,1.1850473953819627
+Painted and Buffered Lanes,2017,Calgary,6.110914830267298,1.1850473953819627
 Painted and Buffered Lanes,2017,Toronto,15.794346227451864,1.0822643432664698
 Painted and Buffered Lanes,2017,Vancouver,7.5074037273090575,0.4247844635336273
-Painted and Buffered Lanes,2018,Calgary,6.725296693916412,0.6212640992469325
+Painted and Buffered Lanes,2018,Calgary,6.73217892951423,0.6212640992469325
 Painted and Buffered Lanes,2018,Toronto,16.87355591124812,1.079209683796254
 Painted and Buffered Lanes,2018,Vancouver,8.13588593602043,0.6284822087113717
-Painted and Buffered Lanes,2019,Calgary,6.8033196885325395,0.07802299461612794
+Painted and Buffered Lanes,2019,Calgary,6.810201924130357,0.07802299461612705
 Painted and Buffered Lanes,2019,Toronto,17.22781769098809,0.3542617797399714
 Painted and Buffered Lanes,2019,Vancouver,8.368995334305318,0.23310939828488841
-Painted and Buffered Lanes,2020,Calgary,6.86354521160397,0.06022552307143059
+Painted and Buffered Lanes,2020,Calgary,6.870427447201788,0.06022552307143059
 Painted and Buffered Lanes,2020,Toronto,19.444375133326925,2.2165574423388357
 Painted and Buffered Lanes,2020,Vancouver,8.97244264197986,0.6034473076745428
-Painted and Buffered Lanes,2021,Calgary,7.385069112824764,0.5215239012207942
+Painted and Buffered Lanes,2021,Calgary,7.391951348422583,0.5215239012207951
 Painted and Buffered Lanes,2021,Toronto,20.417176795705707,0.9728016623787816
 Painted and Buffered Lanes,2021,Vancouver,8.666708752141988,-0.30573388983787275
-Painted and Buffered Lanes,2022,Calgary,7.347440980865427,-0.03762813195933745
+Painted and Buffered Lanes,2022,Calgary,7.354323216463245,-0.03762813195933834
 Painted and Buffered Lanes,2022,Toronto,20.37635597303473,-0.04082082267097675
-Painted and Buffered Lanes,2022,Vancouver,8.666708752141988,0
+Painted and Buffered Lanes,2022,Vancouver,8.88921706159915,0.2225083094571616

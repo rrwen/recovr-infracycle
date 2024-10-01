@@ -2901,18 +2901,20 @@ vanc_raw <- read_sf("../data/raw/vancouver/Vancouver AS KS Mar26.shp") %>%
 	left_join( # Add corrections for verified bikeways
 		read_csv("../data/raw/check-verify-filled-2024-09-27.csv") %>%
 			filter(city == "vancouver") %>%
-			mutate(id = as.character(id)),
-		by = join_by(object_id == id),
+			mutate(id = as.character(id)) %>%
+			rename_with(~ paste0("_", .x)),
+		by = join_by(object_id == `_id`),
 		keep = T
 	) %>%
 	mutate( # Correct for missing verified bikeways
-		FROM_STR = if_else(!is.na(id), street_from, FROM_STR),
-		TO_STR = if_else(!is.na(id), street_to, TO_STR),
-		INST_YR = if_else(!is.na(id), verify_install_year, INST_YR),
-		INST_TMIN = if_else(!is.na(id), verify_install_type, INST_TMIN),
-		INST_COMM = if_else(!is.na(id), verify_install_comment, INST_COMM),
-		EXCL_REAS = if_else(!is.na(id), verify_misclass, EXCL_REAS)
-	)
+		FROM_STR = if_else(!is.na(`_id`), `_street_from`, FROM_STR),
+		TO_STR = if_else(!is.na(`_id`), `_street_to`, TO_STR),
+		INST_YR = if_else(!is.na(`_id`), `_verify_install_year`, INST_YR),
+		INST_TMIN = if_else(!is.na(`_id`), `_verify_install_type`, INST_TMIN),
+		INST_COMM = if_else(!is.na(`_id`), `_verify_install_comment`, INST_COMM),
+		EXCL_REAS = if_else(!is.na(`_id`), `_verify_misclass`, EXCL_REAS)
+	) %>%
+	select(-starts_with("_"))
 ```
 
 ### Map
@@ -2969,18 +2971,22 @@ calg_raw <- read_sf("../data/raw/calgary/Calgary Export.shp") %>%
 	left_join( # Add corrections for verified bikeways
 		read_csv("../data/raw/check-verify-filled-2024-09-27.csv") %>%
 			filter(city == "calgary") %>%
-			mutate(id = as.double(id)),
-		by = join_by(shape_id == id),
+			mutate(id = as.double(id)) %>%
+			rename_with(~ paste0("_", .x)),
+		by = join_by(shape_id == `_id`),
 		keep = T
 	) %>%
 	mutate( # Correct for missing verified bikeways
-		FROM_STR = if_else(!is.na(id), street_from, FROM_STR),
-		TO_STR = if_else(!is.na(id), street_to, TO_STR),
-		INST_YR = if_else(!is.na(id), verify_install_year, INST_YR),
-		INST_TMIN = if_else(!is.na(id), verify_install_type, INST_TMIN),
-		INST_COMM = if_else(!is.na(id), verify_install_comment, INST_COMM),
-		EXCL_REAS = if_else(!is.na(id), verify_misclass, EXCL_REAS)
-	)
+		CENTL_CLAS = if_else(!is.na(`_id`), `_road_type`, CENTL_CLAS),
+		STREET = if_else(!is.na(`_id`), `_street`, STREET),
+		STREET_FR0 = if_else(!is.na(`_id`), `_street_from`, STREET_FR0),
+		STREET_TO = if_else(!is.na(`_id`), `_street_to`, STREET_TO),
+		INST_YR = if_else(!is.na(`_id`), `_verify_install_year`, INST_YR),
+		INST_TMIN = if_else(!is.na(`_id`), `_verify_install_type`, INST_TMIN),
+		INST_COMM = if_else(!is.na(`_id`), `_verify_install_comment`, INST_COMM),
+		EXCL_REAS = if_else(!is.na(`_id`), `_verify_misclass`, EXCL_REAS)
+	) %>%
+	select(-starts_with("_"))
 ```
 
 ### Map
