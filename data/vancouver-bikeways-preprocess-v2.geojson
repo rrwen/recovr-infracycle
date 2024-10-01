@@ -1,6 +1,6 @@
 {
 "type": "FeatureCollection",
-"name": "vancouver-bikeways-preprocess-v1",
+"name": "vancouver-bikeways-preprocess-v2",
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
 "features": [
 { "type": "Feature", "properties": { "id": "294725", "street": "Highbury", "status": "Active", "road_type": "Residential", "road_type_recode": "Local", "install_year": 2006.0, "install_type": "Local Street", "verify_install_year": 2006.0, "verify_install_date": null, "verify_install_type": "LSB", "verify_install_comment": null, "verify_upgrade1_year": null, "verify_upgrade1_date": null, "verify_upgrade1_type": null, "verify_upgrade1_comment": null, "verify_upgrade2_year": null, "verify_upgrade2_date": null, "verify_upgrade2_type": null, "verify_upgrade2_comment": null, "verify_misclass": null, "no_verify_install_type": "Local Street", "geometry_len_km": 0.095445467542530568 }, "geometry": { "type": "LineString", "coordinates": [ [ -123.187618028237011, 49.268655294830772 ], [ -123.187618047361966, 49.268655263316504 ], [ -123.187651478642479, 49.267797241111786 ], [ -123.187651479914706, 49.267797214124123 ] ] } },
