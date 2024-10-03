@@ -4267,14 +4267,16 @@ Figure files available at:
 ggsave(
 	"../manuscript/figures/sfig-change-vanc.pdf",
 	sfig4$plot,
-	width = 11
+	height = 6,
+	width = 15
 )
 
 # Save png
 ggsave(
 	"../manuscript/figures/sfig-change-vanc.png",
 	sfig4$plot,
-	width = 11
+	height = 6,
+	width = 15
 )
 
 # Display figure
@@ -4320,14 +4322,16 @@ Figure files available at:
 ggsave(
 	"../manuscript/figures/sfig-change-calg.pdf",
 	sfig5$plot,
-	width = 11
+	height = 6,
+	width = 15
 )
 
 # Save png
 ggsave(
 	"../manuscript/figures/sfig-change-calg.png",
 	sfig5$plot,
-	width = 11
+	height = 6,
+	width = 15
 )
 
 # Display figure
@@ -4373,14 +4377,16 @@ Figure files available at:
 ggsave(
 	"../manuscript/figures/sfig-change-toron.pdf",
 	sfig6$plot,
-	width = 11
+	height = 6,
+	width = 15
 )
 
 # Save png
 ggsave(
 	"../manuscript/figures/sfig-change-toron.png",
 	sfig6$plot,
-	width = 11
+	height = 6,
+	width = 15
 )
 
 # Display figure
@@ -4441,6 +4447,7 @@ Figure files available at:
 ggsave(
 	"../manuscript/figures/sfig-compare-vanc.pdf",
 	sfig7$plot,
+	height = 8,
 	width = 11
 )
 
@@ -4448,6 +4455,7 @@ ggsave(
 ggsave(
 	"../manuscript/figures/sfig-compare-vanc.png",
 	sfig7$plot,
+	height = 8,
 	width = 11
 )
 
