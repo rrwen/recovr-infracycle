@@ -2999,7 +2999,7 @@ Full spatial data available at:
 * [calgary-bikeways-raw-v2.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-raw-v2.geojson)
 * [calgary-bikeways-raw-v2.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-raw-v2.csv)
 
-**Note**: Only segments with verified installations are shown (n = `calg_raw %>% filter(!is.na(INST_TMIN)) %>% nrow` of `calg_raw %>% nrow`).
+**Note**: Only segments with verified installations are shown (n = `r calg_raw %>% filter(!is.na(INST_TMIN)) %>% nrow` of `r calg_raw %>% nrow`).
 
 ```{r out.width = "100%"}
 
