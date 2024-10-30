@@ -1,0 +1,43 @@
+City,Type,Class,Segments,Length
+Calgary,On-Street Bikeway,,2889,437.35980799098326
+Calgary,Neighbourhood Greenway,,358,23.839889549554268
+Calgary,Shared Lane,,115,18.714985839546344
+Calgary,Decommissioned,,3,2.823433419323155
+Calgary,Cycle Track,,30,2.3704648291036747
+Calgary,Bicycle Lane,,14,0.6395593855267528
+Calgary,Temporary,,6,0.46426593755422396
+Calgary,Cycle Track,Neighbourhood Boulevard,2,0.45542332197276625
+Calgary,On-Street Bikeway,Collector,1,0.04117876103733123
+Calgary,On-Street Bikeway,Arterial Street,1,0.013463606210294401
+,TOTAL,,3419,486.72247264081204
+Toronto,Multi-Use Trail,,330,289.267215015962
+Toronto,Signed Route (No Pavement Markings),,215,99.98769541844824
+Toronto,Multi-Use Trail - Boulevard,,44,37.86483696248671
+Toronto,Sharrows - Wayfinding,,97,37.419595164908216
+Toronto,Multi-Use Trail - Entrance,,179,26.19547328598536
+Toronto,Park Road,,34,21.975966253667853
+Toronto,Sharrows,,55,21.53825718436106
+Toronto,Multi-Use Trail - Existing Connector,,18,9.529770876880955
+Toronto,Sharrows - Arterial - Connector,,10,3.3167508646703716
+Toronto,Multi-Use Trail - Connector,,10,2.6849679796359647
+Toronto,Bike Lane,Major Arterial,2,0.611151380321237
+Toronto,Bike Lane - Contraflow,Local,1,0.1963379020088283
+Toronto,Bike Lane,Minor Arterial,1,0.1237168862614495
+Toronto,Bi-Directional Cycle Track,Local,1,0.05945559851671524
+,TOTAL,,997,550.771190774115
+Vancouver,Protected Bike Lanes,Off-street,317,72.71177753614644
+Vancouver,Shared Lanes,Arterial,109,8.663899395446702
+Vancouver,Shared Lanes,Residential,11,3.06953151322384
+Vancouver,Shared Lanes,Collector,36,2.8499513808364867
+Vancouver,Shared Lanes,Sec Arterial,38,2.604321539280561
+Vancouver,Protected Bike Lanes,Lane,8,1.3597191025419035
+Vancouver,Protected Bike Lanes,Arterial,8,1.3295644474948403
+Vancouver,Protected Bike Lanes,Residential,12,0.6971561742905661
+Vancouver,Painted Lanes,Arterial,2,0.6142002556204703
+Vancouver,Protected Bike Lanes,Sec Arterial,2,0.36361611283537243
+Vancouver,Painted Lanes,Residential,2,0.18408093697027988
+Vancouver,Painted Lanes,Lane,1,0.12604522670072663
+Vancouver,Painted Lanes,Sec Arterial,1,0.05547357066766774
+Vancouver,Local Street,Off-street,1,0.0549968922671066
+Vancouver,Local Street,Residential,1,0.018113915822678107
+,TOTAL,,549,94.70244800014564

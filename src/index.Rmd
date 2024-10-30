@@ -2898,7 +2898,7 @@ Load raw data provided by Konrad Samsel.
 
 ```{r}
 vanc_raw <- read_sf("../data/raw/vancouver/Vancouver AS KS Mar26.shp") %>%
-	left_join( # Add corrections for verified bikeways
+	left_join( # Add corrections for verified bikeways v2
 		read_csv("../data/raw/check-verify-filled-2024-09-27.csv") %>%
 			filter(city == "vancouver") %>%
 			mutate(id = as.character(id)) %>%
@@ -2906,7 +2906,7 @@ vanc_raw <- read_sf("../data/raw/vancouver/Vancouver AS KS Mar26.shp") %>%
 		by = join_by(object_id == `_id`),
 		keep = T
 	) %>%
-	mutate( # Correct for missing verified bikeways
+	mutate( # Correct for missing verified bikeways v2
 		FROM_STR = if_else(!is.na(`_id`), `_street_from`, FROM_STR),
 		TO_STR = if_else(!is.na(`_id`), `_street_to`, TO_STR),
 		INST_YR = if_else(!is.na(`_id`), `_verify_install_year`, INST_YR),
@@ -2996,8 +2996,8 @@ calg_raw <- read_sf("../data/raw/calgary/Calgary Export.shp") %>%
 
 Full spatial data available at:
 
-* [calgary-bikeways-raw-v2.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-raw-v2.geojson)
-* [calgary-bikeways-raw-v2.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-raw-v2.csv)
+* [calgary-bikeways-raw-v3.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-raw-v3.geojson)
+* [calgary-bikeways-raw-v3.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-raw-v3.csv)
 
 **Note**: Only segments with verified installations are shown (n = `r calg_raw %>% filter(!is.na(INST_TMIN)) %>% nrow` of `r calg_raw %>% nrow`).
 
@@ -3005,7 +3005,7 @@ Full spatial data available at:
 
 # Save geojson
 calg_raw %>%
-	write_sf("../data/calgary-bikeways-raw-v2.geojson", delete_dsn = TRUE)
+	write_sf("../data/calgary-bikeways-raw-v3.geojson", delete_dsn = TRUE)
 
 # Save csv
 #st_read("../data/calgary-bikeways-raw-v2.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
@@ -3015,7 +3015,7 @@ calg_raw %>%
 		geometry_crs = st_crs(calg_raw)$proj4string,
 		.before = geometry
 	) %>%
-	write_csv("../data/calgary-bikeways-raw-v2.csv", na = "")
+	write_csv("../data/calgary-bikeways-raw-v3.csv", na = "")
 
 # Display map
 tmap_mode("view")
@@ -3032,7 +3032,7 @@ Non-spatial data:
 calg_raw %>%
 	as.data.frame %>%
 	select(-geometry) %>%
-	datatable(filename = "calgary-bikeways-raw-nonspatial-v2")
+	datatable(filename = "calgary-bikeways-raw-nonspatial-v3")
 ```
 
 ### Details
@@ -3091,7 +3091,7 @@ Non-spatial data:
 toron_raw %>%
 	as.data.frame %>%
 	select(-geometry) %>%
-	datatable(filename = "toronto-bikeways-raw-nonspatial-v2")
+	datatable(filename = "toronto-bikeways-raw-nonspatial-v3")
 ```
 
 ### Details
@@ -3369,8 +3369,8 @@ calg_preprocess <- calg_raw %>%
 
 Full spatial data available at:
 
-* [calgary-bikeways-preprocess-v3.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v2.geojson)
-* [calgary-bikeways-preprocess-v3.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v2.csv)
+* [calgary-bikeways-preprocess-v3.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v3.geojson)
+* [calgary-bikeways-preprocess-v3.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v3.csv)
 
 **Note**: Only the first 1000 records are shown as a sample.
 
@@ -3511,8 +3511,8 @@ toron_preprocess <- toron_raw %>%
 
 Full spatial data available at:
 
-* [toronto-bikeways-preprocess-v2.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-preprocess-v2.geojson)
-* [toronto-bikeways-preprocess-v2.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-preprocess-v2.csv)
+* [toronto-bikeways-preprocess-v3.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-preprocess-v3.geojson)
+* [toronto-bikeways-preprocess-v3.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-preprocess-v3.csv)
 
 **Note**: Only the first 1000 records are shown as a sample.
 
@@ -3744,6 +3744,181 @@ map_data <- list(
 	)
 )
 ```
+
+# Tables
+
+## Table 1: Comparison of Municipal Roadway and Bikeway Infrastructure in Vancouver, Calgary, and Toronto (Canada), 2022.
+
+Information downloaded from municipally maintained open datasets Methodology and detailed download dates available in Appendix 2.
+
+**Note**: Only meaasures from the bikeway data is calculated here.
+
+```{r}
+
+# Create list to store tab data
+tab1 <- list()
+
+# Calc lengths for city bikeway types
+tab1$data <- vanc_preprocess %>%
+	mutate(city = "vancouver") %>%
+	select(city, install_type, road_type) %>%
+	mutate(
+		type = case_when(
+			install_type == "Protected Bike Lanes" &
+				road_type != "Off-street" ~ "Cycle Track (On-Street)",
+			install_type == "Painted Lanes" &
+				road_type != "Off-street" ~ "Painted Lane (On-Street)",
+			install_type %in% c("Shared Lanes", "Local Street") &
+				road_type != "Off-street" ~ "Shared Roads (On-Street)",
+			.default = NA
+		)
+	) %>%
+	add_row( # add lsbs for vanc
+		vanc_preprocess %>%
+			mutate(city = "vancouver") %>%
+			select(city, install_type, road_type) %>%
+			filter(install_type == "Local Street" & road_type != "Off-street") %>%
+			mutate(type = "Local Street Bikeways (On-Street)")
+	) %>%
+	add_row(
+		calg_preprocess %>%
+			mutate(city = "calgary") %>%
+			select(city, install_type, road_type) %>%
+			mutate( # fix casing issues
+				install_type = str_to_title(install_type)
+			) %>%
+			mutate(
+				type = case_when(
+					install_type == "Cycle Track" ~ "Cycle Track (On-Street)",
+					install_type == "Bicycle Lane" ~ "Painted Lane (On-Street)",
+					install_type %in% c(
+						"Neighbourhood Greenway",
+						"Shared Lane",
+						"On-Street Bikeway"
+					) ~ "Shared Roads (On-Street)",
+					.default = NA
+				)
+			)
+	) %>%
+	add_row(
+		toron_preprocess %>%
+			mutate(city = "toronto") %>%
+			select(city, install_type, road_type) %>%
+			mutate(
+				type = case_when(
+					install_type %in% c(
+						"Bi-Directional Cycle Track",
+						"Cycle Track",
+						"Cycle Track - Contraflow"
+					) ~ "Cycle Track (On-Street)",
+					install_type %in% c(
+						"Bike Lane",
+						"Bike Lane - Buffered",
+						"Bike Lane - Contraflow"
+					) ~ "Painted Lane (On-Street)",
+					str_starts(
+						install_type,
+						"Sharrows|Signed Route|Park"
+					) ~ "Shared Roads (On-Street)",
+					.default = NA
+				)
+			)
+	) %>%
+	filter(!is.na(type)) %>%
+	group_by(city, type) %>%
+	summarize(
+		len_km = (sum(st_length(geometry), na.rm = T) / 1000) %>% as.numeric
+	) %>%
+	as_tibble %>%
+	select(-geometry)
+
+# Create side by side table
+tab1$data <- tab1$data %>%
+	filter(city == "vancouver") %>%
+	select(-city) %>%
+	rename(Vancouver = len_km) %>%
+	left_join(
+		tab1$data %>% 
+			filter(city == "calgary") %>%
+			select(-city) %>%
+			rename(Calgary = len_km),
+		by = "type"
+	) %>%
+	left_join(
+		tab1$data %>% 
+			filter(city == "toronto") %>%
+			select(-city) %>%
+			rename(Toronto = len_km),
+		by = "type"
+	) %>%
+	rename(Measure = type) %>%
+	mutate(
+		Title = "Municipal Bikeways and Pathways (2022, centreline-kilometers)",
+		.before = 1
+	)
+	
+
+# Create table for municipal data lengths
+options(knitr.kable.NA = "")
+tab1$table <- tab1$data %>%
+	mutate(
+		Vancouver = round(Vancouver, 1),
+		Calgary = round(Calgary, 1),
+		Toronto = round(Toronto, 1)
+	) %>%
+	kable(
+		booktabs = T
+	) %>%
+	kable_classic() %>%
+	add_header_above(
+		c("Municipal Attributes" = 5),
+		align = "center",
+		bold = T
+	) %>%
+	column_spec(1, bold = T) %>%
+	row_spec(0, bold = T, align = "center") %>%
+	collapse_rows(columns = 1)
+
+```
+
+#### Table
+
+Table files available at:
+
+* [manuscript/figures/tab-infra.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-infra.pdf)
+* [manuscript/figures/tab-infra.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-infra.png)
+
+```{r}
+
+# Save pdf
+if (!file.exists("../manuscript/figures/tab-infra.pdf")) {
+	save_kable(tab1$table, "../manuscript/figures/tab-infra.pdf")
+}
+
+# Save png
+if (!file.exists("../manuscript/figures/tab-infra.png")) {
+	save_kable(tab1$table, "../manuscript/figures/tab-infra.png", zoom = 2)
+}
+
+# Display table
+tab1$table
+
+```
+
+### Data
+
+```{r}
+
+# Save data
+write_csv(tab1$data, "../data/plot/tab-infra.csv", na = "")
+
+# Display data
+tab1$data %>%
+	datatable(filename = "tab-infra")
+
+```
+
+
 
 # Figures
 
@@ -4730,6 +4905,142 @@ sfig12$plot %>%
 
 # Display figure
 sfig12$plot
+
+```
+
+## Supplementary Table 2: Excluded Segment Types for Vancouver, Calgary, and Toronto (Canada). {.tabset}
+
+```{r}
+
+# Setup table list
+stab2 <- list()
+
+# Get excluded segments for each city
+stab2$df <- vanc_preprocess %>%
+	filter(!id %in% vanc$id) %>%
+	select(install_type, road_type) %>%
+	mutate(city = "vancouver") %>%
+	add_row(
+		calg_preprocess %>%
+			filter(!id %in% calg$id) %>%
+			select(install_type, road_type) %>%
+			mutate(city = "calgary")
+	) %>%
+	add_row(
+		toron_preprocess %>%
+			filter(!id %in% toron$id) %>%
+			select(install_type, road_type) %>%
+			mutate(city = "toronto")
+	) %>%
+	mutate(install_type = str_to_title(install_type))
+
+# Count excluded segments and calc their lengths
+stab2$data <- stab2$df %>%
+	group_by(city, install_type, road_type) %>%
+	summarize( # count types and len in km
+		n = n(),
+		len_km = (sum(st_length(geometry), na.rm = T) / 1000) %>% as.numeric
+	) %>%
+	as_tibble %>%
+	select(-geometry) %>%
+	group_by(city) %>%
+	arrange(desc(len_km), .by_group = T)
+
+# Calculate the total segments and length per type
+stab2$data <- stab2$data %>%
+	rename(
+		"Type" = install_type,
+		"Class" = road_type,
+		Segments = n,
+		Length = len_km
+	) %>%
+	group_by(city) %>%
+	group_map(~{
+		.x %>%
+			add_row(
+				"Type" = "TOTAL",
+				"Class" = NA,
+				"Segments" = sum(.x$Segments, na.rm = T),
+				"Length" = sum(.x$Length, na.rm = T)
+			)
+	}, .keep = T) %>%
+	reduce(add_row) %>%
+	rename(
+		City = city
+	) %>%
+	mutate(
+		City = str_to_title(City)
+	)
+
+# Created formatted side by side table of cities
+options(knitr.kable.NA = "")
+stab2$table <- stab2$data %>%
+	mutate(across(
+		ends_with("Length"),
+		~ if_else(!is.na(.x), paste0(round(.x, 1), " km"), NA)
+	)) %>%
+	kable(
+	  booktabs = T
+	) %>%
+	kable_classic() %>%
+	add_header_above(
+		c("Measured by centreline-km of roadway" = 5),
+		italic = T,
+		bold = F,
+		align = "left"
+	) %>%
+	add_header_above(
+		c("Excluded Segment Counts and Lengths by Infrastructure Type and Road Classification" = 5),
+		align = "left",
+		bold = T,
+		line = F
+	) %>%
+	column_spec(1, bold = T) %>%
+	row_spec(0, bold = T) %>%
+	row_spec(
+		which(stab2$data$Type == "TOTAL"),
+		bold = T,
+		extra_css = "border-bottom: 1px solid; border-top: 1px solid"
+	) %>%
+	collapse_rows(columns = 1)
+
+```
+
+
+### Table
+
+Table files available at:
+
+* [manuscript/figures/tab-excl-infra.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-excl-infra.pdf)
+* [manuscript/figures/tab-excl-infra.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-excl-infra.png)
+
+```{r}
+
+# Save pdf
+if (!file.exists("../manuscript/figures/tab-excl-infra.pdf")) {
+	save_kable(stab2$table, "../manuscript/figures/tab-excl-infra.pdf")
+}
+
+# Save png
+if (!file.exists("../manuscript/figures/tab-excl-infra.png")) {
+	save_kable(stab2$table, "../manuscript/figures/tab-excl-infra.png", zoom = 2)
+}
+
+# Display table
+stab2$table
+
+```
+
+### Data
+
+```{r}
+
+# Save data
+write_csv(stab2$data, "../data/plot/tab-excl-infra.csv", na = "")
+
+# Display data
+stab2$data %>%
+	datatable(filename = "tab-excl-infra")
 
 ```
 
