@@ -2374,6 +2374,7 @@ map_infra <- function(
 		out[[id]] <- base_map +
 			ggtitle(city$title) +
 			layer_spatial(city$data_map, aes(color = .data[[city$map_column]])) +
+			layer_spatial(city$data_bounds, color = "black", fill = NA, linewidth = 0.5) + 
 			layer_spatial(city$data_downtown_bbox, color = "red", fill = NA, linewidth = 0.5) +
 			guides(colour = guide_legend(
 				override.aes = list(linewidth = 3)
@@ -2488,6 +2489,7 @@ map_infra_detail <- function(
 				style = "ticks"
 			) +
 			layer_spatial(city$data_map, aes(color = .data[[city$map_column]])) +
+			layer_spatial(city$data_bounds, color = "black", fill = NA, linewidth = 0.5) +
 			guides(colour = guide_legend(
 				override.aes = list(linewidth = 3)
 			)) +
@@ -2573,13 +2575,15 @@ This function plots line charts of yearly road length changes by infrastructure 
 #'.  \item \code{roadway_per}: Number of units of total roadway length (numeric) to normalize by (e.g. 1000 means per 1000 km of roadway). Set to `NULL` or omit to disable normalization of road lengths.
 #' }
 #' @param len_title The title (char) for the road lengths.
+#' @param ylims The y axis limits for each plot, up to 4.
 #'
 #' @return Multiple line ggplots of the cumulative yearly road length changes by infrastructure type combined with patchwork.
 #' @export
 #'
 plot_yearly_change <- function(
 		df_list,
-		len_title = "Change in Infrastructure (per 1000 centreline-km of roadway)"
+		len_title = "Change in Infrastructure (per 1000 centreline-km of roadway)",
+		ylims = list(NULL, NULL, NULL, NULL)
 	) {
 	
 	# Process plot data for adj len including total
@@ -2871,6 +2875,13 @@ plot_yearly_change <- function(
 		coord_cartesian(clip = "off")+
 		theme_void()
 	
+	# Adjust ylim
+	for (i in 1:length(p)) {
+		if (!is.null(ylims[[i]])) {
+			p[[i]] <- p[[i]] + ylim(ylims[[i]])
+		}
+	}
+	
 	# Combine all infra plots together
 	out <- list()
 	out$data <- list(pdata1, pdata2, pdata3, pdata4) %>%
@@ -3099,6 +3110,62 @@ toron_raw %>%
 ```{r}
 print(toron_raw)
 ```
+
+## City Boundaries Data {.tabset}
+
+Geospatial data of city boundaries used for mapping. Downloaded November 9, 2024 for all cities.
+
+### Vancouver
+
+Data from https://opendata.vancouver.ca/explore/dataset/city-boundary, last updated September 27, 2021
+
+```{r}
+
+# Read vancouver bound data
+vanc_bounds <- read_sf("../data/vancouver-boundary.geojson")
+
+# Generate map
+tmap_mode("view")
+tm_shape(vanc_bounds) +
+	tm_lines()
+
+```
+
+### Calgary
+
+Data from https://data.calgary.ca/Base-Maps/City-Boundary/7t9h-2z9s, last updated November 1, 2024
+
+```{r}
+
+# Read calgary bound data
+calg_bounds <- read_sf(
+	"../data/calgary-boundary.csv",
+) %>%
+	st_as_sf(wkt = 2, crs = 4326)
+
+# Generate map
+tmap_mode("view")
+tm_shape(calg_bounds) +
+	tm_polygons()
+
+```
+
+### Toronto
+
+Data from: https://open.toronto.ca/dataset/regional-municipal-boundary/, last updated July 23, 2019.
+
+```{r}
+
+# Read toronto bound data
+toron_bounds <- read_sf("../data/toronto-boundary-wgs84/citygcs_regional_mun_wgs84.shp")
+
+# Generate map
+tmap_mode("view")
+tm_shape(toron_bounds) +
+	tm_polygons()
+
+```
+
 
 # Preprocessing
 
@@ -3715,6 +3782,7 @@ map_data <- list(
 	vancouver = list(
 		title = "Vancouver, CA",
 		data = vanc,
+		data_bounds = vanc_bounds,
 		downtown_bbox = c(
 			xmin = -123.143450,
 			ymin = 49.269529,
@@ -3725,6 +3793,7 @@ map_data <- list(
 	calgary = list(
 		title = "Calgary, CA",
 		data = calg,
+		data_bounds = calg_bounds,
 		downtown_bbox = c(
 			xmin = -114.127909,
 			ymin = 51.006626,
@@ -3735,6 +3804,7 @@ map_data <- list(
 	toronto = list(
 		title = "Toronto, CA",
 		data = toron,
+		data_bounds = toron_bounds,
 		downtown_bbox = c(
 			xmin = -79.300395,
 			ymin = 43.636621,
@@ -3918,8 +3988,6 @@ tab1$data %>%
 
 ```
 
-
-
 # Figures
 
 ## Figure 1: Flow diagram of inclusion criteria for bikeway segments in Vancouver, Calgary, and Toronto. {.tabset}
@@ -4070,7 +4138,8 @@ fig3 <- plot_yearly_change(
 			roadway_total = 5579.4
 		)
 	),
-	len_title = "Length per 1000 Centreline km of Total Roadway"
+	len_title = "Length per 1000 Centreline km of Total Roadway",
+	ylims = lapply(1:4, function(x) c(0, 8))
 )
 ```
 
