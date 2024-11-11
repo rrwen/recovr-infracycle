@@ -2393,8 +2393,9 @@ map_infra <- function(
 		theme(
 			legend.position = "bottom",
 			legend.title = element_blank(),
+			legend.text=element_text(size = 12),
 			plot.title = element_text(
-				size = 8,
+				size = 12,
 				margin = margin(t = 8, b = -20, l = 8)
 			),
 			plot.margin = margin(t = 8, l = 0, r = 0),
@@ -2496,6 +2497,7 @@ map_infra_detail <- function(
 		    theme(
 		        legend.position = "bottom",
 		        legend.title = element_blank(),
+		        legend.text=element_text(size=12),
 		        panel.border = element_rect(
 		            colour = "gray20",
 		            fill = NA,
@@ -3821,7 +3823,7 @@ map_data <- list(
 
 Information downloaded from municipally maintained open datasets Methodology and detailed download dates available in Appendix 2.
 
-**Note**: Only meaasures from the bikeway data is calculated here.
+**Note**: Only measures from the bikeway data is calculated here.
 
 ```{r}
 
