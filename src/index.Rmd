@@ -3284,27 +3284,63 @@ vanc_preprocess <- vanc_raw %>%
 			!is.na(verify_upgrade2_type) &
 			!is.na(verify_upgrade1_type) &
 			verify_upgrade2_type != verify_upgrade1_type &
-			verify_upgrade2_type %in% c("PL", "BUF", "PBL")
-				~ verify_upgrade2_type,
+			verify_upgrade2_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_upgrade2_type,
 			!is.na(verify_upgrade1_type) &
 			!is.na(verify_install_type) &
 			verify_upgrade1_type != verify_install_type &
-			verify_upgrade1_type %in% c("PL", "BUF", "PBL")
-				~ verify_upgrade1_type,
-			.default = verify_install_type
+			verify_upgrade1_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_upgrade1_type,
+			!is.na(verify_install_type) &
+			verify_install_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_install_type,
+			.default = NA
 		),
 		verify_final_year = case_when( # years
 			!is.na(verify_upgrade2_type) &
 			!is.na(verify_upgrade1_type) &
 			verify_upgrade2_type != verify_upgrade1_type &
-			verify_upgrade2_type %in% c("PL", "BUF", "PBL")
-				~ verify_upgrade2_year,
+			verify_upgrade2_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_upgrade2_year,
 			!is.na(verify_upgrade1_type) &
 			!is.na(verify_install_type) &
 			verify_upgrade1_type != verify_install_type &
-			verify_upgrade1_type %in% c("PL", "BUF", "PBL")
-				~ verify_upgrade1_year,
-			.default = verify_install_year
+			verify_upgrade1_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_upgrade1_year,
+			!is.na(verify_install_type) &
+			verify_install_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_install_year,
+			.default = NA
 		)
 	) %>%
 	mutate( # create col for segment lengths in km
@@ -3454,33 +3490,69 @@ calg_preprocess <- calg_raw %>%
 	        .default = road_type
 	    ),
 		.after = road_type
-	) %>%
+	)  %>%
 	mutate( # calculate the final type and year considering improvements
 		verify_final_type = case_when( # types
 			!is.na(verify_upgrade2_type) &
 			!is.na(verify_upgrade1_type) &
 			verify_upgrade2_type != verify_upgrade1_type &
-			verify_upgrade2_type %in% c("PL", "BUF", "PBL")
-				~ verify_upgrade2_type,
+			verify_upgrade2_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_upgrade2_type,
 			!is.na(verify_upgrade1_type) &
 			!is.na(verify_install_type) &
 			verify_upgrade1_type != verify_install_type &
-			verify_upgrade1_type %in% c("PL", "BUF", "PBL")
-				~ verify_upgrade1_type,
-			.default = verify_install_type
+			verify_upgrade1_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_upgrade1_type,
+			!is.na(verify_install_type) &
+			verify_install_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_install_type,
+			.default = NA
 		),
 		verify_final_year = case_when( # years
 			!is.na(verify_upgrade2_type) &
 			!is.na(verify_upgrade1_type) &
 			verify_upgrade2_type != verify_upgrade1_type &
-			verify_upgrade2_type %in% c("PL", "BUF", "PBL")
-				~ verify_upgrade2_year,
+			verify_upgrade2_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_upgrade2_year,
 			!is.na(verify_upgrade1_type) &
 			!is.na(verify_install_type) &
 			verify_upgrade1_type != verify_install_type &
-			verify_upgrade1_type %in% c("PL", "BUF", "PBL")
-				~ verify_upgrade1_year,
-			.default = verify_install_year
+			verify_upgrade1_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_upgrade1_year,
+			!is.na(verify_install_type) &
+			verify_install_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_install_year,
+			.default = NA
 		)
 	) %>%
 	mutate( # create col for segment lengths in km
@@ -3631,27 +3703,63 @@ toron_preprocess <- toron_raw %>%
 			!is.na(verify_upgrade2_type) &
 			!is.na(verify_upgrade1_type) &
 			verify_upgrade2_type != verify_upgrade1_type &
-			verify_upgrade2_type %in% c("PL", "BUF", "PBL")
-				~ verify_upgrade2_type,
+			verify_upgrade2_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_upgrade2_type,
 			!is.na(verify_upgrade1_type) &
 			!is.na(verify_install_type) &
 			verify_upgrade1_type != verify_install_type &
-			verify_upgrade1_type %in% c("PL", "BUF", "PBL")
-				~ verify_upgrade1_type,
-			.default = verify_install_type
+			verify_upgrade1_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_upgrade1_type,
+			!is.na(verify_install_type) &
+			verify_install_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_install_type,
+			.default = NA
 		),
 		verify_final_year = case_when( # years
 			!is.na(verify_upgrade2_type) &
 			!is.na(verify_upgrade1_type) &
 			verify_upgrade2_type != verify_upgrade1_type &
-			verify_upgrade2_type %in% c("PL", "BUF", "PBL")
-				~ verify_upgrade2_year,
+			verify_upgrade2_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_upgrade2_year,
 			!is.na(verify_upgrade1_type) &
 			!is.na(verify_install_type) &
 			verify_upgrade1_type != verify_install_type &
-			verify_upgrade1_type %in% c("PL", "BUF", "PBL")
-				~ verify_upgrade1_year,
-			.default = verify_install_year
+			verify_upgrade1_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_upgrade1_year,
+			!is.na(verify_install_type) &
+			verify_install_type %in% c(
+				"PL",
+				"BUF",
+				"PBL",
+				"N",
+				"None"
+			) ~ verify_install_year,
+			.default = NA
 		)
 	) %>%
 	mutate( # create col for segment lengths in km
