@@ -3279,6 +3279,34 @@ vanc_preprocess <- vanc_raw %>%
 	    ),
 		.after = road_type
 	) %>%
+	mutate( # calculate the final type and year considering improvements
+		verify_final_type = case_when( # types
+			!is.na(verify_upgrade2_type) &
+			!is.na(verify_upgrade1_type) &
+			verify_upgrade2_type != verify_upgrade1_type &
+			verify_upgrade2_type %in% c("PL", "BUF", "PBL")
+				~ verify_upgrade2_type,
+			!is.na(verify_upgrade1_type) &
+			!is.na(verify_install_type) &
+			verify_upgrade1_type != verify_install_type &
+			verify_upgrade1_type %in% c("PL", "BUF", "PBL")
+				~ verify_upgrade1_type,
+			.default = verify_install_type
+		),
+		verify_final_year = case_when( # years
+			!is.na(verify_upgrade2_type) &
+			!is.na(verify_upgrade1_type) &
+			verify_upgrade2_type != verify_upgrade1_type &
+			verify_upgrade2_type %in% c("PL", "BUF", "PBL")
+				~ verify_upgrade2_year,
+			!is.na(verify_upgrade1_type) &
+			!is.na(verify_install_type) &
+			verify_upgrade1_type != verify_install_type &
+			verify_upgrade1_type %in% c("PL", "BUF", "PBL")
+				~ verify_upgrade1_year,
+			.default = verify_install_year
+		)
+	) %>%
 	mutate( # create col for segment lengths in km
 		geometry_len_km = as.numeric(st_length(geometry)) / 1000,
 		.before = geometry
@@ -3289,8 +3317,8 @@ vanc_preprocess <- vanc_raw %>%
 
 Full spatial data available at:
 
-* [vancouver-bikeways-preprocess-v2.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-preprocess-v2.geojson)
-* [vancouver-bikeways-preprocess-v2.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-preprocess-v2.csv)
+* [vancouver-bikeways-preprocess-v3.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-preprocess-v3.geojson)
+* [vancouver-bikeways-preprocess-v3.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/vancouver-bikeways-preprocess-v3.csv)
 
 **Note**: Only the first 1000 records are shown as a sample.
 
@@ -3298,17 +3326,17 @@ Full spatial data available at:
 
 # Save geojson
 vanc_preprocess %>%
-	write_sf("../data/vancouver-bikeways-preprocess-v2.geojson", delete_dsn = TRUE)
+	write_sf("../data/vancouver-bikeways-preprocess-v3.geojson", delete_dsn = TRUE)
 
 # Save csv
-# st_read("../data/vancouver-bikeways-preprocess-v2.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
+# st_read("../data/vancouver-bikeways-preprocess-v3.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
 vanc_preprocess %>%
 	mutate(
 		geometry = st_as_text(geometry),
 		geometry_crs = st_crs(vanc_preprocess)$proj4string,
 		.before = geometry
 	) %>%
-	write_csv("../data/vancouver-bikeways-preprocess-v2.csv", na = "")
+	write_csv("../data/vancouver-bikeways-preprocess-v3.csv", na = "")
 
 # Display map
 tmap_mode("view")
@@ -3324,7 +3352,7 @@ tm_shape(
 vanc_preprocess %>%
 	as.data.frame %>%
 	select(-geometry) %>%
-	datatable(filename = "vancouver-bikeways-preprocess-nonspatial-v2")
+	datatable(filename = "vancouver-bikeways-preprocess-nonspatial-v3")
 ```
 
 ### Details
@@ -3427,6 +3455,34 @@ calg_preprocess <- calg_raw %>%
 	    ),
 		.after = road_type
 	) %>%
+	mutate( # calculate the final type and year considering improvements
+		verify_final_type = case_when( # types
+			!is.na(verify_upgrade2_type) &
+			!is.na(verify_upgrade1_type) &
+			verify_upgrade2_type != verify_upgrade1_type &
+			verify_upgrade2_type %in% c("PL", "BUF", "PBL")
+				~ verify_upgrade2_type,
+			!is.na(verify_upgrade1_type) &
+			!is.na(verify_install_type) &
+			verify_upgrade1_type != verify_install_type &
+			verify_upgrade1_type %in% c("PL", "BUF", "PBL")
+				~ verify_upgrade1_type,
+			.default = verify_install_type
+		),
+		verify_final_year = case_when( # years
+			!is.na(verify_upgrade2_type) &
+			!is.na(verify_upgrade1_type) &
+			verify_upgrade2_type != verify_upgrade1_type &
+			verify_upgrade2_type %in% c("PL", "BUF", "PBL")
+				~ verify_upgrade2_year,
+			!is.na(verify_upgrade1_type) &
+			!is.na(verify_install_type) &
+			verify_upgrade1_type != verify_install_type &
+			verify_upgrade1_type %in% c("PL", "BUF", "PBL")
+				~ verify_upgrade1_year,
+			.default = verify_install_year
+		)
+	) %>%
 	mutate( # create col for segment lengths in km
 		geometry_len_km = as.numeric(st_length(geometry)) / 1000,
 		.before = geometry
@@ -3438,8 +3494,8 @@ calg_preprocess <- calg_raw %>%
 
 Full spatial data available at:
 
-* [calgary-bikeways-preprocess-v3.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v3.geojson)
-* [calgary-bikeways-preprocess-v3.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v3.csv)
+* [calgary-bikeways-preprocess-v4.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v4.geojson)
+* [calgary-bikeways-preprocess-v4.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/calgary-bikeways-preprocess-v4.csv)
 
 **Note**: Only the first 1000 records are shown as a sample.
 
@@ -3447,17 +3503,17 @@ Full spatial data available at:
 
 # Save geojson
 calg_preprocess %>%
-	write_sf("../data/calgary-bikeways-preprocess-v3.geojson", delete_dsn = TRUE)
+	write_sf("../data/calgary-bikeways-preprocess-v4.geojson", delete_dsn = TRUE)
 
 # Save csv
-# st_read("../data/calgary-bikeways-preprocess-v3.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
+# st_read("../data/calgary-bikeways-preprocess-v4.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
 calg_preprocess %>%
 	mutate(
 		geometry = st_as_text(geometry),
 		geometry_crs = st_crs(calg_preprocess)$proj4string,
 		.before = geometry
 	) %>%
-	write_csv("../data/calgary-bikeways-preprocess-v3.csv", na = "")
+	write_csv("../data/calgary-bikeways-preprocess-v4.csv", na = "")
 
 # Display map
 tmap_mode("view")
@@ -3472,7 +3528,7 @@ tm_shape(calg_preprocess %>% head(1000)) +
 calg_preprocess %>%
 	as.data.frame %>%
 	select(-geometry) %>%
-	datatable(filename = "calgary-bikeways-preprocess-nonspatial-v3")
+	datatable(filename = "calgary-bikeways-preprocess-nonspatial-v4")
 ```
 
 ### Details
@@ -3570,6 +3626,34 @@ toron_preprocess <- toron_raw %>%
 	    ),
 		.after = road_type
 	) %>%
+	mutate( # calculate the final type and year considering improvements
+		verify_final_type = case_when( # types
+			!is.na(verify_upgrade2_type) &
+			!is.na(verify_upgrade1_type) &
+			verify_upgrade2_type != verify_upgrade1_type &
+			verify_upgrade2_type %in% c("PL", "BUF", "PBL")
+				~ verify_upgrade2_type,
+			!is.na(verify_upgrade1_type) &
+			!is.na(verify_install_type) &
+			verify_upgrade1_type != verify_install_type &
+			verify_upgrade1_type %in% c("PL", "BUF", "PBL")
+				~ verify_upgrade1_type,
+			.default = verify_install_type
+		),
+		verify_final_year = case_when( # years
+			!is.na(verify_upgrade2_type) &
+			!is.na(verify_upgrade1_type) &
+			verify_upgrade2_type != verify_upgrade1_type &
+			verify_upgrade2_type %in% c("PL", "BUF", "PBL")
+				~ verify_upgrade2_year,
+			!is.na(verify_upgrade1_type) &
+			!is.na(verify_install_type) &
+			verify_upgrade1_type != verify_install_type &
+			verify_upgrade1_type %in% c("PL", "BUF", "PBL")
+				~ verify_upgrade1_year,
+			.default = verify_install_year
+		)
+	) %>%
 	mutate( # create col for segment lengths in km
 		geometry_len_km = as.numeric(st_length(geometry)) / 1000,
 		.before = geometry
@@ -3580,8 +3664,8 @@ toron_preprocess <- toron_raw %>%
 
 Full spatial data available at:
 
-* [toronto-bikeways-preprocess-v3.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-preprocess-v3.geojson)
-* [toronto-bikeways-preprocess-v3.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-preprocess-v3.csv)
+* [toronto-bikeways-preprocess-v4.geojson](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-preprocess-v4.geojson)
+* [toronto-bikeways-preprocess-v4.csv](https://github.com/rrwen/recovr-infracycle/blob/main/data/toronto-bikeways-preprocess-v4.csv)
 
 **Note**: Only the first 1000 records are shown as a sample.
 
@@ -3589,17 +3673,17 @@ Full spatial data available at:
 
 # Save geojson
 toron_preprocess %>%
-	write_sf("../data/toronto-bikeways-preprocess-v3.geojson", delete_dsn = TRUE)
+	write_sf("../data/toronto-bikeways-preprocess-v4.geojson", delete_dsn = TRUE)
 
 # Save csv
-# st_read("../data/toronto-bikeways-preprocess-v3.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
+# st_read("../data/toronto-bikeways-preprocess-v4.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
 toron_preprocess %>%
 	mutate(
 		geometry = st_as_text(geometry),
 		geometry_crs = st_crs(toron_preprocess)$proj4string,
 		.before = geometry
 	) %>%
-	write_csv("../data/toronto-bikeways-preprocess-v3.csv", na = "")
+	write_csv("../data/toronto-bikeways-preprocess-v4.csv", na = "")
 
 # Display map
 tmap_mode("view")
@@ -3614,7 +3698,7 @@ tm_shape(toron_preprocess %>% head(1000)) +
 toron_preprocess %>%
 	as.data.frame %>%
 	select(-geometry) %>%
-	datatable(filename = "toronto-bikeways-preprocess-nonspatial-v3")
+	datatable(filename = "toronto-bikeways-preprocess-nonspatial-v4")
 ```
 
 ### Details
