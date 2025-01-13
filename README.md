@@ -10,7 +10,7 @@ To reproduce the figures and tables in the study, follow the instructions in the
 * `data`: contains the raw and pre-processed data
 	* For a description of pre-processed data, see [data.csv](data/data.csv)
 	* Each data file ending in `-datadict` contains the data dictionary of column names and descriptions
-* `docs`: contains the HTML files for [R Code for Figures and Tables](https://rrwen.github.io/recovr-infracycle/)
+* `docs`: contains the resulting HTML files from running code in the `src` folder
 * `manuscript`: contains current and previous manuscripts along with figure image files
 * `slides`: contains presentation slides
 * `src`: code files for data processing and modelling
