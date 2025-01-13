@@ -14,6 +14,7 @@ To reproduce the figures and tables in the study, follow the instructions in the
 * `manuscript`: contains current and previous manuscripts along with figure image files
 * `slides`: contains presentation slides
 * `src`: code files for data processing and modelling
+	* The main file is [index.Rmd](src/index.Rmd)
 
 ## Contact
 
