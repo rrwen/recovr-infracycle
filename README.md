@@ -13,6 +13,7 @@ To reproduce the figures and tables in the study, follow the instructions in the
 * `docs`: contains the HTML files for [R Code for Figures and Tables](https://rrwen.github.io/recovr-infracycle/)
 * `manuscript`: contains current and previous manuscripts along with figure image files
 * `slides`: contains presentation slides
+* `src`: code files for data processing and modelling
 
 ## Contact
 
