@@ -5307,6 +5307,199 @@ stab2$data %>%
 
 ```
 
+# Misc
+
+Misc code added after feedback from reviewers.
+
+## Misclassified Infrastructure Types
+
+Calculate lengths of misclassified city infrastructure types.
+
+```{r}
+
+# Create obj to store data
+misc1 <- list()
+
+# Create data
+misc1$data <- vanc %>%
+	mutate(
+		install_type2 = case_when(
+			install_type == "Painted Lanes" ~ "PL",
+			install_type == "Protected Bike Lanes" ~ "PBL",
+			.default = NA
+		),
+		city = "vancouver"
+	) %>%
+	select(install_year, install_type2, verify_install_type, city) %>%
+	add_row(
+		calg %>%
+		mutate(
+			install_type2 = case_when(
+				install_type == "Bicycle Lane" ~ "PL",
+				install_type == "Cycle Track" ~ "PBL",
+				.default = NA
+			),
+			city = "calgary"
+		) %>%
+		select(install_year, install_type2, verify_install_type, city)
+	) %>%
+	add_row(
+		toron %>%
+		mutate(
+			install_type2 = case_when(
+				install_type %in% c(
+					"Bike Lane",
+					"Bike Lane - Contraflow"
+				) ~ "PL",
+				install_type == "Bike Lane - Buffered" ~ "BUF",
+				install_type %in% c(
+					"Cycle Track",
+					"Cycle Track - Contraflow"
+				) ~ "PBL"
+			),
+			city = "toronto"
+		) %>%
+		select(install_year, install_type2, verify_install_type, city)
+	) %>%
+	mutate(
+		geometry_len_km = as.numeric(st_length(geometry) / 1000),
+		install_type2 = if_else(
+			install_type2 == "BUF",
+			"PL",
+			install_type2
+		),
+		verify_install_type = if_else(
+			verify_install_type == "BUF",
+			"PL",
+			verify_install_type
+		),
+		misclass_type = if_else(
+			install_type2 != verify_install_type,
+			install_type2,
+			NA
+		),
+		misclass_path = if_else(
+			install_type2 != verify_install_type,
+			paste0(install_type2, " -> ", verify_install_type),
+			NA
+		)
+	)
+
+# Display len km misclass
+misc1$data %>%
+    as_tibble %>%
+    select(-geometry) %>%
+    group_by(city, misclass_path) %>%
+    summarize(geometry_len_km = sum(geometry_len_km)) %>%
+	filter(!is.na(misclass_path))
+```
+
+## Misclassified Types by Year
+
+Plot misclassified city infrastructure types by year.
+
+```{r}
+
+# Create obj
+misc2 <- list()
+
+# Calc misclassified per year
+misc2$data <- misc1$data %>%
+	as_tibble %>%
+	select(-geometry) %>%
+	filter(
+		!is.na(misclass_type) &
+		install_year >= 2010 &
+		install_year <= 2022
+	) %>%
+	group_by(city, install_year, misclass_type) %>%
+	summarize(geometry_len_km = sum(geometry_len_km)) %>%
+	left_join(
+		misc1$data %>%
+			as_tibble %>%
+			filter(!is.na(install_type2)) %>%
+			group_by(city, install_year, install_type2) %>%
+			summarize(total_len = sum(geometry_len_km)) %>%
+			mutate(misclass_type = install_type2) %>%
+			select(-install_type2),
+		by = c("city", "install_year", "misclass_type")
+	) %>%
+	mutate(
+		year = install_year,
+		percentage = (geometry_len_km / total_len) * 100,
+		infrastructure_type = case_when(
+			misclass_type == "PBL" ~ "Cycle Track",
+			misclass_type == "PL" ~ "Painted and Buffered Lane",
+			.default = NA
+		),
+		city = str_to_title(city)
+	)
+
+# Create bar plot of misclass per year
+misc2$plot <- ggplot(
+	misc2$data,
+	aes(
+		x = install_year,
+		y = round(percentage, 1),
+		fill = infrastructure_type
+	)
+) +
+  geom_bar(stat = "identity", position = "stack") +
+  geom_label(
+    aes(label = paste0(round(geometry_len_km, 1), " km")),
+    position = position_stack(vjust = 0.5),
+    size = 2.5,
+    fill = "white",
+    show.legend = FALSE
+  ) +
+  facet_wrap(~ city, ncol = 1) +
+  scale_x_continuous(breaks = 2010:2022) +
+  labs(
+    x = "Year",
+    y = "% km Misclassified",
+    fill = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+```
+
+### Data
+
+```{r}
+# Save data
+write_csv(misc2$data, "../data/plot/fig-yearly-misclass.csv", na = "")
+
+# Display data
+misc2$data %>%
+	datatable(filename = "fig-yearly-misclass")
+```
+
+### Figure
+
+```{r fig.width = 8.5, fig.height = 11}
+
+# Save pdf
+ggsave(
+	"../manuscript/figures/fig-yearly-misclass.pdf",
+	misc2$plot,
+	width = 8.5,
+	height = 11
+)
+
+# Save png
+ggsave(
+	"../manuscript/figures/fig-yearly-misclass.png",
+	misc2$plot,
+	width = 8.5,
+	height = 11
+)
+
+# Display figure
+misc2$plot
+
+```
+
 # Contributions
 
 Richard Wen developed reproducible R code and organized the data based on Konrad Samsel's draft manuscript and previous R code. Konrad Samsel prepared draft manuscript, raw data, and provided consultation on data and methods.
