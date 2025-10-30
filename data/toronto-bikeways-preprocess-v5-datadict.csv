@@ -1,22 +1,24 @@
 column,description,data_type
 id,Unique identifier for each road segment,text
-street,Street of the road segment,text
-status,Status of the road segment,text
+street,Name of street for the road segment,text
+street_from,Name of starting street for the road segment,text
+street_to,Name of ending street for the road segment,text
 road_type,Road type of the road segment,text
 road_type_recode,"Recoded road_type to local, arterial, or collector",text
 install_year,Year of the cycling infrastructure installation in the original data from the City of Toronto,numeric
 install_type,Type of the cycling infrastructure installation of the original data from the City of Toronto,text
+install_type_pl_ct,"Type of the cycling infrastructure installation of the original data from the City of Toronto, converted to PL (painted lane), CT (cycle track) or SR (shared road)",text
 verify_install_year,"Verified year of the cycling infrastructure installation based on Google StreetView, Google Earth, and web search",numeric
 verify_install_date,"Verified unstructured and approximate date of the cycling infrastructure installation based on Google StreetView, Google Earth, and web search",text
-verify_install_type,"Verified type of the cycling infrastructure installation based on Google StreetView, Google Earth, and web search - PL is painted lane, BUF is buffered lane, and PBL is cycle track",text
+verify_install_type,"Verified type of the cycling infrastructure installation based on Google StreetView, Google Earth, and web search",text
 verify_install_comment,"Comment on verification of cycling infrastructure installation based on Google Streetview, Google Earth, and web search",text
 verify_upgrade1_year,"Verified year of the first cycling infrastructure upgrade based on Google StreetView, Google Earth, and web search",numeric
 verify_upgrade1_date,"Verified unstructured and approximate date of the first cycling infrastructure upgrade based on Google StreetView, Google Earth, and web search",text
-verify_upgrade1_type,"Verified type of the first cycling infrastructure upgrade based on Google StreetView, Google Earth, and web search - PL is painted lane, BUF is buffered lane, and PBL is cycle track",text
+verify_upgrade1_type,"Verified type of the first cycling infrastructure upgrade based on Google StreetView, Google Earth, and web search",text
 verify_upgrade1_comment,"Comment on verification of the first cycling infrastructure upgrade based on Google Streetview, Google Earth, and web search",text
 verify_upgrade2_year,"Verified year of the second cycling infrastructure upgrade based on Google StreetView, Google Earth, and web search",numeric
 verify_upgrade2_date,"Verified unstructured and approximate date of the second cycling infrastructure upgrade based on Google StreetView, Google Earth, and web search",text
-verify_upgrade2_type,"Verified type of the second cycling infrastructure upgrade based on Google StreetView, Google Earth, and web search - PL is painted lane, BUF is buffered lane, and PBL is cycle track",text
+verify_upgrade2_type,"Verified type of the second cycling infrastructure upgrade based on Google StreetView, Google Earth, and web search",text
 verify_upgrade2_comment,"Comment on verification of the second cycling infrastructure upgrade based on Google Streetview, Google Earth, and web search",text
 verify_misclass,"The misclassified infrastructure type from the original data from the City of Toronto based on verification using Google StreetView, Google Earth, and web search",text
 verify_final_year,"Type of cycling infrastructure after all installations, upgrades, and improvements applied for painted lanes, buffered lanes, and cycle track - PL is painted lane, BUF is buffered lane, and PBL is cycle track",text
