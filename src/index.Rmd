@@ -3279,6 +3279,14 @@ vanc_preprocess <- vanc_raw %>%
 	    ),
 		.after = road_type
 	) %>%
+	mutate( # create col for canbics orig installs
+		install_type_pl_ct = case_when(
+			install_type == "Protected Bike Lanes" & road_type != "Off-street" ~ "CT",
+			install_type == "Painted Lanes" & road_type != "Off-street" ~ "PL",
+			install_type %in% c("Shared Lanes", "Local Street") & road_type != "Off-street" ~ "SR",
+			.default = NA
+		)
+	) %>%
 	mutate( # calculate the final type and year considering improvements
 		verify_final_type = case_when( # types
 			!is.na(verify_upgrade2_type) &
@@ -3362,7 +3370,7 @@ Full spatial data available at:
 
 # Save geojson
 vanc_preprocess %>%
-	write_sf("../data/vancouver-bikeways-preprocess-v3.geojson", delete_dsn = TRUE)
+	write_sf("../data/vancouver-bikeways-preprocess-v4.geojson", delete_dsn = TRUE)
 
 # Save csv
 # st_read("../data/vancouver-bikeways-preprocess-v3.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
@@ -3372,7 +3380,7 @@ vanc_preprocess %>%
 		geometry_crs = st_crs(vanc_preprocess)$proj4string,
 		.before = geometry
 	) %>%
-	write_csv("../data/vancouver-bikeways-preprocess-v3.csv", na = "")
+	write_csv("../data/vancouver-bikeways-preprocess-v4.csv", na = "")
 
 # Display map
 tmap_mode("view")
@@ -3491,6 +3499,18 @@ calg_preprocess <- calg_raw %>%
 	    ),
 		.after = road_type
 	)  %>%
+	mutate(
+		install_type_pl_ct = case_when(
+			install_type == "Cycle Track" ~ "CT",
+			install_type == "Bicycle Lane" ~ "PL",
+			install_type %in% c(
+				"Neighbourhood Greenway",
+				"Shared Lane",
+				"On-Street Bikeway"
+			) ~ "SR",
+			.default = NA
+		)
+	) %>%
 	mutate( # calculate the final type and year considering improvements
 		verify_final_type = case_when( # types
 			!is.na(verify_upgrade2_type) &
@@ -3575,7 +3595,7 @@ Full spatial data available at:
 
 # Save geojson
 calg_preprocess %>%
-	write_sf("../data/calgary-bikeways-preprocess-v4.geojson", delete_dsn = TRUE)
+	write_sf("../data/calgary-bikeways-preprocess-v5.geojson", delete_dsn = TRUE)
 
 # Save csv
 # st_read("../data/calgary-bikeways-preprocess-v4.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
@@ -3585,7 +3605,7 @@ calg_preprocess %>%
 		geometry_crs = st_crs(calg_preprocess)$proj4string,
 		.before = geometry
 	) %>%
-	write_csv("../data/calgary-bikeways-preprocess-v4.csv", na = "")
+	write_csv("../data/calgary-bikeways-preprocess-v5.csv", na = "")
 
 # Display map
 tmap_mode("view")
@@ -3698,6 +3718,25 @@ toron_preprocess <- toron_raw %>%
 	    ),
 		.after = road_type
 	) %>%
+	mutate( # create col for canbics orig installs
+		type = case_when(
+			install_type %in% c(
+				"Bi-Directional Cycle Track",
+				"Cycle Track",
+				"Cycle Track - Contraflow"
+			) ~ "CT",
+			install_type %in% c(
+				"Bike Lane",
+				"Bike Lane - Buffered",
+				"Bike Lane - Contraflow"
+			) ~ "PL",
+			str_starts(
+				install_type,
+				"Sharrows|Signed Route|Park"
+			) ~ "SR",
+			.default = NA
+		)
+	)
 	mutate( # calculate the final type and year considering improvements
 		verify_final_type = case_when( # types
 			!is.na(verify_upgrade2_type) &
@@ -3781,7 +3820,7 @@ Full spatial data available at:
 
 # Save geojson
 toron_preprocess %>%
-	write_sf("../data/toronto-bikeways-preprocess-v4.geojson", delete_dsn = TRUE)
+	write_sf("../data/toronto-bikeways-preprocess-v5.geojson", delete_dsn = TRUE)
 
 # Save csv
 # st_read("../data/toronto-bikeways-preprocess-v4.csv", options = "GEOM_POSSIBLE_NAMES=geometry", crs = "urn:ogc:def:crs:OGC:1.3:CRS84")
@@ -3791,7 +3830,7 @@ toron_preprocess %>%
 		geometry_crs = st_crs(toron_preprocess)$proj4string,
 		.before = geometry
 	) %>%
-	write_csv("../data/toronto-bikeways-preprocess-v4.csv", na = "")
+	write_csv("../data/toronto-bikeways-preprocess-v5.csv", na = "")
 
 # Display map
 tmap_mode("view")
