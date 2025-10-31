@@ -4063,24 +4063,32 @@ map_data <- list(
 tab1 <- list()
 
 # Gather data for all cities
+tab1$data_raw_cols <- c("city", "install_type", "install_type2", "verify_final_type", "road_type")
 tab1$data_raw <- vanc %>%
 	mutate(city = "vancouver") %>%
-	select(city, install_type, install_type_pl_ct, verify_install_type, road_type) %>%
+	select(tab1$data_raw_cols) %>%
 	add_row(
 		calg %>%
 			mutate(city = "calgary") %>%
-			select(city, install_type, install_type_pl_ct, road_type)
+			select(tab1$data_raw_cols)
 	) %>%
 	add_row(
 		toron %>%
 			mutate(city = "toronto") %>%
-			select(city, install_type, install_type_pl_ct, road_type)
+			select(tab1$data_raw_cols) 
 	) %>%
-	filter(!is.na(install_type_pl_ct))
+	filter(
+		!is.na(install_type2) &
+		!install_type2 %in% c("LSB", "None", "SR")
+	) %>%
+	mutate( # treat buff lanes as painted lanes
+		install_type2 = if_else(install_type2 == "BUF", "PL", install_type2),
+		verify_final_type = if_else(verify_final_type == "BUF", "PL", verify_final_type)
+	)
 
 # Calc municipal lengths
 tab1$data <- tab1$data_raw %>%
-	group_by(city, install_type_pl_ct) %>%
+	group_by(city, install_type2) %>%
 	summarize(
 		len_km_municipal = (sum(st_length(geometry), na.rm = T) / 1000) %>% as.numeric
 	) %>%
@@ -4090,13 +4098,13 @@ tab1$data <- tab1$data_raw %>%
 # Calc verify lengths
 tab1$data <- tab1$data %>% left_join(
 	tab1$data_raw %>%
-		group_by(city, verify_install_type) %>%
+		group_by(city, verify_final_type) %>%
 		summarize(
 			len_km_verify = (sum(st_length(geometry), na.rm = T) / 1000) %>% as.numeric
 		) %>%
 		as_tibble %>%
 		select(-geometry),
-	by = join_by(city, install_type_pl_ct == verify_install_type)
+	by = join_by(city, install_type2 == verify_final_type)
 )
 
 # Calculate diff lengths
@@ -4106,39 +4114,112 @@ tab1$data <- tab1$data %>%
 		len_km_perc = (len_km_diff / len_km_municipal) * 100
 	)
 
+# Create conf interval func
+tab1_ci_stat <- function(df, i) {
+	
+	# Calc city len
+	city <- df[i,] %>% filter(type_source == "install_type2")
+	len_city <- sum(city$len_km, na.rm = T)
+	
+	# Calc verify len
+	verify_type <- unique(city$type)[1]
+	verify <- df[i,] %>%
+		filter(
+			type_source == "verify_final_type" &
+			type == verify_type
+		)
+	len_verify <- sum(verify$len_km, na.rm = T)
+	
+	# Return diff
+	return(len_verify - len_city)
+}
+
 # Calculate conf ints with bootstrap
 tab1$data <- tab1$data %>% left_join(
 	tab1$data_raw %>%
+		mutate(
+			len_km = as.numeric(st_length(geometry) / 1000)
+		) %>%
 		as_tibble %>%
 		select(-geometry) %>%
-		mutate( # create 1 or 0 if municipal matches verify
-			install_type_match = install_type_pl_ct == verify_install_type
+		pivot_longer( # stack infra types for easier grouping
+			cols = c(install_type2, verify_final_type),
+			names_to = "type_source",
+			values_to = "type"
 		) %>%
-		group_by(city, install_type_pl_ct) %>%
-		summarize(
-			len_km_municipal = (sum(st_length(geometry), na.rm = T) / 1000) %>% as.numeric,
-			len_km_verify = (sum(st_length(geometry), na.rm = T) / 1000) %>% as.numeric
-		),
-	by = c("city", "install_type_pl_ct")
+		group_by(city, type) %>%
+		group_map(~ {
+			
+			# Run bootstrap resamples
+			ci_resamples <- 1000
+			b <- boot(.x, tab1_ci_stat, R = ci_resamples)
+			
+			# Get conf ints
+			ci_conf <- 0.95
+			ci <- boot.ci(b, type = "perc", conf = ci_conf)$percent[4:5]
+			
+			# Return conf as df
+			tibble(
+				city = .y[[1]],
+				install_type2 = .y[[2]],
+				len_km_diff_ci_lower = ci[1],
+				len_km_diff_ci_upper = ci[2],
+				len_km_diff_ci_resamples = ci_resamples,
+				len_km_diff_ci_conf = ci_conf
+			)
+		}, .keep = T) %>%
+		bind_rows,
+	by = c("city", "install_type2")
 )
 
 # Clean up names for cols and infra types
 tab1$data <- tab1$data  %>%
 	mutate(
-		install_type_pl_ct = case_when(
-			install_type_pl_ct == "PL" ~ "Painted Lane",
-			install_type_pl_ct == "CT" ~ "Cycle Track",
-			install_type_pl_ct == "SR" ~ "Shared Road",
-			install_type_pl_ct == "LSB" ~ "Local Street Bikeway",
+		city =  factor(str_to_title(city), levels = c("Vancouver", "Calgary", "Toronto")),
+		install_type2 = case_when( # clean up infra types
+			install_type2 == "PL" ~ "Painted Lane",
+			install_type2 == "PBL" ~ "Cycle Track",
+			install_type2 == "SR" ~ "Shared Road",
+			install_type2 == "LSB" ~ "Local Street Bikeway",
 			.default = NA
+		),
+		len_km_diff_ci_lower_perc = (len_km_diff_ci_lower / len_km_municipal) * 100,
+		len_km_diff_ci_upper_perc = (len_km_diff_ci_upper / len_km_municipal) * 100,
+		len_km_municipal_rd = round(len_km_municipal, 1), # round dec places
+		len_km_verify_rd = round(len_km_verify, 1),
+		len_km_diff_rd = round(len_km_diff, 1),
+		len_km_perc_rd = round(len_km_perc, 1),
+		len_km_diff_ci_lower_rd = round(len_km_diff_ci_lower, 1),
+		len_km_diff_ci_upper_rd = round(len_km_diff_ci_upper, 1),
+		len_km_diff_ci_lower_perc_rd = round(len_km_diff_ci_lower_perc, 1),
+		len_km_diff_ci_upper_perc_rd = round(len_km_diff_ci_upper_perc, 1)
+	) %>%
+	mutate(
+		len_km_diff_label = glue(
+			"{if_else(len_km_diff > 0, '+', '')}{len_km_diff_rd} ({len_km_perc_rd}%)"
+		),
+		len_km_diff_ci_label = glue(
+			"{if_else(len_km_diff_ci_lower > 0, '+', '')}{len_km_diff_ci_lower_rd} ({if_else(len_km_diff_ci_lower > 0, '+', '')}{len_km_diff_ci_lower_perc_rd}%), ",
+			"{if_else(len_km_diff_ci_upper > 0, '+', '')}{len_km_diff_ci_upper_rd} ({if_else(len_km_diff_ci_upper > 0, '+', '')}{len_km_diff_ci_upper_perc_rd}%)"
 		)
+	) %>%
+	arrange(city) %>%
+	select(
+		city,
+		install_type2,
+		len_km_municipal,
+		len_km_verify,
+		len_km_diff_label,
+		len_km_diff_ci_label,
+		everything()
 	) %>%
 	rename(
 		City = city,
-		Classification = install_type_pl_ct,
+		Classification = install_type2,
 		Municipal = len_km_municipal,
 		Verified = len_km_verify,
-		Difference = len_km_diff
+		`Difference (%)` = len_km_diff_label,
+		`95% Confidence Intervals\n(Bootstrap, 1000 Resamples)` = len_km_diff_ci_label
 	)
 
 # Create side by side table
@@ -4151,16 +4232,16 @@ tab1$data <- tab1$data %>%
 			filter(city == "calgary") %>%
 			select(-city) %>%
 			rename(Calgary = len_km),
-		by = "install_type_pl_ct"
+		by = "install_type2"
 	) %>%
 	left_join(
 		tab1$data %>% 
 			filter(city == "toronto") %>%
 			select(-city) %>%
 			rename(Toronto = len_km),
-		by = "install_type_pl_ct"
+		by = "install_type2"
 	) %>%
-	rename(Measure = install_type_pl_ct) %>%
+	rename(Measure = install_type2) %>%
 	mutate(
 		Title = "Municipal Bikeways and Pathways (2022, centreline-kilometers)",
 		.before = 1
@@ -5365,77 +5446,38 @@ Calculate lengths of misclassified city infrastructure types.
 misc1 <- list()
 
 # Create data
+misc1$data_cols <- c("city", "install_type", "install_type2", "verify_final_type", "road_type")
 misc1$data <- vanc %>%
-	mutate(
-		install_type2 = case_when(
-			install_type == "Painted Lanes" ~ "PL",
-			install_type == "Protected Bike Lanes" ~ "PBL",
-			.default = NA
-		),
-		city = "vancouver"
-	) %>%
-	select(install_year, install_type2, verify_install_type, city) %>%
+	mutate(city = "vancouver") %>%
+	select(misc1$data_cols) %>%
 	add_row(
 		calg %>%
-		mutate(
-			install_type2 = case_when(
-				install_type == "Bicycle Lane" ~ "PL",
-				install_type == "Cycle Track" ~ "PBL",
-				.default = NA
-			),
-			city = "calgary"
-		) %>%
-		select(install_year, install_type2, verify_install_type, city)
+		mutate(city = "calgary") %>%
+		select(misc1$data_cols)
 	) %>%
 	add_row(
 		toron %>%
-		mutate(
-			install_type2 = case_when(
-				install_type %in% c(
-					"Bike Lane",
-					"Bike Lane - Contraflow"
-				) ~ "PL",
-				install_type == "Bike Lane - Buffered" ~ "BUF",
-				install_type %in% c(
-					"Cycle Track",
-					"Cycle Track - Contraflow"
-				) ~ "PBL"
-			),
-			city = "toronto"
-		) %>%
-		select(install_year, install_type2, verify_install_type, city)
+		mutate(city = "toronto") %>%
+		select(misc1$data_cols)
 	) %>%
 	mutate(
-		geometry_len_km = as.numeric(st_length(geometry) / 1000),
-		install_type2 = if_else(
-			install_type2 == "BUF",
-			"PL",
-			install_type2
-		),
-		verify_install_type = if_else(
-			verify_install_type == "BUF",
-			"PL",
-			verify_install_type
-		),
-		misclass_type = if_else(
-			install_type2 != verify_install_type,
-			install_type2,
-			NA
-		),
-		misclass_path = if_else(
-			install_type2 != verify_install_type,
-			paste0(install_type2, " -> ", verify_install_type),
-			NA
-		)
+		len_km = as.numeric(st_length(geometry) / 1000),
+		install_type2 = if_else(install_type2 == "BUF","PL",install_type2),
+		verify_final_type = if_else(verify_final_type == "BUF", "PL", verify_final_type),
+		type_path = glue("{install_type2} -> {verify_final_type}")
+	) %>%
+	filter(
+		!is.na(install_type2) &
+		!install_type2 %in% c("LSB", "None", "SR")
 	)
 
 # Display len km misclass
 misc1$data %>%
     as_tibble %>%
     select(-geometry) %>%
-    group_by(city, misclass_path) %>%
-    summarize(geometry_len_km = sum(geometry_len_km)) %>%
-	filter(!is.na(misclass_path))
+    group_by(city, type_path) %>%
+    summarize(len_km = sum(len_km)) %>%
+	filter(!is.na(type_path))
 ```
 
 ## Misclassified Types by Year
