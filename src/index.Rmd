@@ -4060,22 +4060,22 @@ map_data <- list(
 ```{r}
 
 # Create list to store tab data
-tab1 <- list()
+tab3 <- list()
 
 # Gather data for all cities
-tab1$data_raw_cols <- c("city", "install_type", "install_type2", "verify_final_type", "road_type")
-tab1$data_raw <- vanc %>%
+tab3$data_raw_cols <- c("city", "install_type", "install_type2", "verify_final_type", "road_type")
+tab3$data_raw <- vanc %>%
 	mutate(city = "vancouver") %>%
-	select(tab1$data_raw_cols) %>%
+	select(tab3$data_raw_cols) %>%
 	add_row(
 		calg %>%
 			mutate(city = "calgary") %>%
-			select(tab1$data_raw_cols)
+			select(tab3$data_raw_cols)
 	) %>%
 	add_row(
 		toron %>%
 			mutate(city = "toronto") %>%
-			select(tab1$data_raw_cols) 
+			select(tab3$data_raw_cols) 
 	) %>%
 	filter(
 		!is.na(install_type2) &
@@ -4087,7 +4087,7 @@ tab1$data_raw <- vanc %>%
 	)
 
 # Calc municipal lengths
-tab1$data <- tab1$data_raw %>%
+tab3$data <- tab3$data_raw %>%
 	group_by(city, install_type2) %>%
 	summarize(
 		len_km_municipal = (sum(st_length(geometry), na.rm = T) / 1000) %>% as.numeric
@@ -4096,8 +4096,8 @@ tab1$data <- tab1$data_raw %>%
 	select(-geometry)
 
 # Calc verify lengths
-tab1$data <- tab1$data %>% left_join(
-	tab1$data_raw %>%
+tab3$data <- tab3$data %>% left_join(
+	tab3$data_raw %>%
 		group_by(city, verify_final_type) %>%
 		summarize(
 			len_km_verify = (sum(st_length(geometry), na.rm = T) / 1000) %>% as.numeric
@@ -4108,7 +4108,7 @@ tab1$data <- tab1$data %>% left_join(
 )
 
 # Calculate diff lengths
-tab1$data <- tab1$data %>%
+tab3$data <- tab3$data %>%
 	mutate(
 		len_km_diff = len_km_verify - len_km_municipal,
 		len_km_perc = (len_km_diff / len_km_municipal) * 100
@@ -4135,8 +4135,8 @@ tab1_ci_stat <- function(df, i) {
 }
 
 # Calculate conf ints with bootstrap
-tab1$data <- tab1$data %>% left_join(
-	tab1$data_raw %>%
+tab3$data <- tab3$data %>% left_join(
+	tab3$data_raw %>%
 		mutate(
 			len_km = as.numeric(st_length(geometry) / 1000)
 		) %>%
@@ -4173,11 +4173,11 @@ tab1$data <- tab1$data %>% left_join(
 )
 
 # Clean up names for cols and infra types
-tab1$data <- tab1$data  %>%
+tab3$data <- tab3$data %>%
 	mutate(
 		city =  factor(str_to_title(city), levels = c("Vancouver", "Calgary", "Toronto")),
 		install_type2 = case_when( # clean up infra types
-			install_type2 == "PL" ~ "Painted Lane",
+			install_type2 == "PL" ~ "Painted and Buffered Lane",
 			install_type2 == "PBL" ~ "Cycle Track",
 			install_type2 == "SR" ~ "Shared Road",
 			install_type2 == "LSB" ~ "Local Street Bikeway",
@@ -4195,20 +4195,22 @@ tab1$data <- tab1$data  %>%
 		len_km_diff_ci_upper_perc_rd = round(len_km_diff_ci_upper_perc, 1)
 	) %>%
 	mutate(
+		len_km_municipal_label = glue("{len_km_municipal_rd} km"),
+		len_km_verify_label = glue("{len_km_verify_rd} km"),
 		len_km_diff_label = glue(
-			"{if_else(len_km_diff > 0, '+', '')}{len_km_diff_rd} ({len_km_perc_rd}%)"
+			"{if_else(len_km_diff > 0, '+', '')}{len_km_diff_rd} km ({len_km_perc_rd}%)"
 		),
 		len_km_diff_ci_label = glue(
-			"{if_else(len_km_diff_ci_lower > 0, '+', '')}{len_km_diff_ci_lower_rd} ({if_else(len_km_diff_ci_lower > 0, '+', '')}{len_km_diff_ci_lower_perc_rd}%), ",
-			"{if_else(len_km_diff_ci_upper > 0, '+', '')}{len_km_diff_ci_upper_rd} ({if_else(len_km_diff_ci_upper > 0, '+', '')}{len_km_diff_ci_upper_perc_rd}%)"
+			"{if_else(len_km_diff_ci_lower > 0, '+', '')}{len_km_diff_ci_lower_rd} km ({if_else(len_km_diff_ci_lower > 0, '+', '')}{len_km_diff_ci_lower_perc_rd}%), ",
+			"{if_else(len_km_diff_ci_upper > 0, '+', '')}{len_km_diff_ci_upper_rd} km ({if_else(len_km_diff_ci_upper > 0, '+', '')}{len_km_diff_ci_upper_perc_rd}%)"
 		)
 	) %>%
 	arrange(city) %>%
 	select(
 		city,
 		install_type2,
-		len_km_municipal,
-		len_km_verify,
+		len_km_municipal_label,
+		len_km_verify_label,
 		len_km_diff_label,
 		len_km_diff_ci_label,
 		everything()
@@ -4216,94 +4218,135 @@ tab1$data <- tab1$data  %>%
 	rename(
 		City = city,
 		Classification = install_type2,
-		Municipal = len_km_municipal,
-		Verified = len_km_verify,
+		Municipal = len_km_municipal_label,
+		Verified = len_km_verify_label,
 		`Difference (%)` = len_km_diff_label,
 		`95% Confidence Intervals\n(Bootstrap, 1000 Resamples)` = len_km_diff_ci_label
 	)
 
-# Create side by side table
-tab1$data <- tab1$data %>%
-	filter(city == "vancouver") %>%
-	select(-city) %>%
-	rename(Vancouver = len_km) %>%
-	left_join(
-		tab1$data %>% 
-			filter(city == "calgary") %>%
-			select(-city) %>%
-			rename(Calgary = len_km),
-		by = "install_type2"
-	) %>%
-	left_join(
-		tab1$data %>% 
-			filter(city == "toronto") %>%
-			select(-city) %>%
-			rename(Toronto = len_km),
-		by = "install_type2"
-	) %>%
-	rename(Measure = install_type2) %>%
-	mutate(
-		Title = "Municipal Bikeways and Pathways (2022, centreline-kilometers)",
-		.before = 1
-	)
-
-# Create table for municipal data lengths
-options(knitr.kable.NA = "")
-tab1$table <- tab1$data %>%
-	mutate(
-		Vancouver = round(Vancouver, 1),
-		Calgary = round(Calgary, 1),
-		Toronto = round(Toronto, 1)
-	) %>%
-	kable(
-		booktabs = T
-	) %>%
-	kable_classic() %>%
-	add_header_above(
-		c("Municipal Attributes" = 5),
-		align = "center",
-		bold = T
-	) %>%
-	column_spec(1, bold = T) %>%
-	row_spec(0, bold = T, align = "center") %>%
-	collapse_rows(columns = 1)
-
-```
-
-#### Table
-
-Table files available at:
-
-* [manuscript/figures/tab-infra.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-infra.pdf)
-* [manuscript/figures/tab-infra.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/tab-infra.png)
-
-```{r}
-
-# Save pdf
-if (!file.exists("../manuscript/figures/tab-infra.pdf")) {
-	save_kable(tab1$table, "../manuscript/figures/tab-infra.pdf")
-}
-
-# Save png
-if (!file.exists("../manuscript/figures/tab-infra.png")) {
-	save_kable(tab1$table, "../manuscript/figures/tab-infra.png", zoom = 2)
-}
-
-# Display table
-tab1$table
-
-```
-
-### Data
-
-```{r}
-
 # Save data
-write_csv(tab1$data, "../data/plot/tab-infra.csv", na = "")
+write_csv(tab3$data, "../data/plot/tab-infra.csv", na = "")
 
 # Display data
-tab1$data %>%
+tab3$data %>%
 	datatable(filename = "tab-infra")
+
+```
+
+## Table 4: Comparison of municipal-reported roadway cycling infrastructure lengths and verified bikeway infrastructure in Vancouver, Calgary and Toronto (Canada), 2022.
+
+**Note**: Totals should match Table 3.
+
+```{r}
+
+# Create obj to store data
+tab4 <- list()
+
+# Create data
+tab4$data_raw_cols <- c("city", "install_type", "install_type2", "verify_final_type", "road_type")
+tab4$data_raw <- vanc %>%
+	mutate(city = "vancouver") %>%
+	select(tab4$data_raw_cols) %>%
+	add_row(
+		calg %>%
+		mutate(city = "calgary") %>%
+		select(tab4$data_raw_cols)
+	) %>%
+	add_row(
+		toron %>%
+		mutate(city = "toronto") %>%
+		select(tab4$data_raw_cols)
+	) %>%
+	mutate(
+		len_km = as.numeric(st_length(geometry) / 1000),
+		install_type2 = if_else(install_type2 == "BUF","PL",install_type2),
+		verify_final_type = if_else(verify_final_type == "BUF", "PL", verify_final_type),
+		type_path = glue("{install_type2} -> {verify_final_type}")
+	) %>%
+	filter(
+		!is.na(install_type2) &
+		!install_type2 %in% c("LSB", "None", "SR")
+	)
+
+# Display len km misclass
+tab4$data <- tab4$data_raw %>%
+    as_tibble %>%
+    select(-geometry) %>%
+    group_by(city, type_path) %>%
+    summarize(len_km = sum(len_km)) %>%
+	filter(!is.na(type_path)) %>%
+	separate(
+		type_path,
+		into = c("type_municipal", "type_verify"),
+		sep = " -> "
+	) %>%
+	mutate(
+		across(
+			c(type_municipal, type_verify),
+			~ case_when( # clean up infra types
+				.x == "PL" ~ "Painted and Buffered Lane",
+				.x == "PBL" ~ "Cycle Track",
+				.x == "SR" ~ "Shared Road",
+				.x == "LSB" ~ "Local Street Bikeway",
+				.default = .x
+			)
+		),
+		city = factor(str_to_title(city), levels = c("Vancouver", "Calgary", "Toronto")),
+		type_municipal = factor(
+			type_municipal,
+			levels = c(
+				"Painted and Buffered Lane",
+				"Local Street Bikeway",
+				"Cycle Track",
+				"Shared Road",
+				"None"
+			)
+		)
+	) %>%
+	arrange(city, type_municipal) %>%
+	group_by(city, type_municipal, type_verify) %>%
+	summarise(total_len = sum(len_km), .groups = "drop") %>%
+	pivot_wider(names_from = type_verify, values_from = total_len, values_fill = 0) %>%
+	rename(
+		City = city,
+		Municipal = type_municipal
+	) %>%
+	select(
+		City,
+		Municipal,
+		`Painted and Buffered Lane`,
+		`Cycle Track`,
+		`None`,
+		everything()
+	) %>%
+	mutate(
+		len_km_pl = `Painted and Buffered Lane`,
+		len_km_pl_rd = round(len_km_pl, 1),
+		len_km_pbl = `Cycle Track`,
+		len_km_pbl_rd = round(len_km_pbl, 1),
+		len_km_none = `None`,
+		len_km_none_rd = round(len_km_none, 1),
+		len_km_total = `Painted and Buffered Lane` + `Cycle Track` + `None`,
+		len_km_total_rd = round(len_km_total, 1),
+		len_km_pl_perc = (len_km_pl / len_km_total) * 100,
+		len_km_pl_perc_rd = round(len_km_pl_perc, 1),
+		len_km_pbl_perc = (len_km_pbl / len_km_total) * 100,
+		len_km_pbl_perc_rd = round(len_km_pbl_perc, 1),
+		len_km_none_perc = (len_km_none / len_km_total) * 100,
+		len_km_none_perc_rd = round(len_km_none_perc, 1),
+		Municipal = glue("{Municipal} ({len_km_total_rd} km, 100%)"),
+		`Painted and Buffered Lane` = glue("{len_km_pl_rd} km ({len_km_pl_perc_rd}%)"),
+		`Cycle Track` = glue("{len_km_pbl_rd} km ({len_km_pbl_perc_rd}%)"),
+		`None` = glue("{len_km_none_rd} km ({len_km_none_perc_rd}%)")
+	)
+tab4$data
+
+# Save data
+write_csv(tab4$data, "../data/plot/tab-misclass.csv", na = "")
+
+# Display data
+tab4$data %>%
+	datatable(filename = "tab-misclass")
 
 ```
 
@@ -5446,19 +5489,19 @@ Calculate lengths of misclassified city infrastructure types.
 misc1 <- list()
 
 # Create data
-misc1$data_cols <- c("city", "install_type", "install_type2", "verify_final_type", "road_type")
-misc1$data <- vanc %>%
+misc1$data_raw_cols <- c("city", "install_type", "install_type2", "verify_final_type", "road_type")
+misc1$data_raw <- vanc %>%
 	mutate(city = "vancouver") %>%
-	select(misc1$data_cols) %>%
+	select(misc1$data_raw_cols) %>%
 	add_row(
 		calg %>%
 		mutate(city = "calgary") %>%
-		select(misc1$data_cols)
+		select(misc1$data_raw_cols)
 	) %>%
 	add_row(
 		toron %>%
 		mutate(city = "toronto") %>%
-		select(misc1$data_cols)
+		select(misc1$data_raw_cols)
 	) %>%
 	mutate(
 		len_km = as.numeric(st_length(geometry) / 1000),
@@ -5472,12 +5515,77 @@ misc1$data <- vanc %>%
 	)
 
 # Display len km misclass
-misc1$data %>%
+misc1$data <- misc1$data_raw %>%
     as_tibble %>%
     select(-geometry) %>%
     group_by(city, type_path) %>%
     summarize(len_km = sum(len_km)) %>%
-	filter(!is.na(type_path))
+	filter(!is.na(type_path)) %>%
+	separate(
+		type_path,
+		into = c("type_municipal", "type_verify"),
+		sep = " -> "
+	) %>%
+	mutate(
+		across(
+			c(type_municipal, type_verify),
+			~ case_when( # clean up infra types
+				.x == "PL" ~ "Painted and Buffered Lane",
+				.x == "PBL" ~ "Cycle Track",
+				.x == "SR" ~ "Shared Road",
+				.x == "LSB" ~ "Local Street Bikeway",
+				.default = .x
+			)
+		),
+		city = factor(str_to_title(city), levels = c("Vancouver", "Calgary", "Toronto")),
+		type_municipal = factor(
+			type_municipal,
+			levels = c(
+				"Painted and Buffered Lane",
+				"Local Street Bikeway",
+				"Cycle Track",
+				"Shared Road",
+				"None"
+			)
+		)
+	) %>%
+	arrange(city, type_municipal) %>%
+	group_by(city, type_municipal, type_verify) %>%
+	summarise(total_len = sum(len_km), .groups = "drop") %>%
+	pivot_wider(names_from = type_verify, values_from = total_len, values_fill = 0) %>%
+	rename(
+		City = city,
+		Municipal = type_municipal
+	) %>%
+	select(
+		City,
+		Municipal,
+		`Painted and Buffered Lane`,
+		`Cycle Track`,
+		`None`,
+		everything()
+	) %>%
+	mutate(
+		len_km_pl = `Painted and Buffered Lane`,
+		len_km_pl_rd = round(len_km_pl, 1),
+		len_km_pbl = `Cycle Track`,
+		len_km_pbl_rd = round(len_km_pbl, 1),
+		len_km_none = `None`,
+		len_km_none_rd = round(len_km_none, 1),
+		len_km_total = `Painted and Buffered Lane` + `Cycle Track` + `None`,
+		len_km_total_rd = round(len_km_total, 1),
+		len_km_pl_perc = (len_km_pl / len_km_total) * 100,
+		len_km_pl_perc_rd = round(len_km_pl_perc, 1),
+		len_km_pbl_perc = (len_km_pbl / len_km_total) * 100,
+		len_km_pbl_perc_rd = round(len_km_pbl_perc, 1),
+		len_km_none_perc = (len_km_none / len_km_total) * 100,
+		len_km_none_perc_rd = round(len_km_none_perc, 1),
+		Municipal = glue("{Municipal} ({len_km_total_rd} km, 100%)"),
+		`Painted and Buffered Lane` = glue("{len_km_pl_rd} km ({len_km_pl_perc_rd}%)"),
+		`Cycle Track` = glue("{len_km_pbl_rd} km ({len_km_pbl_perc_rd}%)"),
+		`None` = glue("{len_km_none_rd} km ({len_km_none_perc_rd}%)")
+	)
+misc1$data
 ```
 
 ## Misclassified Types by Year
