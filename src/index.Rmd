@@ -82,7 +82,8 @@ required_packages <- c(
 	"kableExtra",
 	"DT",
 	"binom",
-	"boot"
+	"boot",
+	"R.devices"
 )
 
 # Try to install packages if not installed
@@ -179,6 +180,24 @@ tmap_options(basemaps = settings$basemaps)
 ```
 
 # Functions
+
+## Function A: ggsave
+
+Workaround to fix `ggsave` not working with RmD run command in RStudio.
+
+Also skips saving as a default. `ggsave` seems to be causing this markdown document to error out. Running each `ggsave` repeatedly, eventually results in success.
+
+If figures need to be regenerated, simply modify argument `skip` to `FALSE`.
+
+```{r}
+ggsave <- function(..., skip = TRUE) {
+	if (!skip) {
+		R.devices::suppressGraphics({
+			ggplot2::ggsave(...)
+		})
+	}
+}
+```
 
 ## Function 0: datatable
 
@@ -853,11 +872,60 @@ plot_yearly_len_infra <- function(
 			roadway_total <- df_list[[i]]$roadway_total
 		}
 		
-		# Calc infra per year
-		p[[i]] <- calc_yearly_adj_len(
-			df,
-			type_col = settings$type_col_infra
-		)
+		# Calc adj infra lengths
+		# p[[i]] <- calc_yearly_adj_len(
+		# 	df,
+		# 	type_col = settings$type_col_infra
+		# )
+		df_long <- df %>%
+		    as.data.frame() %>%
+		    select(
+		        id,
+		        verify_install_type,
+		        verify_upgrade1_type,
+		        verify_upgrade2_type,
+		        verify_install_year,
+		        verify_upgrade1_year,
+		        verify_upgrade2_year,
+		        geometry_len_km
+		    ) %>%
+		    pivot_longer(
+		        cols = c(
+		            verify_install_type,
+		            verify_upgrade1_type,
+		            verify_upgrade2_type
+		        ),
+		        names_to = "stage",
+		        values_to = "type"
+		    ) %>%
+		    filter(!is.na(type)) %>%
+		    mutate(
+		        year = case_when(
+		            stage == "verify_install_type"  ~ verify_install_year,
+		            stage == "verify_upgrade1_type" ~ verify_upgrade1_year,
+		            stage == "verify_upgrade2_type" ~ verify_upgrade2_year,
+		            .default = NA_real_
+		        )
+		    )
+		
+		# Create df to capture all yearly states for each segment
+		df_allstates <- crossing(
+			id = unique(df_long$id),
+			year = seq(min(df_long$year), max(df_long$year))
+		) %>%
+			left_join(
+				df_long,
+				by = c("id", "year")
+			) %>%
+			arrange(id, year) %>%
+			fill(type, .direction = "downup") %>%
+			fill(geometry_len_km, .direction = "downup")
+		
+		# Calc adjusted lengths per year
+		p[[i]] <- df_allstates %>%
+			group_by(year, type) %>%
+			summarize(adj_len = sum(geometry_len_km)) %>%
+			mutate(verify_install_type = type)
 		
 		# Norm len if needed
 		len_col <- "adj_len"
@@ -2976,7 +3044,7 @@ vanc_raw %>%
 ### Details
 
 ```{r}
-print(vanc_raw)
+summary(vanc_raw)
 ```
 
 ## Calgary Raw Data {.tabset}
@@ -3053,7 +3121,7 @@ calg_raw %>%
 ### Details
 
 ```{r}
-print(calg_raw)
+summary(calg_raw)
 ```
 
 ## Toronto Raw Data {.tabset}
@@ -3112,7 +3180,7 @@ toron_raw %>%
 ### Details
 
 ```{r}
-print(toron_raw)
+summary(toron_raw)
 ```
 
 ## City Boundaries Data {.tabset}
@@ -3405,7 +3473,7 @@ vanc_preprocess %>%
 ### Details
 
 ```{r}
-print(vanc_preprocess)
+summary(vanc_preprocess)
 ```
 
 ## Calgary Preprocessed Data {.tabset}
@@ -3629,7 +3697,7 @@ calg_preprocess %>%
 ### Details
 
 ```{r}
-print(calg_preprocess)
+summary(calg_preprocess)
 ```
 
 ## Toronto Preprocessed Data {.tabset}
@@ -3854,7 +3922,7 @@ toron_preprocess %>%
 ### Details
 
 ```{r}
-print(toron_preprocess)
+summary(toron_preprocess)
 ```
 
 # Inclusion and Exclusion Criteria
@@ -3944,7 +4012,7 @@ vanc %>%
 ### Details
 
 ```{r}
-print(vanc)
+summary(vanc)
 ```
 
 ## Calgary Filtered Data {.tabset}
@@ -3975,7 +4043,7 @@ calg %>%
 ### Details
 
 ```{r}
-print(calg)
+summary(calg)
 ```
 
 ## Toronto Filtered Data {.tabset}
@@ -4006,7 +4074,7 @@ toron %>%
 ### Details
 
 ```{r}
-print(toron)
+summary(toron)
 ```
 
 # Map Data Preparation
@@ -4566,6 +4634,7 @@ Figure files available at:
 ggsave(
 	"../manuscript/figures/fig-maps.pdf",
 	fig4$plot,
+	width = 10,
 	height = 12
 )
 
@@ -4573,6 +4642,7 @@ ggsave(
 ggsave(
 	"../manuscript/figures/fig-maps.png",
 	fig4$plot,
+	width = 10,
 	height = 12
 )
 
