@@ -873,10 +873,6 @@ plot_yearly_len_infra <- function(
 		}
 		
 		# Pivot to long format to capture states per segment
-		# p[[i]] <- calc_yearly_adj_len(
-		# 	df,
-		# 	type_col = settings$type_col_infra
-		# )
 		df_long <- df %>%
 		    as.data.frame() %>%
 		    select(
@@ -4527,8 +4523,7 @@ ggsave(
 	"../manuscript/figures/fig-yearly-len.pdf",
 	fig2$plot,
 	width = 8.5,
-	height = 12,
-	skip = F
+	height = 12
 )
 
 # Save png
@@ -4536,7 +4531,7 @@ ggsave(
 	"../manuscript/figures/fig-yearly-len.png",
 	fig2$plot,
 	width = 8.5,
-	height = 12, skip = F
+	height = 12
 )
 
 # Display figure
