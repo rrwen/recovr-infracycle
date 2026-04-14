@@ -872,7 +872,7 @@ plot_yearly_len_infra <- function(
 			roadway_total <- df_list[[i]]$roadway_total
 		}
 		
-		# Calc adj infra lengths
+		# Pivot to long format to capture states per segment
 		# p[[i]] <- calc_yearly_adj_len(
 		# 	df,
 		# 	type_col = settings$type_col_infra
@@ -918,14 +918,29 @@ plot_yearly_len_infra <- function(
 				by = c("id", "year")
 			) %>%
 			arrange(id, year) %>%
-			fill(type, .direction = "downup") %>%
-			fill(geometry_len_km, .direction = "downup")
+			group_by(id) %>%
+			fill(type, .direction = "down") %>%
+			fill(geometry_len_km, .direction = "down") %>%
+			ungroup()
 		
 		# Calc adjusted lengths per year
-		p[[i]] <- df_allstates %>%
+		df_ylens <- df_allstates %>%
 			group_by(year, type) %>%
-			summarize(adj_len = sum(geometry_len_km)) %>%
-			mutate(verify_install_type = type)
+			filter(!is.na(type)) %>%
+			summarize(adj_len = sum(geometry_len_km))
+		
+		# Add zero lens for types not existing in years for plot lines
+		p[[i]] <- df_ylens %>%
+			right_join( # add years for types not existing
+				crossing(
+					year = seq(min(df_ylens$year), max(df_ylens$year)),
+					type = unique(df_ylens$type)
+				), by = c("year", "type")
+			) %>%
+			mutate(
+				adj_len = if_else(is.na(adj_len), 0, adj_len),
+				verify_install_type = type
+			)
 		
 		# Norm len if needed
 		len_col <- "adj_len"
@@ -4512,7 +4527,8 @@ ggsave(
 	"../manuscript/figures/fig-yearly-len.pdf",
 	fig2$plot,
 	width = 8.5,
-	height = 12
+	height = 12,
+	skip = F
 )
 
 # Save png
@@ -4520,7 +4536,7 @@ ggsave(
 	"../manuscript/figures/fig-yearly-len.png",
 	fig2$plot,
 	width = 8.5,
-	height = 12
+	height = 12, skip = F
 )
 
 # Display figure
