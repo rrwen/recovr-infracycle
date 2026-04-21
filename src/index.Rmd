@@ -369,7 +369,9 @@ For a given infrastructure type, the total adjusted road length for a given year
 
 $$
 length_{year,type}^{install} + length_{year,type}^{change_i} - length_{year,type}^{replacement_i}
-$$ Where:
+$$
+
+Where:
 
 -   $length_{year,type}^{install}$ are the yearly cumulative road lengths for an infrastructure $type$ installation
 -   $length_{year,type}^{change_i}$ are the yearly cumulative road lengths for an infrastructure $type$ change in order $i$
@@ -382,149 +384,83 @@ $$ Where:
 #' Calculates the cumulative yearly adjusted road lengths by infrastructure type accounting for installations and subsequent changes.
 #'
 #' @param df A data.frame with three columns containing the year, type, and road lengths.
-#' @param year_cols A vector of the names (char) or indices (int) of the columns containing the years of installations followed by infrastructure changes in order.
-#' @param type_cols A vector of the names (char) or indices (int) of the columns containing the infrastructure types of installations followed by infrastructure changes in order.
-#' @param type_col The name (char) of the column containing the type.
-#' @param len_cols A vector of the names (char) or indices (int) of the columns containing the road lengths of installations followed by infrastructure changes in order.
-#' @param out_cols The name (char) of the column containing the calculated yearly road lengths by type.
-#' @param out_col The name (char) of the column containing the calculated yearly adjusted road lengths by type.
-#' @param repl_suffix A suffix (char) to append to the columns representing the road lengths of replaced infrastructure types from changes.
-#' @param ... Additional arguments passed to calc_yearly_len.
 #' 
 #' @return A data.frame with columns containing the year, type, cumulative road lengths of installations, changes, and replacements, and calculated yearly adjusted road lengths by type.
 #' @export
 #'
-calc_yearly_adj_len <- function(
-		df,
-		year_cols = c("verify_install_year", "verify_upgrade1_year", "verify_upgrade2_year"),
-		type_cols = c("verify_install_type", "verify_upgrade1_type", "verify_upgrade2_type"),
-		type_col = "type",
-		len_cols = "geometry_len_km",
-		out_cols = c("install_len", "upgrade1_len", "upgrade2_len"),
-		out_col = "adj_len",
-		repl_suffix = "_replaced",
-		...
-	) {
+calc_yearly_adj_len <- function(df, ...) {
 	
+	# Vars for ref
+	year_cols <- c("verify_install_year", "verify_upgrade1_year", "verify_upgrade2_year")
+	type_cols <- c("verify_install_type", "verify_upgrade1_type", "verify_upgrade2_type")
+	type_col <- "type"
+	len_col <- "geometry_len_km"
+	out_col <- "adj_len"
+	id_col <- "id"
+
 	# Ensure df
 	df <- as.data.frame(df)
 	
-	# Convert len_col if char
-	len_cols <- rep(len_cols, length(year_cols))
-	
-	# Check cols same size
-	year_cols_n <- length(year_cols)
-	type_cols_n <- length(type_cols)
-	len_cols_n <- length(len_cols)
-	out_cols_n <- length(out_cols)
-	if (length(unique(c(year_cols_n, type_cols_n, len_cols_n, out_cols_n))) != 1) {
-		stop(glue(
-			"The arguments 'year_cols' ({year_cols_n}), 'type_cols' ({type_cols_n}), 'len_cols' ({len_cols_n}), and 'out_cols' ({out_cols_n}) must be the same length."
-		))
-	}
-	
-	# Calc yearly lens by infra type per install or change
-	out <- list()
-	for (i in 1:length(year_cols)) {
-		
-		# Get year, type, and len cols
-		ycol <- year_cols[[i]]
-		tcol <- type_cols[[i]]
-		lcol <- len_cols[[i]]
-		ocol <- out_cols[[i]]
-		
-		# Calc yearly len for install or change
-		has_infra <- !is.na(df[[tcol]]) %>% all
-		if (has_infra) {
-			out <- append(
-				out,
-				calc_yearly_len(
-					df,
-					year_col = ycol,
-					type_col = tcol,
-					len_col = lcol,
-					out_col = ocol,
-					...
-				) %>%
-					rename(
-						"year" := !!ycol,
-						"type" := !!tcol
-					) %>% list
+	# Pivot to long format to capture states per segment
+	df_long <- df %>%
+	    as.data.frame() %>%
+	    select(all_of(c(
+	    	id_col,
+	    	type_cols,
+	    	year_cols,
+	    	len_col
+	    ))) %>%
+	    pivot_longer(
+	        cols = all_of(type_cols),
+	        names_to = "stage",
+	        values_to = "type"
+	    ) %>%
+	    filter(!is.na(type)) %>%
+	    mutate(
+	        year = case_when(
+				stage == "verify_install_type"  ~ verify_install_year,
+				stage == "verify_upgrade1_type" ~ verify_upgrade1_year,
+				stage == "verify_upgrade2_type" ~ verify_upgrade2_year,
+				.default = NA_real_
 			)
-		}
-		
-		# Calc yearly len for replacement
-		if (i > 1) {
-			
-			# Get repl cols
-			tcol_repl <- type_cols[[i - 1]]
-			lcol_repl <- len_cols[[i - 1]]
-			
-			# Filter for repl records only where type is not eq to change type
-			df_repl <- df %>% filter(.data[[tcol]] != .data[[tcol_repl]])
-			
-			# Calc repl len if there are any changes
-			has_change <- !is.na(df_repl[[tcol]]) %>% all 
-			if (has_change) {
-				out <- append(
-					out,
-					calc_yearly_len(
-						df_repl,
-						year_col = ycol,
-						type_col = tcol_repl,
-						len_col = lcol_repl,
-						out_col = glue("{ocol}{repl_suffix}"),
-						...
-					) %>%
-					rename(
-						"year" := !!ycol,
-						"type" := !!tcol_repl
-					) %>% list
-				)
-			}
-		}
-	}
+	    )
 	
-	# Combine all lens in list to single df
-	out <- out %>%
-		reduce(
-			left_join, by = c("year", "type")
+	# Create df to capture all yearly states for each segment
+	df_allstates <- crossing(
+		id = unique(df_long$id),
+		year = seq(min(df_long$year), max(df_long$year))
+	) %>%
+		left_join(
+			df_long,
+			by = c("id", "year")
 		) %>%
-		ungroup()
+		arrange(id, year) %>%
+		group_by(id) %>%
+		fill(type, .direction = "down") %>%
+		fill(geometry_len_km, .direction = "down") %>%
+		ungroup
 	
-	# Create template for change and repl cols
-	change_cols <- paste0(out_cols[2:out_cols_n])# change cols
-	change_cols <- c(change_cols, paste0(out_cols[2:out_cols_n], repl_suffix)) # repl cols
-	change_cols_add <- rep(0, length(change_cols)) # set default vals
-	names(change_cols_add) <- change_cols
+	# Calc adjusted lengths per year
+	df_ylens <- df_allstates %>%
+		group_by(year, type) %>%
+		filter(!is.na(type)) %>%
+		summarize(adj_len = sum(geometry_len_km)) %>%
+		ungroup
 	
-	# Add change and repl cols set to 0 if not present
-	out <- out %>% add_column(
-		!!!change_cols_add[setdiff(names(change_cols_add), names(.))]
-	)
-	
-	# Set NA to 0
-	out <- out %>% mutate(
-		across(everything(), ~replace_na(., 0))
-	)
-	
-	# Calc yearly adj lens by infra type
-	out <- out %>%
-		mutate( # added len by infra types due to install or changes
-			!!out_col := reduce(across(all_of(out_cols)), `+`)
+	# Add zero lens for types not existing in years for plot lines
+	out <- df_ylens %>%
+		right_join( # add years for types not existing
+			crossing(
+				year = seq(min(df_ylens$year), max(df_ylens$year)),
+				type = unique(df_ylens$type)
+			), by = c("year", "type")
 		) %>%
-		mutate( # removed len by infra types due to replacements
-			!!out_col := .data[[out_col]] - reduce(
-				across(all_of(
-					paste0(out_cols[2:out_cols_n], repl_suffix)
-				)),
-				`-`
-			)
+		mutate(
+			adj_len = if_else(is.na(adj_len), 0, adj_len),
+			verify_install_type = type
 		)
-	
-	# Rename type col
-	out <- out %>% rename(!!type_col := type)
 	return(out)
+	
 }
 ```
 
@@ -873,70 +809,7 @@ plot_yearly_len_infra <- function(
 		}
 		
 		# Pivot to long format to capture states per segment
-		df_long <- df %>%
-		    as.data.frame() %>%
-		    select(
-		        id,
-		        verify_install_type,
-		        verify_upgrade1_type,
-		        verify_upgrade2_type,
-		        verify_install_year,
-		        verify_upgrade1_year,
-		        verify_upgrade2_year,
-		        geometry_len_km
-		    ) %>%
-		    pivot_longer(
-		        cols = c(
-		            verify_install_type,
-		            verify_upgrade1_type,
-		            verify_upgrade2_type
-		        ),
-		        names_to = "stage",
-		        values_to = "type"
-		    ) %>%
-		    filter(!is.na(type)) %>%
-		    mutate(
-		        year = case_when(
-		            stage == "verify_install_type"  ~ verify_install_year,
-		            stage == "verify_upgrade1_type" ~ verify_upgrade1_year,
-		            stage == "verify_upgrade2_type" ~ verify_upgrade2_year,
-		            .default = NA_real_
-		        )
-		    )
-		
-		# Create df to capture all yearly states for each segment
-		df_allstates <- crossing(
-			id = unique(df_long$id),
-			year = seq(min(df_long$year), max(df_long$year))
-		) %>%
-			left_join(
-				df_long,
-				by = c("id", "year")
-			) %>%
-			arrange(id, year) %>%
-			group_by(id) %>%
-			fill(type, .direction = "down") %>%
-			fill(geometry_len_km, .direction = "down") %>%
-			ungroup()
-		
-		# Calc adjusted lengths per year
-		df_ylens <- df_allstates %>%
-			group_by(year, type) %>%
-			filter(!is.na(type)) %>%
-			summarize(adj_len = sum(geometry_len_km))
-		
-		# Add zero lens for types not existing in years for plot lines
-		p[[i]] <- df_ylens %>%
-			right_join( # add years for types not existing
-				crossing(
-					year = seq(min(df_ylens$year), max(df_ylens$year)),
-					type = unique(df_ylens$type)
-				), by = c("year", "type")
-			) %>%
-			mutate(
-				adj_len = if_else(is.na(adj_len), 0, adj_len),
-				verify_install_type = type
-			)
+		p[[i]] <- calc_yearly_adj_len(df)
 		
 		# Norm len if needed
 		len_col <- "adj_len"
@@ -1181,6 +1054,7 @@ This function is used to check the differences in installation years between the
 #' @param x_title The title (char) of the x-axis.
 #' @param y_title The title (char) of the y-axis.
 #' @param x_breaks The number (int) of breaks to show on the x-axis. Set to FALSE to let ggplot automatically decide.
+#' @param x_lim A vector of size two specifying the limits of the x-axis. Set to FALSE to skip.
 #' @param x_perc Set to TRUE to show proportions and FALSE to show counts.
 #' @param out_data Set to TRUE to return a list
 #' 
@@ -1208,6 +1082,7 @@ plot_yearly_diff <- function(
 		),
 		y_title = "Proportion of Total Segments",
 		x_breaks = 15,
+		x_lim = FALSE,
 		x_perc = TRUE,
 		out_data = TRUE
 ) {
@@ -1279,6 +1154,11 @@ plot_yearly_diff <- function(
 		out <- out + scale_x_continuous(
 			breaks = scales::breaks_pretty(x_breaks)
 		)
+	}
+	
+	# Set x limits
+	if (length(x_lim) > 1) {
+		out <- out + coord_cartesian(xlim = x_lim)
 	}
 	
 	# Returns ggplot obj or list
@@ -4312,7 +4192,7 @@ tab3$data %>%
 
 ```
 
-## Table 4: Comparison of municipal-reported roadway cycling infrastructure lengths and verified bikeway infrastructure in Vancouver, Calgary and Toronto (Canada), 2022.
+## Table 4: Classification error matrix of installed municipal reported cycling roadway infrastructure in Vancouver, Calgary and Toronto (Canada) in kilometres.
 
 **Note**: Totals should match Table 3.
 
@@ -4468,7 +4348,329 @@ fig1$plot %>%
 fig1$plot
 ```
 
-## Figure 2: Changes in dedicated cycling infrastructure between 2009 and 2022 for Vancouver, Calgary, and Toronto by infrastructure category. {.tabset}
+
+## Figure 2a: Segment Inclusion Criteria for Vancouver {.tabset}
+
+```{r}
+sfig10 <- list()
+sfig10$plot <- diag_criteria_details(criteria_data, "vancouver")
+```
+
+Figure files available at:
+
+* [manuscript/figures/sfig-criteria-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-vanc.pdf)
+* [manuscript/figures/sfig-criteria-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-vanc.png)
+
+```{r}
+
+# Save pdf
+sfig10$plot %>%
+    export_svg %>%
+    charToRaw %>%
+    rsvg_pdf(
+    	"../manuscript/figures/sfig-criteria-vanc.pdf",
+    	width = 1080
+    )
+
+# Save png
+sfig10$plot %>%
+    export_svg %>%
+    charToRaw %>%
+    rsvg_png(
+    	"../manuscript/figures/sfig-criteria-vanc.png",
+    	width = 1080
+    )
+
+# Display figure
+sfig10$plot
+
+```
+
+## Figure 2b: Segment Inclusion Criteria for Calgary {.tabset}
+
+```{r}
+sfig11 <- list()
+sfig11$plot <- diag_criteria_details(criteria_data, "calgary")
+```
+
+Figure files available at:
+
+* [manuscript/figures/sfig-criteria-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-calg.pdf)
+* [manuscript/figures/sfig-criteria-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-calg.png)
+
+```{r}
+
+# Save pdf
+sfig11$plot %>%
+    export_svg %>%
+    charToRaw %>%
+    rsvg_pdf(
+    	"../manuscript/figures/sfig-criteria-calg.pdf",
+    	width = 1080
+    )
+
+# Save png
+sfig11$plot %>%
+    export_svg %>%
+    charToRaw %>%
+    rsvg_png(
+    	"../manuscript/figures/sfig-criteria-calg.png",
+    	width = 1080
+    )
+
+# Display figure
+sfig11$plot
+
+```
+
+## Figure 2c: Segment Inclusion Criteria for Toronto {.tabset}
+
+```{r}
+sfig12 <- list()
+sfig12$plot <- diag_criteria_details(criteria_data, "toronto")
+```
+
+Figure files available at:
+
+* [manuscript/figures/sfig-criteria-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-toron.pdf)
+* [manuscript/figures/sfig-criteria-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-toron.png)
+
+```{r}
+
+# Save pdf
+sfig12$plot %>%
+    export_svg %>%
+    charToRaw %>%
+    rsvg_pdf(
+    	"../manuscript/figures/sfig-criteria-toron.pdf",
+    	width = 1080
+    )
+
+# Save png
+sfig12$plot %>%
+    export_svg %>%
+    charToRaw %>%
+    rsvg_png(
+    	"../manuscript/figures/sfig-criteria-toron.png",
+    	width = 1080
+    )
+
+# Display figure
+sfig12$plot
+
+```
+
+
+## Figure 3a: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Vancouver, CA. {.tabset}
+
+```{r}
+# Create the plot
+sfig7 <- plot_yearly_diff(
+	vanc %>% filter(
+		is.na(no_verify_install_type)
+	),
+	x_lim = c(-10, 21),
+	title = "Difference in Installation Years, Comparing City Data and Verified Data: Vancouver, CA",
+	out_data = TRUE
+)
+
+# Calc metrics for description
+sfig7_n <- sum(sfig7$data$n)
+sfig7_0 <- sfig7$data %>%  # perc correct
+	filter(year_diff == 0) %>%
+	pull(n_perc) %>%
+	round(1)
+sfig7_pm1 <- sfig7$data %>% # perc plus/minus 1
+	filter(year_diff >= -1 & year_diff <= 1) %>%
+	pull(n_perc) %>%
+	sum %>%
+	round(1)
+```
+
+Any data where a city provided and verified installation years were missing or the verified year occurred earlier or equal to the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig7_n` segments. The graph shows that `r sfig7_0`% of the included segments had the correct installation year as per the city's data, and `r sfig7_pm1`% were accurate within a range of ±1 year.
+
+### Figure
+
+Figure files available at:
+
+* [manuscript/figures/sfig-compare-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-vanc.pdf)
+* [manuscript/figures/sfig-compare-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-vanc.png)
+
+```{r fig.width = 8, fig.height = 5}
+
+# Save pdf
+ggsave(
+	"../manuscript/figures/sfig-compare-vanc.pdf",
+	sfig7$plot,
+	height = 8,
+	width = 11
+)
+
+# Save png
+ggsave(
+	"../manuscript/figures/sfig-compare-vanc.png",
+	sfig7$plot,
+	height = 8,
+	width = 11
+)
+
+# Display figure
+sfig7$plot
+
+```
+
+### Data
+
+```{r}
+
+# Save data
+write_csv(sfig7$data, "../data/plot/sfig-compare-vanc.csv", na = "")
+
+# Display data
+sfig7$data %>%
+	datatable(filename = "sfig-compare-vanc")
+
+```
+
+## Figure 3b: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Calgary, CA. {.tabset}
+
+```{r}
+
+# Create the plot
+sfig8 <- plot_yearly_diff(
+	calg,
+	x_lim = c(-10, 21),
+	title = "Difference in Installation Years, Comparing City Data and Verified Data: Calgary, CA",
+	out_data = TRUE
+)
+
+# Calc metrics for description
+sfig8_n <- sum(sfig8$data$n)
+sfig8_0 <- sfig8$data %>%  # perc correct
+	filter(year_diff == 0) %>%
+	pull(n_perc) %>%
+	round(1)
+sfig8_pm1 <- sfig8$data %>% # perc plus/minus 1
+	filter(year_diff >= -1 & year_diff <= 1) %>%
+	pull(n_perc) %>%
+	sum %>%
+	round(1)
+
+```
+
+Any data where a city provided and verified installation years were missing or the verified year occurred earlier or equal to the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig8_n` segments. The graph shows that `r sfig8_0`% of the included segments had the correct installation year as per the city's data, and `r sfig8_pm1`% were accurate within a range of ±1 year.
+
+### Figure
+
+Figure files available at:
+
+* [manuscript/figures/sfig-compare-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-calg.pdf)
+* [manuscript/figures/sfig-compare-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-calg.png)
+
+```{r fig.width = 8, fig.height = 5}
+
+# Save pdf
+ggsave(
+	"../manuscript/figures/sfig-compare-calg.pdf",
+	sfig8$plot,
+	width = 11
+)
+
+# Save png
+ggsave(
+	"../manuscript/figures/sfig-compare-calg.png",
+	sfig8$plot,
+	width = 11
+)
+
+# Display figure
+sfig8$plot
+
+```
+
+### Data
+
+```{r}
+
+# Save data
+write_csv(sfig8$data, "../data/plot/sfig-compare-calg.csv", na = "")
+
+# Display data
+sfig8$data %>%
+	datatable(filename = "sfig-compare-calg")
+
+```
+
+## Figure 3c: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Toronto, CA. {.tabset}
+
+```{r}
+
+# Create the plot
+sfig9 <- plot_yearly_diff(
+	toron,
+	x_lim = c(-10, 21),
+	title = "Difference in Installation Years, Comparing City Data and Verified Data: Toronto, CA",
+	out_data = TRUE
+)
+
+# Calc metrics for description
+sfig9_n <- sum(sfig9$data$n)
+sfig9_0 <- sfig9$data %>%  # perc correct
+	filter(year_diff == 0) %>%
+	pull(n_perc) %>%
+	round(1)
+sfig9_pm1 <- sfig9$data %>% # perc plus/minus 1
+	filter(year_diff >= -1 & year_diff <= 1) %>%
+	pull(n_perc) %>%
+	sum %>%
+	round(1)
+
+```
+
+Any data where a city provided and verified installation years were missing or the verified year occurred earlier or equal to the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig9_n` segments. The graph shows that `r sfig9_0`% of the included segments had the correct installation year as per the city's data, and `r sfig9_pm1`% were accurate within a range of ±1 year.
+
+### Figure
+
+Figure files available at:
+
+* [manuscript/figures/sfig-compare-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-toron.pdf)
+* [manuscript/figures/sfig-compare-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-toron.png)
+
+```{r fig.width = 8, fig.height = 5}
+
+# Save pdf
+ggsave(
+	"../manuscript/figures/sfig-compare-toron.pdf",
+	sfig9$plot,
+	width = 11
+)
+
+# Save png
+ggsave(
+	"../manuscript/figures/sfig-compare-toron.png",
+	sfig9$plot,
+	width = 11
+)
+
+# Display figure
+sfig9$plot
+
+```
+
+### Data
+
+```{r}
+
+# Save data
+write_csv(sfig9$data, "../data/plot/sfig-compare-toron.csv", na = "")
+
+# Display data
+sfig9$data %>%
+	datatable(filename = "sfig-compare-toron")
+
+```
+
+## Figure 4: Changes in dedicated cycling infrastructure between 2009 and 2022 for Vancouver, Calgary, and Toronto by infrastructure category. {.tabset}
 
 Assessed using roadway centreline-km, with infrastructure classifications determined by the most protective element present along each road segment.
 
@@ -4552,7 +4754,7 @@ fig2$data %>%
 
 ```
 
-## Figure 3: Yearly net change in cycle route infrastructure by municipality, standardized per 1000 centerline-km of roadway. {.tabset}
+## Figure 5: Yearly net change in cycle route infrastructure by municipality, standardized per 1000 centerline-km of roadway. {.tabset}
 
 The net change considers both the installation of new facilities, and the removal of existing infrastructure, such as when an existing facility is upgraded. Cycle route infrastructure is defined by the most protective element along a street centreline. This reflects the overall modifications made within each municipality over the course of the study period (2009-2022).
 
@@ -4623,8 +4825,172 @@ fig3$data %>%
 	datatable(filename = "fig-yearly-change")
 
 ```
+## Figure 6a: Changes in dedicated cycling infrastructure between 2009 and 2021 for the Municipality of Vancouver, CA. {.tabset}
 
-## Figure 4: Changes in Dedicated On-Street Infrastructure Since January 2020 for Vancouver, Calgary, and Toronto. {.tabset}
+By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
+
+```{r}
+sfig4 <- list()
+sfig4 <- plot_yearly_len_road(
+	vanc,
+	title = "Roadways with Dedicated Cycling Infrastructure (Vancouver, CA)"
+)
+```
+
+### Figure
+
+Figure files available at:
+
+* [manuscript/figures/sfig-change-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-vanc.pdf)
+* [manuscript/figures/sfig-change-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-vanc.png)
+
+```{r fig.width=18, fig.height=10}
+
+# Save pdf
+ggsave(
+	"../manuscript/figures/sfig-change-vanc.pdf",
+	sfig4$plot,
+	height = 6,
+	width = 15
+)
+
+# Save png
+ggsave(
+	"../manuscript/figures/sfig-change-vanc.png",
+	sfig4$plot,
+	height = 6,
+	width = 15
+)
+
+# Display figure
+sfig4$plot
+
+```
+
+### Data
+
+```{r}
+
+# Save data
+write_csv(sfig4$data, "../data/plot/sfig-change-vanc.csv", na = "")
+
+# Display data
+sfig4$data %>%
+	datatable(filename = "sfig-change-vanc")
+
+```
+
+## Figure 6b: Changes in dedicated cycling infrastructure between 2009 and 2022 for the Municipality of Calgary, CA. {.tabset}
+
+By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
+
+```{r}
+sfig5 <- list()
+sfig5 <- plot_yearly_len_road(
+	calg,
+	title = "Roadways with Dedicated Cycling Infrastructure (Calgary, CA)"
+)
+```
+
+### Figure
+
+Figure files available at:
+
+* [manuscript/figures/sfig-change-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-calg.pdf)
+* [manuscript/figures/sfig-change-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-calg.png)
+
+```{r fig.width=18, fig.height=10}
+
+# Save pdf
+ggsave(
+	"../manuscript/figures/sfig-change-calg.pdf",
+	sfig5$plot,
+	height = 6,
+	width = 15
+)
+
+# Save png
+ggsave(
+	"../manuscript/figures/sfig-change-calg.png",
+	sfig5$plot,
+	height = 6,
+	width = 15
+)
+
+# Display figure
+sfig5$plot
+
+```
+
+### Data
+
+```{r}
+
+# Save data
+write_csv(sfig5$data, "../data/plot/sfig-change-calg.csv", na = "")
+
+# Display data
+sfig5$data %>%
+	datatable(filename = "sfig-change-calg")
+
+```
+
+## Figure 6c: Changes in dedicated cycling infrastructure between 2009 and 2022 for the Municipality of Toronto, CA. {.tabset}
+
+By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
+
+```{r}
+sfig6 <- list()
+sfig6 <- plot_yearly_len_road(
+	toron,
+	title = "Roadways with Dedicated Cycling Infrastructure (Toronto, CA)"
+)
+```
+
+### Figure
+
+Figure files available at:
+
+* [manuscript/figures/sfig-change-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-toron.pdf)
+* [manuscript/figures/sfig-change-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-toron.png)
+
+```{r fig.width=18, fig.height=10}
+
+# Save pdf
+ggsave(
+	"../manuscript/figures/sfig-change-toron.pdf",
+	sfig6$plot,
+	height = 6,
+	width = 15
+)
+
+# Save png
+ggsave(
+	"../manuscript/figures/sfig-change-toron.png",
+	sfig6$plot,
+	height = 6,
+	width = 15
+)
+
+# Display figure
+sfig6$plot
+
+```
+
+### Data
+
+```{r}
+
+# Save data
+write_csv(sfig6$data, "../data/plot/sfig-change-toron.csv", na = "")
+
+# Display data
+sfig6$data %>%
+	datatable(filename = "sfig-change-toron")
+
+```
+
+## Figure 7: Changes in dedicated on-street infrastructure since January 2020 for Vancouver, Calgary, and Toronto with municipal boundaries. {.tabset}
 
 New installations of dedicated infrastructure are denoted in green, upgrades from a previous dedicated infrastructure type are denoted in orange.  Basemap from OpenStreetMap and Carto (Positron).
 
@@ -4662,9 +5028,9 @@ fig4$plot %>% print
 
 ```
 
-# Appendix 1 - Supplementary Results
+# Past Supplementary Results
 
-## Supplementary Figure 1: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2021 for the Municipality of Vancouver, CA. {.tabset}
+## Past Supplementary Figure 1: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2021 for the Municipality of Vancouver, CA. {.tabset}
 
 New installations of dedicated infrastructure are denoted in green, upgrades from a previous dedicated infrastructure type are denoted in orange. Basemap from OpenStreetMap and Carto (Positron).
 
@@ -4710,7 +5076,7 @@ sfig1$plot %>% print
 
 ```
 
-## Supplementary Figure 2: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2022 for the Municipality of Calgary, CA. {.tabset}
+## Past Supplementary Figure 2: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2022 for the Municipality of Calgary, CA. {.tabset}
 
 New installations of dedicated infrastructure are denoted in green, upgrades of dedicated infrastructure are denoted in orange. Basemap from OpenStreetMap and Carto (Positron).
 
@@ -4756,7 +5122,7 @@ sfig2$plot %>% print
 
 ```
 
-## Supplementary Figure 3: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2022 for the Municipality of Toronto, CA. {.tabset}
+## Past Supplementary Figure 3: Enlarged Map. Changes in Dedicated On-Street Infrastructure Between 2020-2022 for the Municipality of Toronto, CA. {.tabset}
 
 New installations of dedicated infrastructure are denoted in green, upgrades of dedicated infrastructure are denoted in orange. Basemap from OpenStreetMap and Carto (Positron).
 
@@ -4802,7 +5168,7 @@ sfig3$plot %>% print
 
 ```
 
-## Supplementary Table 1: Total Length of Dedicated On-Street Cycling Infrastructure between 2009 and 2022, for Vancouver, Calgary, and Toronto (Canada). {.tabset}
+## Past Supplementary Table 1: Total Length of Dedicated On-Street Cycling Infrastructure between 2009 and 2022, for Vancouver, Calgary, and Toronto (Canada). {.tabset}
 
 Each entry denotes the aggregated length of infrastructure existing at the conclusion the calendar year. Lengths are measured in roadway centreline-km, with cycling infrastructure classified according to the side of the road featuring the most protective element. Rows noted in light red denote infrastructure changes following the start of the COVID-19 pandemic.
 
@@ -4935,491 +5301,12 @@ stab1$data %>%
 
 ```
 
-## Supplementary Figure 4: Changes in dedicated cycling infrastructure between 2009 and 2021 for the Municipality of Vancouver, CA. {.tabset}
 
-By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
-
-```{r}
-sfig4 <- list()
-sfig4 <- plot_yearly_len_road(
-	vanc,
-	title = "Roadways with Dedicated Cycling Infrastructure (Vancouver, CA)"
-)
-```
-
-### Figure
-
-Figure files available at:
-
-* [manuscript/figures/sfig-change-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-vanc.pdf)
-* [manuscript/figures/sfig-change-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-vanc.png)
-
-```{r fig.width=18, fig.height=10}
-
-# Save pdf
-ggsave(
-	"../manuscript/figures/sfig-change-vanc.pdf",
-	sfig4$plot,
-	height = 6,
-	width = 15
-)
-
-# Save png
-ggsave(
-	"../manuscript/figures/sfig-change-vanc.png",
-	sfig4$plot,
-	height = 6,
-	width = 15
-)
-
-# Display figure
-sfig4$plot
-
-```
-
-### Data
-
-```{r}
-
-# Save data
-write_csv(sfig4$data, "../data/plot/sfig-change-vanc.csv", na = "")
-
-# Display data
-sfig4$data %>%
-	datatable(filename = "sfig-change-vanc")
-
-```
-
-## Supplementary Figure 5: Changes in dedicated cycling infrastructure between 2009 and 2022 for the Municipality of Calgary, CA. {.tabset}
-
-By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
-
-```{r}
-sfig5 <- list()
-sfig5 <- plot_yearly_len_road(
-	calg,
-	title = "Roadways with Dedicated Cycling Infrastructure (Calgary, CA)"
-)
-```
-
-### Figure
-
-Figure files available at:
-
-* [manuscript/figures/sfig-change-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-calg.pdf)
-* [manuscript/figures/sfig-change-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-calg.png)
-
-```{r fig.width=18, fig.height=10}
-
-# Save pdf
-ggsave(
-	"../manuscript/figures/sfig-change-calg.pdf",
-	sfig5$plot,
-	height = 6,
-	width = 15
-)
-
-# Save png
-ggsave(
-	"../manuscript/figures/sfig-change-calg.png",
-	sfig5$plot,
-	height = 6,
-	width = 15
-)
-
-# Display figure
-sfig5$plot
-
-```
-
-### Data
-
-```{r}
-
-# Save data
-write_csv(sfig5$data, "../data/plot/sfig-change-calg.csv", na = "")
-
-# Display data
-sfig5$data %>%
-	datatable(filename = "sfig-change-calg")
-
-```
-
-## Supplementary Figure 6: Changes in dedicated cycling infrastructure between 2009 and 2022 for the Municipality of Toronto, CA. {.tabset}
-
-By (A) roadway classification, and (B) infrastructure distribution within each road class. Assessed using roadway centreline-km, with infrastructure classification determined by the most protective element present along each road segment.
-
-```{r}
-sfig6 <- list()
-sfig6 <- plot_yearly_len_road(
-	toron,
-	title = "Roadways with Dedicated Cycling Infrastructure (Toronto, CA)"
-)
-```
-
-### Figure
-
-Figure files available at:
-
-* [manuscript/figures/sfig-change-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-toron.pdf)
-* [manuscript/figures/sfig-change-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-change-toron.png)
-
-```{r fig.width=18, fig.height=10}
-
-# Save pdf
-ggsave(
-	"../manuscript/figures/sfig-change-toron.pdf",
-	sfig6$plot,
-	height = 6,
-	width = 15
-)
-
-# Save png
-ggsave(
-	"../manuscript/figures/sfig-change-toron.png",
-	sfig6$plot,
-	height = 6,
-	width = 15
-)
-
-# Display figure
-sfig6$plot
-
-```
-
-### Data
-
-```{r}
-
-# Save data
-write_csv(sfig6$data, "../data/plot/sfig-change-toron.csv", na = "")
-
-# Display data
-sfig6$data %>%
-	datatable(filename = "sfig-change-toron")
-
-```
-
-## Supplementary Figure 7: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Vancouver, CA. {.tabset}
-
-```{r}
-# Create the plot
-sfig7 <- plot_yearly_diff(
-	vanc %>% filter(
-		is.na(no_verify_install_type)
-	),
-	title = "Difference in Installation Years, Comparing City Data and Verified Data: Vancouver, CA",
-	out_data = TRUE
-)
-
-# Calc metrics for description
-sfig7_n <- sum(sfig7$data$n)
-sfig7_0 <- sfig7$data %>%  # perc correct
-	filter(year_diff == 0) %>%
-	pull(n_perc) %>%
-	round(1)
-sfig7_pm1 <- sfig7$data %>% # perc plus/minus 1
-	filter(year_diff >= -1 & year_diff <= 1) %>%
-	pull(n_perc) %>%
-	sum %>%
-	round(1)
-```
-
-Any data where a city provided and verified installation years were missing or the verified year occurred earlier or equal to the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig7_n` segments. The graph shows that `r sfig7_0`% of the included segments had the correct installation year as per the city's data, and `r sfig7_pm1`% were accurate within a range of ±1 year.
-
-### Figure
-
-Figure files available at:
-
-* [manuscript/figures/sfig-compare-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-vanc.pdf)
-* [manuscript/figures/sfig-compare-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-vanc.png)
-
-```{r fig.width = 8, fig.height = 5}
-
-# Save pdf
-ggsave(
-	"../manuscript/figures/sfig-compare-vanc.pdf",
-	sfig7$plot,
-	height = 8,
-	width = 11
-)
-
-# Save png
-ggsave(
-	"../manuscript/figures/sfig-compare-vanc.png",
-	sfig7$plot,
-	height = 8,
-	width = 11
-)
-
-# Display figure
-sfig7$plot
-
-```
-
-### Data
-
-```{r}
-
-# Save data
-write_csv(sfig7$data, "../data/plot/sfig-compare-vanc.csv", na = "")
-
-# Display data
-sfig7$data %>%
-	datatable(filename = "sfig-compare-vanc")
-
-```
-
-## Supplementary Figure 8: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Calgary, CA. {.tabset}
-
-```{r}
-
-# Create the plot
-sfig8 <- plot_yearly_diff(
-	calg,
-	title = "Difference in Installation Years, Comparing City Data and Verified Data: Calgary, CA",
-	out_data = TRUE
-)
-
-# Calc metrics for description
-sfig8_n <- sum(sfig8$data$n)
-sfig8_0 <- sfig8$data %>%  # perc correct
-	filter(year_diff == 0) %>%
-	pull(n_perc) %>%
-	round(1)
-sfig8_pm1 <- sfig8$data %>% # perc plus/minus 1
-	filter(year_diff >= -1 & year_diff <= 1) %>%
-	pull(n_perc) %>%
-	sum %>%
-	round(1)
-
-```
-
-Any data where a city provided and verified installation years were missing or the verified year occurred earlier or equal to the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig8_n` segments. The graph shows that `r sfig8_0`% of the included segments had the correct installation year as per the city's data, and `r sfig8_pm1`% were accurate within a range of ±1 year.
-
-### Figure
-
-Figure files available at:
-
-* [manuscript/figures/sfig-compare-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-calg.pdf)
-* [manuscript/figures/sfig-compare-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-calg.png)
-
-```{r fig.width = 8, fig.height = 5}
-
-# Save pdf
-ggsave(
-	"../manuscript/figures/sfig-compare-calg.pdf",
-	sfig8$plot,
-	width = 11
-)
-
-# Save png
-ggsave(
-	"../manuscript/figures/sfig-compare-calg.png",
-	sfig8$plot,
-	width = 11
-)
-
-# Display figure
-sfig8$plot
-
-```
-
-### Data
-
-```{r}
-
-# Save data
-write_csv(sfig8$data, "../data/plot/sfig-compare-calg.csv", na = "")
-
-# Display data
-sfig8$data %>%
-	datatable(filename = "sfig-compare-calg")
-
-```
-
-## Supplementary Figure 9: A comparative analysis between municipal data and verified data on the installation years for cycling infrastructure in Toronto, CA. {.tabset}
-
-```{r}
-
-# Create the plot
-sfig9 <- plot_yearly_diff(
-	toron,
-	title = "Difference in Installation Years, Comparing City Data and Verified Data: Toronto, CA",
-	out_data = TRUE
-)
-
-# Calc metrics for description
-sfig9_n <- sum(sfig9$data$n)
-sfig9_0 <- sfig9$data %>%  # perc correct
-	filter(year_diff == 0) %>%
-	pull(n_perc) %>%
-	round(1)
-sfig9_pm1 <- sfig9$data %>% # perc plus/minus 1
-	filter(year_diff >= -1 & year_diff <= 1) %>%
-	pull(n_perc) %>%
-	sum %>%
-	round(1)
-
-```
-
-Any data where a city provided and verified installation years were missing or the verified year occurred earlier or equal to the start of the study period (2009) has been excluded from analysis, yielding n=`r sfig9_n` segments. The graph shows that `r sfig9_0`% of the included segments had the correct installation year as per the city's data, and `r sfig9_pm1`% were accurate within a range of ±1 year.
-
-### Figure
-
-Figure files available at:
-
-* [manuscript/figures/sfig-compare-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-toron.pdf)
-* [manuscript/figures/sfig-compare-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-compare-toron.png)
-
-```{r fig.width = 8, fig.height = 5}
-
-# Save pdf
-ggsave(
-	"../manuscript/figures/sfig-compare-toron.pdf",
-	sfig9$plot,
-	width = 11
-)
-
-# Save png
-ggsave(
-	"../manuscript/figures/sfig-compare-toron.png",
-	sfig9$plot,
-	width = 11
-)
-
-# Display figure
-sfig9$plot
-
-```
-
-### Data
-
-```{r}
-
-# Save data
-write_csv(sfig9$data, "../data/plot/sfig-compare-toron.csv", na = "")
-
-# Display data
-sfig9$data %>%
-	datatable(filename = "sfig-compare-toron")
-
-```
 
 # Appendix 2 - Methodology
 
-## Segment Inclusion Criteria for Vancouver {.tabset}
 
-```{r}
-sfig10 <- list()
-sfig10$plot <- diag_criteria_details(criteria_data, "vancouver")
-```
-
-Figure files available at:
-
-* [manuscript/figures/sfig-criteria-vanc.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-vanc.pdf)
-* [manuscript/figures/sfig-criteria-vanc.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-vanc.png)
-
-```{r}
-
-# Save pdf
-sfig10$plot %>%
-    export_svg %>%
-    charToRaw %>%
-    rsvg_pdf(
-    	"../manuscript/figures/sfig-criteria-vanc.pdf",
-    	width = 1080
-    )
-
-# Save png
-sfig10$plot %>%
-    export_svg %>%
-    charToRaw %>%
-    rsvg_png(
-    	"../manuscript/figures/sfig-criteria-vanc.png",
-    	width = 1080
-    )
-
-# Display figure
-sfig10$plot
-
-```
-
-## Segment Inclusion Criteria for Calgary {.tabset}
-
-```{r}
-sfig11 <- list()
-sfig11$plot <- diag_criteria_details(criteria_data, "calgary")
-```
-
-Figure files available at:
-
-* [manuscript/figures/sfig-criteria-calg.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-calg.pdf)
-* [manuscript/figures/sfig-criteria-calg.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-calg.png)
-
-```{r}
-
-# Save pdf
-sfig11$plot %>%
-    export_svg %>%
-    charToRaw %>%
-    rsvg_pdf(
-    	"../manuscript/figures/sfig-criteria-calg.pdf",
-    	width = 1080
-    )
-
-# Save png
-sfig11$plot %>%
-    export_svg %>%
-    charToRaw %>%
-    rsvg_png(
-    	"../manuscript/figures/sfig-criteria-calg.png",
-    	width = 1080
-    )
-
-# Display figure
-sfig11$plot
-
-```
-
-## Segment Inclusion Criteria for Toronto {.tabset}
-
-```{r}
-sfig12 <- list()
-sfig12$plot <- diag_criteria_details(criteria_data, "toronto")
-```
-
-Figure files available at:
-
-* [manuscript/figures/sfig-criteria-toron.pdf](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-toron.pdf)
-* [manuscript/figures/sfig-criteria-toron.png](https://github.com/rrwen/recovr-infracycle/blob/main/manuscript/figures/sfig-criteria-toron.png)
-
-```{r}
-
-# Save pdf
-sfig12$plot %>%
-    export_svg %>%
-    charToRaw %>%
-    rsvg_pdf(
-    	"../manuscript/figures/sfig-criteria-toron.pdf",
-    	width = 1080
-    )
-
-# Save png
-sfig12$plot %>%
-    export_svg %>%
-    charToRaw %>%
-    rsvg_png(
-    	"../manuscript/figures/sfig-criteria-toron.png",
-    	width = 1080
-    )
-
-# Display figure
-sfig12$plot
-
-```
-
-## Supplementary Table 2: Excluded Segment Types for Vancouver, Calgary, and Toronto (Canada). {.tabset}
+## Past Supplementary Table 2: Excluded Segment Types for Vancouver, Calgary, and Toronto (Canada). {.tabset}
 
 ```{r}
 
